@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+gunicorn
+sqlalchemy
+pymysql
+alembic
+boto3
+pydantic
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+python-dotenv
+requests

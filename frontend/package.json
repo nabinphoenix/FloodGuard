@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "floodguard-frontend",
   "version": "0.1.0",
   "private": true,
@@ -12,8 +12,10 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "axios": "latest",
+    "chart.js": "latest",
     "lucide-react": "latest",
     "react": "latest",
+    "react-chartjs-2": "latest",
     "react-dom": "latest",
     "react-router-dom": "latest",
     "recharts": "latest"
