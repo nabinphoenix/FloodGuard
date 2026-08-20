@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { register } from "../../api/auth";
@@ -22,6 +23,7 @@ const DISTRICTS = [
 
 export default function Register() {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,14 +31,24 @@ export default function Register() {
     phone: "",
     district: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
-    setFieldErrors((current) => ({ ...current, [name]: "" }));
+
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
+
+    setFieldErrors((current) => ({
+      ...current,
+      [name]: "",
+    }));
   }
 
   function validateForm() {
@@ -59,6 +71,7 @@ export default function Register() {
     }
 
     setFieldErrors(errors);
+
     return Object.keys(errors).length === 0;
   }
 
@@ -80,14 +93,18 @@ export default function Register() {
         phone: formData.phone.trim() || null,
         district: formData.district,
       });
-      navigate("/");
+
+      navigate("/login");
     } catch (err) {
       const detail = err.response?.data?.detail;
 
       if (Array.isArray(detail)) {
         setError(detail.map((item) => item.msg).join(" "));
       } else {
-        setError(detail || "Registration failed. Please check your details.");
+        setError(
+          detail ||
+            "Registration failed. Please check your details."
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -98,9 +115,23 @@ export default function Register() {
     <main className="min-h-screen bg-blue-50 flex items-center justify-center px-4 py-12">
       <section className="w-full max-w-2xl rounded-lg bg-white p-8 shadow-xl shadow-blue-100 border border-blue-100">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-blue-900">Create Account</h1>
+          <h1 className="text-3xl font-bold text-blue-900">
+            Create Account
+          </h1>
+
           <p className="mt-2 text-sm text-blue-700">
             Join FloodGuard to receive flood alerts for your area
+          </p>
+        </div>
+
+        <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 px-4 py-3">
+          <p className="text-sm font-semibold text-blue-900">
+            Account type: Public User
+          </p>
+
+          <p className="mt-1 text-xs text-blue-700">
+            Authority, Field Officer, and Administrator roles are assigned
+            by an administrator after registration.
           </p>
         </div>
 
@@ -110,7 +141,10 @@ export default function Register() {
           </div>
         )}
 
-        <form className="grid gap-5 md:grid-cols-2" onSubmit={handleSubmit}>
+        <form
+          className="grid gap-5 md:grid-cols-2"
+          onSubmit={handleSubmit}
+        >
           <div className="md:col-span-2">
             <label
               htmlFor="name"
@@ -118,6 +152,7 @@ export default function Register() {
             >
               Full name
             </label>
+
             <input
               id="name"
               name="name"
@@ -129,8 +164,11 @@ export default function Register() {
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="Your full name"
             />
+
             {fieldErrors.name && (
-              <p className="mt-2 text-sm text-red-600">{fieldErrors.name}</p>
+              <p className="mt-2 text-sm text-red-600">
+                {fieldErrors.name}
+              </p>
             )}
           </div>
 
@@ -141,6 +179,7 @@ export default function Register() {
             >
               Email address
             </label>
+
             <input
               id="email"
               name="email"
@@ -152,8 +191,11 @@ export default function Register() {
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="you@example.com"
             />
+
             {fieldErrors.email && (
-              <p className="mt-2 text-sm text-red-600">{fieldErrors.email}</p>
+              <p className="mt-2 text-sm text-red-600">
+                {fieldErrors.email}
+              </p>
             )}
           </div>
 
@@ -164,6 +206,7 @@ export default function Register() {
             >
               Phone number
             </label>
+
             <input
               id="phone"
               name="phone"
@@ -172,7 +215,7 @@ export default function Register() {
               value={formData.phone}
               onChange={handleChange}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="+60..."
+              placeholder="+977..."
             />
           </div>
 
@@ -183,19 +226,50 @@ export default function Register() {
             >
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="At least 8 characters"
-            />
+
+            <div className="relative mt-2">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full rounded-md border border-blue-200 px-4 py-3 pr-12 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+                placeholder="At least 8 characters"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword((current) => !current)
+                }
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-500 transition hover:text-blue-700"
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+                aria-pressed={showPassword}
+                title={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
+              </button>
+            </div>
+
             {fieldErrors.password && (
-              <p className="mt-2 text-sm text-red-600">{fieldErrors.password}</p>
+              <p className="mt-2 text-sm text-red-600">
+                {fieldErrors.password}
+              </p>
             )}
           </div>
 
@@ -206,6 +280,7 @@ export default function Register() {
             >
               District
             </label>
+
             <select
               id="district"
               name="district"
@@ -215,12 +290,14 @@ export default function Register() {
               className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
             >
               <option value="">Select district</option>
+
               {DISTRICTS.map((district) => (
                 <option key={district} value={district}>
                   {district}
                 </option>
               ))}
             </select>
+
             {fieldErrors.district && (
               <p className="mt-2 text-sm text-red-600">
                 {fieldErrors.district}
@@ -234,7 +311,9 @@ export default function Register() {
               disabled={isSubmitting}
               className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
-              {isSubmitting ? "Creating account..." : "Create account"}
+              {isSubmitting
+                ? "Creating account..."
+                : "Create account"}
             </button>
           </div>
         </form>

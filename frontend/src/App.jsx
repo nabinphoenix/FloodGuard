@@ -9,6 +9,7 @@ import AuthorityDashboard from "./pages/authority/Dashboard";
 import AuthorityManageReports from "./pages/authority/ManageReports";
 import AuthorityCreateAlert from "./pages/authority/CreateAlert";
 import AlertFeed from "./pages/public/AlertFeed";
+import PublicDashboard from "./pages/public/Dashboard";
 import FloodMap from "./pages/public/FloodMap";
 import Home from "./pages/public/Home";
 import Login from "./pages/public/Login";
@@ -59,6 +60,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <MyReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute role="public">
+              <PublicDashboard />
             </ProtectedRoute>
           }
         />

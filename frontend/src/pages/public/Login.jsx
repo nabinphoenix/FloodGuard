@@ -1,20 +1,41 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
-import { login } from "../../api/auth";
+import { getMe, login } from "../../api/auth";
+
+function dashboardForRole(role) {
+  switch (role) {
+    case "admin":
+      return "/admin";
+    case "authority":
+      return "/authority";
+    case "field_officer":
+      return "/sensors";
+    case "public":
+    default:
+      return "/dashboard";
+  }
+}
 
 export default function Login() {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
   }
 
   async function handleSubmit(event) {
@@ -23,8 +44,17 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      await login(formData.email, formData.password);
-      navigate("/");
+      await login(
+        formData.email.trim(),
+        formData.password
+      );
+
+      const user = await getMe();
+
+      navigate(
+        dashboardForRole(user.role),
+        { replace: true }
+      );
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -39,9 +69,12 @@ export default function Login() {
     <main className="min-h-screen bg-blue-50 flex items-center justify-center px-4 py-12">
       <section className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl shadow-blue-100 border border-blue-100">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-blue-900">FloodGuard</h1>
+          <h1 className="text-3xl font-bold text-blue-900">
+            FloodGuard
+          </h1>
+
           <p className="mt-2 text-sm text-blue-700">
-            Sign in to access your flood warning dashboard
+            Sign in to access your FloodGuard account
           </p>
         </div>
 
@@ -51,7 +84,10 @@ export default function Login() {
           </div>
         )}
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
+        <form
+          className="space-y-5"
+          onSubmit={handleSubmit}
+        >
           <div>
             <label
               htmlFor="email"
@@ -59,6 +95,7 @@ export default function Login() {
             >
               Email address
             </label>
+
             <input
               id="email"
               name="email"
@@ -79,17 +116,45 @@ export default function Login() {
             >
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="Enter your password"
-            />
+
+            <div className="relative mt-2">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full rounded-md border border-blue-200 px-4 py-3 pr-12 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+                placeholder="Enter your password"
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPassword((current) => !current)
+                }
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-500 transition hover:text-blue-700"
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+                aria-pressed={showPassword}
+                title={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={20} />
+                ) : (
+                  <Eye size={20} />
+                )}
+              </button>
+            </div>
           </div>
 
           <button

@@ -51,7 +51,7 @@ export default function Navbar() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [location.pathname]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -84,6 +84,10 @@ export default function Navbar() {
     { label: "Report Flood", to: "/reports/submit" },
     { label: "Community", to: "/reports/community" },
   ];
+
+  if (user?.role === "public") {
+    links.push({ label: "Dashboard", to: "/dashboard" });
+  }
 
   if (user?.role === "admin") {
     links.push({ label: "Admin Dashboard", to: "/admin" });
