@@ -5,21 +5,21 @@ export default {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#0B5394",
-          light: "#1A75BB",
+          DEFAULT: "#0EA5E9",
+          gradientEnd: "#0D9488",
         },
         flood: {
-          safe: "#16A34A",
-          watch: "#F59E0B",
-          warning: "#EA580C",
-          emergency: "#DC2626",
+          safe: "#22C55E",
+          watch: "#EAB308",
+          warning: "#F97316",
+          emergency: "#EF4444",
         },
         surface: {
-          bg: "#F8FAFC",
+          bg: "#F0F9FF",
           card: "#FFFFFF",
         },
         ink: {
-          primary: "#1E293B",
+          primary: "#0F172A",
           secondary: "#64748B",
           border: "#E2E8F0",
         },

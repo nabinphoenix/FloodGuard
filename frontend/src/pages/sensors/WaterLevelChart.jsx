@@ -11,6 +11,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 
 import { getStationHistory, getStations } from "../../api/sensors";
+import AdminLayout from "../../components/AdminLayout";
+import { Activity } from "lucide-react";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -34,7 +36,7 @@ export default function WaterLevelChart() {
   const [isLoading, setIsLoading] = useState(true);
 
   const selectedStation = useMemo(
-    () => stations.find((station) => station.id === selectedStationId),
+    () => stations.find((station) => String(station.id) === String(selectedStationId)),
     [stations, selectedStationId]
   );
 
@@ -98,18 +100,20 @@ export default function WaterLevelChart() {
       {
         label: "Water level (m)",
         data: history.map((reading) => reading.water_level),
-        borderColor: "#1d4ed8",
-        backgroundColor: "#bfdbfe",
+        borderColor: "#0EA5E9",
+        backgroundColor: "rgba(14, 165, 233, 0.1)",
         borderWidth: 3,
-        pointRadius: 3,
-        tension: 0.35,
+        pointRadius: 4,
+        pointBackgroundColor: "#0EA5E9",
+        tension: 0.4,
+        fill: true,
       },
     ];
 
     if (selectedStation) {
       datasets.push(
-        thresholdLine("Warning threshold", selectedStation.warning_threshold, "#eab308", labels.length),
-        thresholdLine("Danger threshold", selectedStation.danger_threshold, "#dc2626", labels.length)
+        thresholdLine("Warning threshold", selectedStation.warning_threshold, "#F97316", labels.length),
+        thresholdLine("Danger threshold", selectedStation.danger_threshold, "#EF4444", labels.length)
       );
     }
 
@@ -119,77 +123,111 @@ export default function WaterLevelChart() {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
-        position: "bottom",
+        position: "top",
+        align: "end",
+        labels: {
+          usePointStyle: true,
+          boxWidth: 8,
+          font: {
+            family: "Inter, sans-serif",
+            weight: "600",
+          }
+        }
       },
       tooltip: {
-        mode: "index",
-        intersect: false,
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: { family: "Inter, sans-serif", size: 13 },
+        bodyFont: { family: "Inter, sans-serif", size: 13 },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: true,
       },
     },
     scales: {
       y: {
         beginAtZero: true,
+        grid: {
+          color: "rgba(0, 0, 0, 0.05)",
+          drawBorder: false,
+        },
         title: {
           display: true,
           text: "Water level (m)",
+          font: { family: "Inter, sans-serif", weight: "600" }
         },
       },
       x: {
-        title: {
-          display: true,
-          text: "Time",
+        grid: {
+          display: false,
         },
+        ticks: {
+          maxTicksLimit: 12,
+        }
       },
     },
   };
 
   return (
-    <main className="min-h-screen bg-blue-50 px-4 py-10">
-      <section className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-blue-950">Water Level Chart</h1>
-            <p className="mt-2 text-sm text-blue-700">
-              View the latest 48 readings with warning and danger thresholds.
-            </p>
-          </div>
+    <AdminLayout title="Water Level Chart">
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-ink-primary tracking-tight">Historical Water Levels</h1>
+          <p className="mt-2 text-ink-secondary">
+            View the latest readings with warning and danger thresholds.
+          </p>
+        </div>
+        <div className="relative md:w-72">
           <select
             value={selectedStationId}
             onChange={(event) => setSelectedStationId(event.target.value)}
-            className="rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+            className="w-full rounded-lg border border-ink-border bg-white px-4 py-3 text-ink-primary font-medium outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm appearance-none"
           >
             {stations.map((station) => (
               <option key={station.id} value={station.id}>
-                {station.name}
+                {station.name} ({station.district})
               </option>
             ))}
           </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-ink-secondary">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+      {error && (
+        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium">
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-ink-border bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-2 mb-6">
+          <Activity size={20} className="text-brand" />
+          <h3 className="font-bold text-ink-primary text-lg">Station Telemetry</h3>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex h-[500px] flex-col items-center justify-center gap-4">
+             <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
+             <p className="text-ink-secondary font-medium">Loading telemetry data...</p>
+          </div>
+        ) : history.length === 0 ? (
+          <div className="flex h-[500px] flex-col items-center justify-center text-ink-secondary bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+            <Activity size={32} className="text-gray-300 mb-2" />
+            <p className="font-medium">No readings available for this station yet.</p>
+          </div>
+        ) : (
+          <div className="h-[500px] w-full">
+            <Line data={chartData} options={options} />
           </div>
         )}
-
-        <div className="rounded-lg border border-blue-100 bg-white p-5 shadow-xl shadow-blue-100">
-          {isLoading ? (
-            <div className="flex h-[420px] items-center justify-center text-blue-800">
-              Loading chart...
-            </div>
-          ) : history.length === 0 ? (
-            <div className="flex h-[420px] items-center justify-center text-slate-500">
-              No readings available for this station yet.
-            </div>
-          ) : (
-            <div className="h-[420px]">
-              <Line data={chartData} options={options} />
-            </div>
-          )}
-        </div>
-      </section>
-    </main>
+      </div>
+    </AdminLayout>
   );
 }

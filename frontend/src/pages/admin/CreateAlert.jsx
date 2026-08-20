@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 
 import { broadcastAlert, getZones } from "../../api/admin";
+import AdminLayout from "../../components/AdminLayout";
 
 const levels = [
-  { value: "safe", label: "Safe", color: "bg-green-500" },
-  { value: "watch", label: "Watch", color: "bg-yellow-500" },
-  { value: "warning", label: "Warning", color: "bg-orange-500" },
-  { value: "emergency", label: "Emergency", color: "bg-red-600" },
+  { value: "safe", label: "Safe", color: "bg-green-500", borderColor: "border-green-500", textColor: "text-green-700" },
+  { value: "watch", label: "Watch", color: "bg-yellow-400", borderColor: "border-yellow-400", textColor: "text-yellow-700" },
+  { value: "warning", label: "Warning", color: "bg-orange-500", borderColor: "border-orange-500", textColor: "text-orange-700" },
+  { value: "emergency", label: "Emergency", color: "bg-red-500", borderColor: "border-red-500", textColor: "text-red-700" },
 ];
 
 export default function CreateAlert() {
@@ -69,101 +71,143 @@ export default function CreateAlert() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900 md:px-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-950">Create Alert</h1>
-            <p className="mt-1 text-sm text-slate-600">Broadcast an SNS flood alert and update the zone level.</p>
-          </div>
-          <Link to="/admin" className="rounded-md border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">
-            Dashboard
-          </Link>
+    <AdminLayout title="Create Alert">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-ink-primary tracking-tight">Broadcast Emergency Alert</h1>
+        <p className="mt-2 text-ink-secondary">Send an SNS flood alert and update the zone severity level immediately.</p>
+      </div>
+
+      {error && (
+        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium flex items-center gap-2">
+          <AlertTriangle size={18} />
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+      {messageId && (
+        <div className="mb-8 rounded-lg border border-flood-safe/20 bg-flood-safe/10 px-4 py-3 text-sm text-flood-safe font-medium flex items-center gap-2">
+          <CheckCircle size={18} />
+          Alert broadcast successfully. SNS Message ID: <span className="font-semibold">{messageId}</span>
+        </div>
+      )}
 
-        {messageId && (
-          <div className="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Alert broadcast successfully. SNS Message ID: <span className="font-semibold">{messageId}</span>
-          </div>
-        )}
-
-        <div className="grid gap-6 lg:grid-cols-[1fr_420px]">
-          <form onSubmit={handleSubmit} className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-            <label htmlFor="zone" className="block text-sm font-medium text-blue-950">Alert Zone</label>
+      <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
+        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-border bg-surface-card p-8 shadow-sm">
+          <label htmlFor="zone" className="block text-sm font-bold text-ink-primary">Select Affected Zone</label>
+          <div className="mt-2 relative">
             <select
               id="zone"
               value={formData.zone_id}
               onChange={(event) => updateField("zone_id", event.target.value)}
               required
-              className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
+              className="w-full rounded-lg border border-ink-border bg-white px-4 py-3.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none font-medium text-ink-primary shadow-sm"
             >
               {zones.map((zone) => (
                 <option key={zone.id} value={zone.id}>{zone.district}</option>
               ))}
             </select>
-
-            <div className="mt-6">
-              <span className="block text-sm font-medium text-blue-950">Alert Level</span>
-              <div className="mt-2 grid gap-3 sm:grid-cols-4">
-                {levels.map((level) => (
-                  <button
-                    key={level.value}
-                    type="button"
-                    onClick={() => updateField("alert_level", level.value)}
-                    className={`rounded-md border px-3 py-3 text-left text-sm font-semibold transition ${
-                      formData.alert_level === level.value
-                        ? "border-blue-700 bg-blue-50 text-blue-900"
-                        : "border-blue-100 bg-white text-slate-700 hover:bg-blue-50"
-                    }`}
-                  >
-                    <span className={`mr-2 inline-block h-3 w-3 rounded-full ${level.color}`} />
-                    {level.label}
-                  </button>
-                ))}
-              </div>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-ink-secondary">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
+          </div>
 
-            <label htmlFor="message" className="mt-6 block text-sm font-medium text-blue-950">Message</label>
+          <div className="mt-8">
+            <span className="block text-sm font-bold text-ink-primary mb-3">Severity Level</span>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {levels.map((level) => (
+                <button
+                  key={level.value}
+                  type="button"
+                  onClick={() => updateField("alert_level", level.value)}
+                  className={`relative overflow-hidden rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                    formData.alert_level === level.value
+                      ? `${level.borderColor} bg-white shadow-md ring-4 ring-opacity-10 ring-${level.borderColor.split('-')[1]}-500`
+                      : "border-ink-border bg-surface-bg hover:bg-white text-ink-secondary hover:border-gray-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-block h-4 w-4 rounded-full shadow-sm ${level.color}`} />
+                      <span className={`font-bold uppercase tracking-wide text-sm ${formData.alert_level === level.value ? level.textColor : ''}`}>
+                        {level.label}
+                      </span>
+                    </div>
+                    {formData.alert_level === level.value && (
+                      <CheckCircle size={20} className={level.textColor} />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-8">
+            <label htmlFor="message" className="block text-sm font-bold text-ink-primary">Alert Message Details</label>
+            <p className="mt-1 text-xs text-ink-secondary mb-2">Include affected roads, expected impact time, and required safety actions.</p>
             <textarea
               id="message"
               value={formData.message}
               onChange={(event) => updateField("message", event.target.value)}
               required
-              rows={7}
-              className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="Describe the flood risk, affected roads, safety actions, and official instructions."
+              rows={6}
+              className="w-full rounded-lg border border-ink-border bg-white px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm resize-none"
+              placeholder="E.g., Heavy rainfall has caused water levels in Sungai Klang to exceed danger thresholds. Low-lying areas including Kampong Baru are at immediate risk..."
             />
+          </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting || !formData.zone_id || formData.message.trim().length < 5}
-              className="mt-6 w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-            >
-              {isSubmitting ? "Broadcasting..." : "Broadcast Alert"}
-            </button>
-          </form>
+          <button
+            type="submit"
+            disabled={isSubmitting || !formData.zone_id || formData.message.trim().length < 5}
+            className="mt-8 w-full rounded-xl bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-4 text-base font-bold text-white shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+          >
+            {isSubmitting ? "Broadcasting Alert..." : "Broadcast Alert to Community"}
+          </button>
+        </form>
 
-          <aside className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-            <h2 className="font-semibold text-slate-950">SNS Email Preview</h2>
-            <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-4 text-sm">
-              <p className="font-semibold text-blue-950">
-                FloodGuard {formData.alert_level.toUpperCase()} Alert - {selectedZone?.district || "Selected District"}
+        <aside className="h-fit rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm sticky top-6">
+          <h2 className="font-bold text-ink-primary flex items-center gap-2">
+            <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            SNS Email Preview
+          </h2>
+          <p className="mt-1 text-xs text-ink-secondary mb-4">This is how the alert will appear to registered users.</p>
+          
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className={`px-4 py-3 border-b border-gray-200 ${
+              formData.alert_level === 'safe' ? 'bg-green-50 text-green-900' :
+              formData.alert_level === 'watch' ? 'bg-yellow-50 text-yellow-900' :
+              formData.alert_level === 'warning' ? 'bg-orange-50 text-orange-900' :
+              'bg-red-50 text-red-900'
+            }`}>
+              <p className="font-bold text-sm flex items-center gap-2">
+                <AlertTriangle size={16} />
+                FloodGuard {formData.alert_level.toUpperCase()} Alert - {selectedZone?.district || "District"}
               </p>
-              <div className="mt-4 space-y-2 text-slate-700">
-                <p>FloodGuard Early Warning Alert</p>
-                <p>District: {selectedZone?.district || "-"}</p>
-                <p>Alert level: {formData.alert_level.toUpperCase()}</p>
-                <p className="whitespace-pre-wrap">{formData.message || "Your alert message will appear here."}</p>
-                <p>Please follow local authority instructions and stay safe.</p>
-              </div>
             </div>
-          </aside>
-        </div>
+            <div className="p-4 text-sm text-gray-700 bg-gray-50/50 min-h-[200px]">
+              <p className="font-semibold mb-3">FloodGuard Early Warning Alert</p>
+              
+              <div className="grid grid-cols-[100px_1fr] gap-2 mb-4">
+                <span className="text-gray-500">District:</span>
+                <span className="font-medium">{selectedZone?.district || "-"}</span>
+                
+                <span className="text-gray-500">Alert level:</span>
+                <span className={`font-bold ${
+                  formData.alert_level === 'safe' ? 'text-green-600' :
+                  formData.alert_level === 'watch' ? 'text-yellow-600' :
+                  formData.alert_level === 'warning' ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>{formData.alert_level.toUpperCase()}</span>
+              </div>
+              
+              <div className="bg-white p-3 rounded border border-gray-200 whitespace-pre-wrap mb-4 font-mono text-xs">
+                {formData.message || "Your alert message will appear here."}
+              </div>
+              
+              <p className="text-gray-500 italic">Please follow local authority instructions and stay safe.</p>
+            </div>
+          </div>
+        </aside>
       </div>
-    </main>
+    </AdminLayout>
   );
 }

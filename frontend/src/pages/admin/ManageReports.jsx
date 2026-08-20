@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { CheckCircle, XCircle } from "lucide-react";
 
 import { approveReport, getAdminReports, rejectReport } from "../../api/admin";
 import StatusPill from "../../components/StatusPill";
+import AdminLayout from "../../components/AdminLayout";
 
 const statuses = ["pending", "approved", "rejected"];
 
@@ -69,100 +71,126 @@ export default function ManageReports() {
   }
 
   return (
-    <main className="min-h-screen bg-surface-bg px-4 py-8 text-ink-primary md:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-ink-primary">Manage Reports</h1>
-            <p className="mt-1 text-sm text-ink-secondary">Review incident reports submitted by public users.</p>
-          </div>
-          <div className="flex gap-3">
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="rounded-md border border-ink-border bg-surface-card px-4 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            >
-              {statuses.map((status) => (
-                <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>
-              ))}
-            </select>
-            <Link to="/admin" className="rounded-md border border-ink-border bg-surface-card px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/10">
-              Dashboard
-            </Link>
-          </div>
+    <AdminLayout title="Manage Reports">
+      <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-ink-primary tracking-tight">Review Incident Reports</h1>
+          <p className="mt-2 text-ink-secondary">Review incident reports submitted by public users.</p>
         </div>
-
-        {error && (
-          <div className="mb-6 rounded-md border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency">{error}</div>
-        )}
-
-        <section className="overflow-hidden rounded-lg border border-ink-border bg-surface-card p-4 shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-ink-border text-sm">
-              <thead className="bg-surface-bg text-left text-xs uppercase tracking-wide text-brand">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">Photo</th>
-                  <th className="px-4 py-3">District</th>
-                  <th className="px-4 py-3">Severity</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Submitted By</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-border">
-                {reports.map((report) => (
-                  <tr key={report.id} className="align-middle">
-                    <td className="px-4 py-3 font-semibold text-ink-primary">#{report.id}</td>
-                    <td className="px-4 py-3">
-                      {report.image_url ? (
-                        <img src={report.image_url} alt={`Report ${report.id}`} className="h-14 w-20 rounded-md object-cover" />
-                      ) : (
-                        <div className="flex h-14 w-20 items-center justify-center rounded-md bg-brand/10 text-xs text-brand">No photo</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{report.district}</td>
-                    <td className="px-4 py-3 text-blue-800">{"★".repeat(report.severity)}<span className="text-blue-200">{"★".repeat(5 - report.severity)}</span></td>
-                    <td className="px-4 py-3">
-                      <StatusPill status={report.status} />
-                    </td>
-                    <td className="px-4 py-3">{report.submitted_by}</td>
-                    <td className="px-4 py-3 text-ink-secondary">{formatDate(report.created_at)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(report.id)}
-                          disabled={processingId === report.id || report.status === "approved"}
-                          className="rounded-md bg-brand px-3 py-2 text-xs font-semibold text-white hover:bg-brand-light disabled:cursor-not-allowed disabled:bg-brand/30"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReject(report.id)}
-                          disabled={processingId === report.id || report.status === "rejected"}
-                          className="rounded-md border border-ink-border bg-surface-card px-3 py-2 text-xs font-semibold text-ink-secondary hover:bg-surface-bg disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {reports.length === 0 && (
-                  <tr>
-                    <td colSpan="8" className="px-4 py-10 text-center text-ink-secondary">
-                      {isLoading ? "Loading reports..." : "No reports found for this filter."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        
+        {/* Filter Tabs */}
+        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner self-start md:self-auto">
+          {statuses.map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-6 py-2.5 text-sm font-semibold rounded-lg transition-all ${
+                statusFilter === status 
+                  ? 'bg-white text-brand shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
-    </main>
+
+      {error && (
+        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium">
+          {error}
+        </div>
+      )}
+
+      <section className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-ink-border text-sm">
+            <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
+              <tr>
+                <th className="px-6 py-4">ID</th>
+                <th className="px-6 py-4">Photo</th>
+                <th className="px-6 py-4">District</th>
+                <th className="px-6 py-4">Severity</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Submitted By</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-border bg-white">
+              {reports.map((report) => (
+                <tr key={report.id} className="align-middle hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 font-semibold text-ink-primary whitespace-nowrap">#{report.id}</td>
+                  <td className="px-6 py-4">
+                    {report.image_url ? (
+                      <div className="group relative h-16 w-24 overflow-hidden rounded-lg border border-gray-200 cursor-pointer">
+                        <img 
+                          src={report.image_url} 
+                          alt={`Report ${report.id}`} 
+                          className="h-full w-full object-cover transition-transform group-hover:scale-110" 
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-16 w-24 items-center justify-center rounded-lg bg-gray-100 text-xs text-gray-400 font-medium border border-gray-200 border-dashed">
+                        No photo
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 font-medium whitespace-nowrap">{report.district}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-1 text-yellow-400 text-lg">
+                      {"★".repeat(report.severity)}
+                      <span className="text-gray-200">{"★".repeat(5 - report.severity)}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <StatusPill status={report.status} />
+                  </td>
+                  <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{report.submitted_by}</td>
+                  <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(report.created_at)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(report.id)}
+                        disabled={processingId === report.id || report.status === "approved"}
+                        className="flex items-center gap-1.5 rounded-lg bg-flood-safe px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50 transition-colors shadow-sm"
+                      >
+                        <CheckCircle size={16} />
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReject(report.id)}
+                        disabled={processingId === report.id || report.status === "rejected"}
+                        className="flex items-center gap-1.5 rounded-lg bg-flood-emergency px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 transition-colors shadow-sm"
+                      >
+                        <XCircle size={16} />
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {reports.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="px-6 py-16 text-center text-ink-secondary">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 mb-2">
+                        <FileText size={24} />
+                      </div>
+                      <p className="text-lg font-medium text-ink-primary">
+                        {isLoading ? "Loading reports..." : "No reports found"}
+                      </p>
+                      {!isLoading && <p>Try changing the status filter.</p>}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </AdminLayout>
   );
 }

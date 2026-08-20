@@ -3,44 +3,21 @@ import { Link } from "react-router-dom";
 
 import { getDashboard } from "../../api/admin";
 import SeverityBadge from "../../components/SeverityBadge";
+import AdminLayout from "../../components/AdminLayout";
+import { FileText, AlertTriangle, Activity, Users } from "lucide-react";
 
-const navItems = [
-  { label: "Dashboard", to: "/admin" },
-  { label: "Reports", to: "/admin/reports" },
-  { label: "Create Alert", to: "/admin/create-alert" },
-  { label: "Zones", to: "/admin/zones" },
-  { label: "Users", to: "/admin/users" },
-];
-
-function AdminShell({ children }) {
+function StatCard({ label, value, icon: Icon, colorClass }) {
   return (
-    <main className="min-h-screen bg-surface-bg text-ink-primary">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-64 border-r border-ink-border bg-surface-card px-5 py-6 lg:block">
-          <h1 className="text-xl font-bold text-brand">FloodGuard Admin</h1>
-          <nav className="mt-8 space-y-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="block rounded-md px-3 py-2 text-sm font-medium text-ink-secondary hover:bg-brand/10 hover:text-brand"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </aside>
-        <section className="flex-1 px-4 py-6 md:px-8">{children}</section>
+    <div className={`rounded-xl border border-white/20 p-6 shadow-lg bg-gradient-to-br ${colorClass} text-white`}>
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="text-sm font-medium text-white/80">{label}</p>
+          <p className="mt-2 text-4xl font-bold">{value}</p>
+        </div>
+        <div className="p-3 bg-white/20 rounded-lg">
+          <Icon size={24} className="text-white" />
+        </div>
       </div>
-    </main>
-  );
-}
-
-function StatCard({ label, value }) {
-  return (
-    <div className="rounded-lg border border-ink-border bg-surface-card p-4 shadow-sm">
-      <p className="text-sm font-medium text-ink-secondary">{label}</p>
-      <p className="mt-3 text-3xl font-bold text-brand">{value}</p>
     </div>
   );
 }
@@ -71,22 +48,22 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <AdminShell>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <AdminLayout title="Dashboard">
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-ink-primary">Dashboard</h2>
-          <p className="mt-1 text-sm text-ink-secondary">Monitor reports, users, and active flood alerts.</p>
+          <h2 className="text-3xl font-bold text-ink-primary tracking-tight">Dashboard Overview</h2>
+          <p className="mt-2 text-ink-secondary">Monitor reports, users, and active flood alerts.</p>
         </div>
         <div className="flex gap-3">
           <Link
             to="/admin/reports"
-            className="rounded-md border border-ink-border bg-surface-card px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/10"
+            className="rounded-lg border-2 border-brand px-6 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5 transition-colors"
           >
             Go to Reports
           </Link>
           <Link
             to="/admin/create-alert"
-            className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-light"
+            className="rounded-lg bg-gradient-to-r from-brand to-brand-gradientEnd px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg transition-all"
           >
             Create Alert
           </Link>
@@ -94,49 +71,57 @@ export default function Dashboard() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-md border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency">
+        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium">
           {error}
         </div>
       )}
 
       {isLoading ? (
-        <div className="rounded-lg border border-ink-border bg-surface-card p-8 text-brand shadow-sm">Loading dashboard...</div>
+        <div className="rounded-xl border border-ink-border bg-surface-card p-12 text-center shadow-sm">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 bg-gray-200 rounded w-1/4 mx-auto"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Total Reports" value={dashboard?.total_reports ?? 0} />
-            <StatCard label="Pending Approval" value={dashboard?.pending_reports ?? 0} />
-            <StatCard label="Active Alerts" value={dashboard?.active_alerts ?? 0} />
-            <StatCard label="Total Users" value={dashboard?.total_users ?? 0} />
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Total Reports" value={dashboard?.total_reports ?? 0} icon={FileText} colorClass="from-blue-500 to-blue-600" />
+            <StatCard label="Pending Approval" value={dashboard?.pending_reports ?? 0} icon={Activity} colorClass="from-orange-400 to-orange-500" />
+            <StatCard label="Active Alerts" value={dashboard?.active_alerts ?? 0} icon={AlertTriangle} colorClass="from-red-500 to-red-600" />
+            <StatCard label="Total Users" value={dashboard?.total_users ?? 0} icon={Users} colorClass="from-teal-500 to-teal-600" />
           </div>
 
-          <section className="mt-8 rounded-lg border border-ink-border bg-surface-card p-4 shadow-sm">
-            <div className="border-b border-ink-border pb-4">
-              <h3 className="font-semibold text-ink-primary">Recent Alerts</h3>
+          <section className="mt-10 rounded-xl border border-ink-border bg-surface-card shadow-sm overflow-hidden">
+            <div className="border-b border-ink-border px-6 py-5 bg-gray-50/50">
+              <h3 className="text-lg font-bold text-ink-primary">Recent Alerts</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-ink-border text-sm">
-                <thead className="bg-surface-bg text-left text-xs uppercase tracking-wide text-brand">
+                <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
                   <tr>
-                    <th className="px-5 py-3">District</th>
-                    <th className="px-5 py-3">Level</th>
-                    <th className="px-5 py-3">Message</th>
-                    <th className="px-5 py-3">Triggered</th>
+                    <th className="px-6 py-4">District</th>
+                    <th className="px-6 py-4">Level</th>
+                    <th className="px-6 py-4">Message</th>
+                    <th className="px-6 py-4">Triggered</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-ink-border">
+                <tbody className="divide-y divide-ink-border bg-white">
                   {(dashboard?.recent_alerts || []).map((alert) => (
-                    <tr key={alert.id}>
-                      <td className="px-5 py-4 font-medium text-ink-primary">{alert.district}</td>
-                      <td className="px-5 py-4"><SeverityBadge level={alert.alert_level} /></td>
-                      <td className="max-w-xl px-5 py-4 text-ink-secondary">{alert.message}</td>
-                      <td className="px-5 py-4 text-ink-secondary">{formatDate(alert.triggered_at)}</td>
+                    <tr key={alert.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 font-semibold text-ink-primary whitespace-nowrap">{alert.district}</td>
+                      <td className="px-6 py-4 whitespace-nowrap"><SeverityBadge level={alert.alert_level} /></td>
+                      <td className="max-w-md px-6 py-4 text-ink-secondary truncate">{alert.message}</td>
+                      <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(alert.triggered_at)}</td>
                     </tr>
                   ))}
                   {(dashboard?.recent_alerts || []).length === 0 && (
                     <tr>
-                      <td colSpan="4" className="px-5 py-8 text-center text-ink-secondary">
-                        No alerts broadcast yet.
+                      <td colSpan="4" className="px-6 py-12 text-center text-ink-secondary">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <AlertTriangle size={32} className="text-gray-300" />
+                          <p>No alerts broadcast yet.</p>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -146,6 +131,6 @@ export default function Dashboard() {
           </section>
         </>
       )}
-    </AdminShell>
+    </AdminLayout>
   );
 }
