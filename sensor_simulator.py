@@ -5,33 +5,35 @@ import sys
 import time
 from datetime import datetime, timezone
 
+import os
 import requests
 
 
-AUTHORITY_EMAIL = "authority@floodguard.com"
-AUTHORITY_PASSWORD = "Auth@123"
+SIMULATOR_EMAIL = os.getenv("SIMULATOR_EMAIL")
+SIMULATOR_PASSWORD = os.getenv("SIMULATOR_PASSWORD")
+
 
 STATIONS = [
     {
         "station_id": "STN001",
-        "name": "Klang River KL",
-        "district": "Kuala Lumpur",
+        "name": "Narayani River",
+        "district": "Chitwan",
         "warning_threshold": 3.5,
         "danger_threshold": 4.5,
         "base_level": 2.7,
     },
     {
         "station_id": "STN002",
-        "name": "Gombak River Selangor",
-        "district": "Selangor",
+        "name": "Bagmati River",
+        "district": "Kathmandu",
         "warning_threshold": 3.2,
         "danger_threshold": 4.2,
         "base_level": 2.5,
     },
     {
         "station_id": "STN003",
-        "name": "Muar River Johor",
-        "district": "Johor",
+        "name": "Seti River",
+        "district": "Kaski",
         "warning_threshold": 3.0,
         "danger_threshold": 4.0,
         "base_level": 2.3,
@@ -57,7 +59,7 @@ def status_for_level(level: float, station: dict) -> str:
 def authenticate(base_url: str) -> str:
     response = requests.post(
         f"{base_url}/auth/login",
-        json={"email": AUTHORITY_EMAIL, "password": AUTHORITY_PASSWORD},
+        json={"email": SIMULATOR_EMAIL, "password": SIMULATOR_PASSWORD},
         timeout=15,
     )
     response.raise_for_status()
@@ -110,10 +112,12 @@ def main() -> None:
     token = authenticate(base_url)
     print("FloodGuard sensor simulator started. Press Ctrl+C to stop.")
 
+    interval = int(os.getenv("SIMULATOR_INTERVAL_SECONDS", "30"))
     while True:
         for station in STATIONS:
             send_reading(base_url, token, station)
-        time.sleep(30)
+        time.sleep(interval)
+
 
 
 if __name__ == "__main__":

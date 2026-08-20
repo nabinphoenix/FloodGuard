@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, FileText } from "lucide-react";
 
-import { approveReport, getAdminReports, rejectReport } from "../../api/admin";
+import { getAuthorityReports, approveReport, rejectReport } from "../../api/authority";
 import StatusPill from "../../components/StatusPill";
 import AdminLayout from "../../components/AdminLayout";
 
@@ -24,7 +24,7 @@ export default function ManageReports() {
     setError("");
 
     try {
-      const data = await getAdminReports({ status: statusFilter, limit: 50 });
+      const data = await getAuthorityReports({ status: statusFilter, limit: 50 });
       setReports(data);
     } catch (err) {
       setError(err.response?.data?.detail || "Could not load reports.");

@@ -32,7 +32,7 @@ class IncidentReport(Base):
     district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     severity: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    image_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

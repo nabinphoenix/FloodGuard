@@ -2,11 +2,12 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
-import CreateAlert from "./pages/admin/CreateAlert";
 import Dashboard from "./pages/admin/Dashboard";
-import ManageReports from "./pages/admin/ManageReports";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageZones from "./pages/admin/ManageZones";
+import AuthorityDashboard from "./pages/authority/Dashboard";
+import AuthorityManageReports from "./pages/authority/ManageReports";
+import AuthorityCreateAlert from "./pages/authority/CreateAlert";
 import AlertFeed from "./pages/public/AlertFeed";
 import FloodMap from "./pages/public/FloodMap";
 import Home from "./pages/public/Home";
@@ -78,18 +79,26 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/reports"
+          path="/authority"
           element={
-            <ProtectedRoute role="admin">
-              <ManageReports />
+            <ProtectedRoute role="authority">
+              <AuthorityDashboard />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/admin/create-alert"
+          path="/authority/reports"
           element={
-            <ProtectedRoute role="admin">
-              <CreateAlert />
+            <ProtectedRoute role="authority">
+              <AuthorityManageReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/authority/create-alert"
+          element={
+            <ProtectedRoute role="authority">
+              <AuthorityCreateAlert />
             </ProtectedRoute>
           }
         />
@@ -112,7 +121,7 @@ export default function App() {
         <Route
           path="/sensors"
           element={
-            <ProtectedRoute role="authority">
+            <ProtectedRoute role={["field_officer", "admin"]}>
               <SensorDash />
             </ProtectedRoute>
           }
@@ -120,7 +129,7 @@ export default function App() {
         <Route
           path="/sensors/chart"
           element={
-            <ProtectedRoute role="authority">
+            <ProtectedRoute role={["field_officer", "admin"]}>
               <WaterLevelChart />
             </ProtectedRoute>
           }
@@ -128,7 +137,7 @@ export default function App() {
         <Route
           path="/sensors/thresholds"
           element={
-            <ProtectedRoute role="authority">
+            <ProtectedRoute role="admin">
               <Thresholds />
             </ProtectedRoute>
           }
@@ -136,12 +145,13 @@ export default function App() {
         <Route
           path="/sensors/health"
           element={
-            <ProtectedRoute role="authority">
+            <ProtectedRoute role="field_officer">
               <SystemHealth />
             </ProtectedRoute>
           }
         />
         <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
+        <Route path="/authority/*" element={<Navigate to="/authority" replace />} />
         <Route path="/sensors/*" element={<Navigate to="/sensors" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

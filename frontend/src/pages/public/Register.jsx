@@ -4,20 +4,20 @@ import { Link, useNavigate } from "react-router-dom";
 import { register } from "../../api/auth";
 
 const DISTRICTS = [
-  "Kuala Lumpur",
-  "Selangor",
-  "Johor",
-  "Kelantan",
-  "Penang",
-  "Perak",
-  "Kedah",
-  "Pahang",
-  "Terengganu",
-  "Negeri Sembilan",
-  "Melaka",
-  "Perlis",
-  "Sabah",
-  "Sarawak",
+  "Kathmandu",
+  "Chitwan",
+  "Kaski",
+  "Lalitpur",
+  "Bhaktapur",
+  "Kavrepalanchok",
+  "Rupandehi",
+  "Morang",
+  "Sunsari",
+  "Parsa",
+  "Jhapa",
+  "Banke",
+  "Makwanpur",
+  "Dang",
 ];
 
 export default function Register() {

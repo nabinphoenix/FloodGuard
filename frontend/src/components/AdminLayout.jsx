@@ -1,7 +1,7 @@
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { LogOut, ShieldCheck, LayoutDashboard, FileText, AlertTriangle, Map, Users } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getMe, logout } from "../../api/auth";
+import { getMe, logout } from "../api/auth";
 
 const TOKEN_KEY = "floodguard_token";
 
@@ -28,18 +28,30 @@ export default function AdminLayout({ children, title }) {
 
   const adminLinks = [
     { label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, exact: true },
-    { label: "Reports", to: "/admin/reports", icon: <FileText size={20} /> },
-    { label: "Create Alert", to: "/admin/create-alert", icon: <AlertTriangle size={20} /> },
     { label: "Zones", to: "/admin/zones", icon: <Map size={20} /> },
     { label: "Users", to: "/admin/users", icon: <Users size={20} /> },
   ];
 
   const authorityLinks = [
-    { label: "Sensor Dash", to: "/sensors", icon: <LayoutDashboard size={20} />, exact: true },
-    { label: "Water Levels", to: "/sensors/chart", icon: <FileText size={20} /> },
+    { label: "Dashboard", to: "/authority", icon: <LayoutDashboard size={20} />, exact: true },
+    { label: "Reports", to: "/authority/reports", icon: <FileText size={20} /> },
+    { label: "Create Alert", to: "/authority/create-alert", icon: <AlertTriangle size={20} /> },
   ];
 
-  const links = user?.role === "authority" ? authorityLinks : adminLinks;
+  const fieldOfficerLinks = [
+    { label: "Sensor Dash", to: "/sensors", icon: <LayoutDashboard size={20} />, exact: true },
+    { label: "Water Levels", to: "/sensors/chart", icon: <FileText size={20} /> },
+    { label: "Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
+  ];
+
+  let links = [];
+  if (user?.role === "admin") {
+    links = adminLinks;
+  } else if (user?.role === "authority") {
+    links = authorityLinks;
+  } else if (user?.role === "field_officer") {
+    links = fieldOfficerLinks;
+  }
 
   return (
     <div className="flex min-h-screen bg-surface-bg text-ink-primary font-sans">

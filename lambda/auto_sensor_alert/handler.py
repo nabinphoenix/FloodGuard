@@ -14,20 +14,25 @@ METRIC_NAMESPACE = os.environ.get("METRIC_NAMESPACE", "FloodGuard")
 
 
 def parse_record_body(record: dict[str, Any]) -> dict[str, Any]:
-    body = record.get("body", "{}")
-    if isinstance(body, str):
-        return json.loads(body)
-    if isinstance(body, dict):
-        return body
-    raise ValueError("SQS record body must be JSON.")
+    body_str = record.get("body", "{}")
+    if isinstance(body_str, str):
+        envelope = json.loads(body_str)
+    elif isinstance(body_str, dict):
+        envelope = body_str
+    else:
+        raise ValueError("SQS record body must be JSON.")
+
+    if envelope.get("event_type") != "sensor_reading":
+        raise ValueError(f"Unknown event type: {envelope.get('event_type')}")
+
+    return envelope.get("reading", {})
 
 
-def get_alert_level(water_level: float, warning_threshold: float, danger_threshold: float) -> str | None:
-    if water_level >= danger_threshold:
-        return "emergency"
-    if water_level >= warning_threshold:
-        return "warning"
-    return None
+def should_trigger_alert(previous_level: str, current_level: str) -> bool:
+    severity = {"safe": 0, "warning": 1, "emergency": 2}
+    prev_sev = severity.get(previous_level, 0)
+    curr_sev = severity.get(current_level, 0)
+    return curr_sev > prev_sev and curr_sev > 0
 
 
 def publish_alert(reading: dict[str, Any], alert_level: str) -> str:
@@ -90,19 +95,17 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         try:
             reading = parse_record_body(record)
-            water_level = float(reading["water_level"])
-            warning_threshold = float(reading["warning_threshold"])
-            danger_threshold = float(reading["danger_threshold"])
-            alert_level = get_alert_level(water_level, warning_threshold, danger_threshold)
+            previous_alert_level = reading.get("previous_alert_level", "safe")
+            current_alert_level = reading.get("current_alert_level", "safe")
 
-            if alert_level:
-                sns_message_id = publish_alert(reading, alert_level)
+            if should_trigger_alert(previous_alert_level, current_alert_level):
+                sns_message_id = publish_alert(reading, current_alert_level)
                 triggered_alerts.append(
                     {
                         "sqs_message_id": message_id,
                         "sns_message_id": sns_message_id,
                         "station_id": reading["station_id"],
-                        "alert_level": alert_level,
+                        "alert_level": current_alert_level,
                     }
                 )
         except Exception as exc:

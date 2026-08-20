@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
-import { broadcastAlert, getZones } from "../../api/admin";
+import { getZones } from "../../api/admin";
+import { broadcastAlert } from "../../api/authority";
 import AdminLayout from "../../components/AdminLayout";
 
 const levels = [
@@ -151,7 +152,7 @@ export default function CreateAlert() {
               required
               rows={6}
               className="w-full rounded-lg border border-ink-border bg-white px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm resize-none"
-              placeholder="E.g., Heavy rainfall has caused water levels in Sungai Klang to exceed danger thresholds. Low-lying areas including Kampong Baru are at immediate risk..."
+              placeholder="E.g., Heavy rainfall has caused water levels in Bagmati River to exceed danger thresholds. Low-lying areas including Teku are at immediate risk..."
             />
           </div>
 

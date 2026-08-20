@@ -38,7 +38,7 @@ export default function SystemHealth() {
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-blue-950">Sensor System Health</h1>
-            <p className="mt-2 text-sm text-blue-700">Backend, DynamoDB, and queue status for sensor ingestion.</p>
+            <p className="mt-2 text-sm text-blue-700">Backend database and queue status for sensor ingestion.</p>
           </div>
           <button type="button" onClick={loadHealth} className="rounded-md bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800">
             Refresh
@@ -56,8 +56,8 @@ export default function SystemHealth() {
               <div className="mt-4"><StatusPill status={health?.database} /></div>
             </article>
             <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">DynamoDB</p>
-              <div className="mt-4"><StatusPill status={health?.dynamodb} /></div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Relational DB</p>
+              <div className="mt-4"><StatusPill status={health?.database} /></div>
             </article>
             <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">SQS queue depth</p>

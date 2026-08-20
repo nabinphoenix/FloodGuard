@@ -41,6 +41,7 @@ include_project_router("auth", "/auth", ["auth"])
 include_project_router("public", "/public", ["public"])
 include_project_router("reports", "/reports", ["reports"])
 include_project_router("admin", "/admin", ["admin"])
+include_project_router("authority", "/authority", ["authority"])
 include_project_router("sensors", "/sensors", ["sensors"])
 
 
@@ -49,7 +50,7 @@ include_project_router("sensors", "/sensors", ["sensors"])
 # (existing DB) to manage the schema via migrations.
 
 
-@app.get("/", tags=["health"])
+@app.get("/health", tags=["health"])
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "FloodGuard API"}
 

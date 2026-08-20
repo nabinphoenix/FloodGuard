@@ -7,8 +7,8 @@ from models.report import IncidentReport, ReportStatus
 from models.user import User
 from routers.auth import get_current_user
 from schemas.report import ReportCreate, ReportOut
-from services.s3_service import upload_photo
-from services.sqs_service import notify_admin_new_report
+from services.s3_service import delete_photo, get_presigned_url, upload_photo
+
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -18,13 +18,17 @@ MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
 
 
 def report_to_out(report: IncidentReport) -> ReportOut:
+    image_url = None
+    if report.image_key:
+        image_url = get_presigned_url(report.image_key)
+
     return ReportOut(
         id=report.id,
         user_id=report.user_id,
         district=report.district,
         severity=report.severity,
         description=report.description,
-        image_url=report.image_url,
+        image_url=image_url,
         status=report.status,
         helpful_count=report.helpful_count,
         created_at=report.created_at,
@@ -51,7 +55,7 @@ async def submit_report(
         longitude=longitude,
     )
 
-    image_url = None
+    image_key = None
     if photo and photo.filename:
         if photo.content_type not in ALLOWED_IMAGE_TYPES:
             raise HTTPException(
@@ -66,14 +70,14 @@ async def submit_report(
                 detail="Photo must be 5 MB or smaller.",
             )
 
-        image_url = upload_photo(file_bytes, photo.content_type, photo.filename)
+        image_key = upload_photo(file_bytes, photo.content_type, photo.filename)
 
     report = IncidentReport(
         user_id=current_user.id,
         district=report_in.district.strip(),
         severity=report_in.severity,
         description=report_in.description.strip(),
-        image_url=image_url,
+        image_key=image_key,
         latitude=report_in.latitude,
         longitude=report_in.longitude,
         status=ReportStatus.pending,
@@ -82,8 +86,6 @@ async def submit_report(
     db.add(report)
     db.commit()
     db.refresh(report)
-
-    notify_admin_new_report(report.id, report.district, report.severity)
 
     report.user = current_user
     return report_to_out(report)

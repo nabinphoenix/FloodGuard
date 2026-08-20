@@ -1,0 +1,1 @@
+{"RedrivePolicy":"{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:048566646797:FloodGuard-Sensor-DLQ\",\"maxReceiveCount\":\"5\"}"}

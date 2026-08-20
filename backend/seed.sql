@@ -8,9 +8,9 @@ INSERT INTO sensor_stations (
     danger_threshold,
     is_active
 ) VALUES
-    ('STN001', 'Klang River KL', 'Kuala Lumpur', 3.1390, 101.6869, 3.50, 4.50, 1),
-    ('STN002', 'Gombak River Selangor', 'Selangor', 3.2366, 101.6819, 3.20, 4.20, 1),
-    ('STN003', 'Muar River Johor', 'Johor', 2.0442, 102.5689, 3.00, 4.00, 1)
+    ('STN001', 'Narayani River', 'Chitwan', 27.6710, 84.4305, 3.5, 4.5, 1),
+    ('STN002', 'Bagmati River', 'Kathmandu', 27.7172, 85.3240, 3.2, 4.2, 1),
+    ('STN003', 'Seti River', 'Kaski', 28.2096, 83.9856, 3.0, 4.0, 1)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     district = VALUES(district),
@@ -26,10 +26,9 @@ INSERT INTO alert_zones (
     latitude,
     longitude
 ) VALUES
-    ('Kuala Lumpur', 'safe', 3.1390, 101.6869),
-    ('Selangor', 'safe', 3.0738, 101.5183),
-    ('Johor', 'safe', 1.4854, 103.7618),
-    ('Kelantan', 'safe', 6.1254, 102.2381)
+    ('Chitwan', 'safe', 27.6710, 84.4305),
+    ('Kathmandu', 'safe', 27.7172, 85.3240),
+    ('Kaski', 'safe', 28.2096, 83.9856)
 ON DUPLICATE KEY UPDATE
     alert_level = VALUES(alert_level),
     latitude = VALUES(latitude),
@@ -44,28 +43,35 @@ INSERT INTO users (
     password_hash,
     role,
     email_alerts,
-    sms_alerts,
     sns_subscription_arn
 ) VALUES
     (
         'FloodGuard Admin',
         'admin@floodguard.com',
-        '+60120000001',
-        'Kuala Lumpur',
+        '+97712345678',
+        'Chitwan',
         '$2b$12$cK6wPFzjh6eHTeG48aau5uKT0Am2z4ZKvS1QY/uwsKy7baNnbYYS.',
         'admin',
-        1,
         1,
         NULL
     ),
     (
         'FloodGuard Authority',
         'authority@floodguard.com',
-        '+60120000002',
-        'Selangor',
+        '+97712345679',
+        'Kathmandu',
         '$2b$12$JZFKGzTPEhOymddQHlHmYe5C2vqUueGuBud6QAVmakCJDHbILjpTS',
         'authority',
         1,
+        NULL
+    ),
+    (
+        'FloodGuard Field Officer',
+        'simulator@floodguard.com',
+        '+97712345680',
+        'Kaski',
+        '$2b$12$examplehashforfieldofficer',
+        'field_officer',
         1,
         NULL
     )
@@ -76,5 +82,4 @@ ON DUPLICATE KEY UPDATE
     password_hash = VALUES(password_hash),
     role = VALUES(role),
     email_alerts = VALUES(email_alerts),
-    sms_alerts = VALUES(sms_alerts),
     sns_subscription_arn = VALUES(sns_subscription_arn);

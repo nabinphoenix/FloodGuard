@@ -20,6 +20,8 @@ class UserOut(BaseModel):
     phone: str | None
     district: str | None
     role: UserRole
+    email_alerts: bool
+    sns_subscription_arn: str | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -40,4 +42,8 @@ class UserUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     district: str | None = Field(default=None, max_length=100)
     email_alerts: bool | None = None
-    sms_alerts: bool | None = None
+
+
+class ProfileUpdateResponse(BaseModel):
+    user: UserOut
+    message: str | None = None

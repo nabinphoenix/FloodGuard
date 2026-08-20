@@ -14,3 +14,20 @@ dist/
 
 .DS_Store
 Thumbs.db
+
+# Elastic Beanstalk local deployment artifacts
+deploy/eb-options.json
+deploy/eb_build/
+deploy/ci-eb-build/
+deploy/*.zip
+deploy/*-failure-log/
+deploy/*-app-log/
+
+# Additional generated deployment/debug files
+deploy/eb-failure-logs/
+deploy/optimize_report_image_build/
+deploy/floodguard-test.jpg
+
+# Local AWS/test payloads
+deploy/s3-notification.json
+deploy/sensor-test.json

@@ -1,4 +1,4 @@
-from functools import lru_cache
+﻿from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -7,13 +7,20 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = Field(..., alias="DATABASE_URL")
     secret_key: str = Field(..., alias="SECRET_KEY")
-    aws_access_key_id: str = Field(..., alias="AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: str = Field(..., alias="AWS_SECRET_ACCESS_KEY")
     aws_region: str = Field(..., alias="AWS_REGION")
+
     s3_bucket_name: str = Field(..., alias="S3_BUCKET_NAME")
+    s3_original_prefix: str = Field("original/", alias="S3_ORIGINAL_PREFIX")
+    s3_optimized_prefix: str = Field("optimized/", alias="S3_OPTIMIZED_PREFIX")
+    s3_presigned_url_expires_seconds: int = Field(
+        900,
+        alias="S3_PRESIGNED_URL_EXPIRES_SECONDS",
+    )
+
     sns_topic_arn: str = Field(..., alias="SNS_TOPIC_ARN")
     sqs_sensor_queue_url: str = Field(..., alias="SQS_SENSOR_QUEUE_URL")
-    sqs_admin_queue_url: str = Field(..., alias="SQS_ADMIN_QUEUE_URL")
+    broadcast_api_url: str = Field(..., alias="BROADCAST_API_URL")
+    cors_origins: str = Field(..., alias="CORS_ORIGINS")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -3,7 +3,7 @@ import { Search, Shield, User, MapPin } from "lucide-react";
 import { getUsers, updateUserRole } from "../../api/admin";
 import AdminLayout from "../../components/AdminLayout";
 
-const roles = ["citizen", "authority", "admin"];
+const roles = ["public", "field_officer", "authority", "admin"];
 
 function formatDate(value) {
   if (!value) return "-";
@@ -183,6 +183,7 @@ export default function ManageUsers() {
                         className={`rounded-lg border px-3 py-1.5 text-sm font-semibold capitalize outline-none transition-colors shadow-sm focus:ring-2 focus:ring-brand/20 disabled:opacity-50 cursor-pointer ${
                           user.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200 focus:border-purple-500' :
                           user.role === 'authority' ? 'bg-blue-50 text-blue-700 border-blue-200 focus:border-blue-500' :
+                          user.role === 'field_officer' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 focus:border-emerald-500' :
                           'bg-white text-gray-700 border-gray-300 focus:border-brand'
                         }`}
                       >

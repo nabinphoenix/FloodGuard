@@ -3,20 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { getCommunityReports, markHelpful } from "../../api/reports";
 
 const DISTRICTS = [
-  "Kuala Lumpur",
-  "Selangor",
-  "Johor",
-  "Kelantan",
-  "Penang",
-  "Perak",
-  "Kedah",
-  "Pahang",
-  "Terengganu",
-  "Negeri Sembilan",
-  "Melaka",
-  "Perlis",
-  "Sabah",
-  "Sarawak",
+  "Chitwan",
+  "Kathmandu",
+  "Kaski",
 ];
 
 const PAGE_SIZE = 9;

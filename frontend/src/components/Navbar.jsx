@@ -73,7 +73,7 @@ export default function Navbar() {
   }
 
   // Do not show the top navbar on admin routes to use the Sidebar instead
-  if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/sensors')) {
+  if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/sensors') || location.pathname.startsWith('/authority')) {
     return null;
   }
 
@@ -86,10 +86,14 @@ export default function Navbar() {
   ];
 
   if (user?.role === "admin") {
-    links.push({ label: "Admin", to: "/admin" });
+    links.push({ label: "Admin Dashboard", to: "/admin" });
   }
 
   if (user?.role === "authority") {
+    links.push({ label: "Authority Dashboard", to: "/authority" });
+  }
+
+  if (user?.role === "field_officer" || user?.role === "admin") {
     links.push({ label: "Sensor Dashboard", to: "/sensors" });
   }
 

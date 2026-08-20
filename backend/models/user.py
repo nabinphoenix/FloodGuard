@@ -19,6 +19,7 @@ class UserRole(str, Enum):
     public = "public"
     admin = "admin"
     authority = "authority"
+    field_officer = "field_officer"
 
 
 class User(Base):
@@ -36,8 +37,7 @@ class User(Base):
         default=UserRole.public,
         server_default=UserRole.public.value,
     )
-    email_alerts: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="1")
-    sms_alerts: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    email_alerts: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     sns_subscription_arn: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

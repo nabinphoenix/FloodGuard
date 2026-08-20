@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models.user import User, UserRole
-from schemas.user import Token, TokenData, UserCreate, UserOut, UserUpdate
+from services.sns_service import subscribe_email, unsubscribe
+from schemas.user import Token, TokenData, UserCreate, UserOut, UserUpdate, ProfileUpdateResponse
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -99,6 +100,20 @@ def require_role(required_role: UserRole | str) -> Callable[[User], User]:
     return role_checker
 
 
+def require_any_role(*allowed_roles: UserRole | str) -> Callable[[User], User]:
+    roles = [UserRole(r) for r in allowed_roles]
+
+    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+        return current_user
+
+    return role_checker
+
+
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Token:
     normalized_email = user_in.email.strip().lower()
@@ -150,15 +165,42 @@ def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-@router.put("/profile", response_model=UserOut)
+@router.put("/profile", response_model=ProfileUpdateResponse)
 def update_profile(
     profile_in: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> User:
+) -> ProfileUpdateResponse:
     update_data = profile_in.model_dump(exclude_unset=True)
+    # Handle email alerts preference
+    if 'email_alerts' in update_data:
+        new_val = update_data['email_alerts']
+        # Only act if the value actually changes
+        if new_val != current_user.email_alerts:
+            if new_val:
+                # Enabling alerts: subscribe if not already subscribed
+                if not current_user.sns_subscription_arn:
+                    subscription_arn = subscribe_email(current_user.email)
+                    current_user.sns_subscription_arn = subscription_arn
+                    message = "Subscription request sent. Check your email to confirm."
+                else:
+                    # Already have a subscription ARN (could be pending or confirmed)
+                    message = "Email alerts already enabled."
+            else:
+                # Disabling alerts: unsubscribe if we have a confirmed ARN
+                if current_user.sns_subscription_arn:
+                    unsubscribe(current_user.sns_subscription_arn)
+                    current_user.sns_subscription_arn = None
+                message = "Email alerts disabled."
+        else:
+            message = None
+    else:
+        message = None
 
+    # Apply remaining fields
     for field, value in update_data.items():
+        if field == 'email_alerts':
+            continue  # already handled
         if isinstance(value, str):
             value = value.strip() or None
         setattr(current_user, field, value)
@@ -166,7 +208,10 @@ def update_profile(
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return {
+        "user": current_user,
+        "message": message,
+    }
 
 
 @router.post("/logout")
