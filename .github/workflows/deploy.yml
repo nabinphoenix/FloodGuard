@@ -14,6 +14,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
   EB_APPLICATION: FloodGuard
   EB_ENVIRONMENT: FloodGuard-Prod
   EB_SOURCE_BUCKET: ddac-floodguard
