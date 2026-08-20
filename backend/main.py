@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from database import Base, engine
+# Model imports are required so that routers referencing ORM classes
+# can resolve them at startup. Tables are managed by Alembic migrations.
 from models import alert, report, sensor, user  # noqa: F401
 
 
@@ -43,9 +44,9 @@ include_project_router("admin", "/admin", ["admin"])
 include_project_router("sensors", "/sensors", ["sensors"])
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
+# Tables are intentionally NOT created here.
+# Use `alembic upgrade head` (fresh DB) or `alembic stamp head`
+# (existing DB) to manage the schema via migrations.
 
 
 @app.get("/", tags=["health"])
