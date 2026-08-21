@@ -1,23 +1,23 @@
+import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { getSensorHealth } from "../../api/sensors";
+import AdminLayout from "../../components/AdminLayout";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
 function StatusPill({ status }) {
   const healthy = status === "healthy";
-  return (
-    <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${healthy ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-      {status || "unknown"}
-    </span>
-  );
+  return <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${healthy ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{status || "unknown"}</span>;
 }
 
 export default function SystemHealth() {
   const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function loadHealth() {
+  async function loadHealth(manual = false) {
+    if (manual) setIsRefreshing(true);
     try {
       setHealth(await getSensorHealth());
       setError("");
@@ -25,6 +25,7 @@ export default function SystemHealth() {
       setError(err.response?.data?.detail || "Could not load system health.");
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }
 
@@ -33,15 +34,16 @@ export default function SystemHealth() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-blue-50 px-4 py-10">
-      <section className="mx-auto max-w-5xl">
+    <AdminLayout title="System Health">
+      <section>
         <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-blue-950">Sensor System Health</h1>
-            <p className="mt-2 text-sm text-blue-700">Backend database and queue status for sensor ingestion.</p>
+            <p className="mt-2 text-sm text-blue-700">Relational database, sensor queue, and latest-ingestion status.</p>
           </div>
-          <button type="button" onClick={loadHealth} className="rounded-md bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800">
-            Refresh
+          <button type="button" onClick={() => loadHealth(true)} disabled={isRefreshing} className="flex items-center justify-center gap-2 rounded-md bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
+            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
@@ -52,18 +54,15 @@ export default function SystemHealth() {
         ) : (
           <div className="grid gap-5 md:grid-cols-2">
             <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Database</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Relational database (RDS)</p>
               <div className="mt-4"><StatusPill status={health?.database} /></div>
             </article>
             <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Relational DB</p>
-              <div className="mt-4"><StatusPill status={health?.database} /></div>
-            </article>
-            <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">SQS queue depth</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Sensor queue (SQS)</p>
               <p className="mt-4 text-4xl font-bold text-blue-950">{health?.sqs_queue_depth ?? "-"}</p>
+              <p className="mt-2 text-xs text-slate-500">Approximate messages waiting</p>
             </article>
-            <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm">
+            <article className="rounded-lg border border-blue-100 bg-white p-6 shadow-sm md:col-span-2">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Last sensor reading</p>
               <p className="mt-4 text-lg font-semibold text-slate-900">
                 {health?.last_sensor_reading_time ? new Date(health.last_sensor_reading_time).toLocaleString() : "No readings found"}
@@ -72,6 +71,6 @@ export default function SystemHealth() {
           </div>
         )}
       </section>
-    </main>
+    </AdminLayout>
   );
 }

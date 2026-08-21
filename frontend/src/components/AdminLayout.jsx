@@ -1,105 +1,129 @@
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LogOut, ShieldCheck, LayoutDashboard, FileText, AlertTriangle, Map, Users } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getMe, logout } from "../api/auth";
+import {
+  AlertTriangle,
+  FileText,
+  House,
+  LayoutDashboard,
+  LogOut,
+  Map,
+  Menu,
+  Settings2,
+  ShieldCheck,
+  Users,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { Link, Navigate, NavLink, useNavigate } from "react-router-dom";
 
-const TOKEN_KEY = "floodguard_token";
+import { useAuth } from "../context/AuthContext";
+import LoadingSpinner from "./LoadingSpinner";
+
+function linkClass({ isActive }) {
+  return `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+    isActive
+      ? "bg-white/20 text-white shadow-sm"
+      : "text-white/80 hover:bg-white/10 hover:text-white"
+  }`;
+}
+
+const linksByRole = {
+  admin: [
+    { label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, end: true },
+    { label: "Zones", to: "/admin/zones", icon: <Map size={20} /> },
+    { label: "Users", to: "/admin/users", icon: <Users size={20} /> },
+    { label: "Home", to: "/", icon: <House size={20} />, end: true },
+  ],
+  authority: [
+    { label: "Dashboard", to: "/authority", icon: <LayoutDashboard size={20} />, end: true },
+    { label: "Reports", to: "/authority/reports", icon: <FileText size={20} /> },
+    { label: "Create Alert", to: "/authority/create-alert", icon: <AlertTriangle size={20} /> },
+    { label: "Home", to: "/", icon: <House size={20} />, end: true },
+  ],
+  field_officer: [
+    { label: "Dashboard", to: "/sensors", icon: <LayoutDashboard size={20} />, end: true },
+    { label: "Water Levels", to: "/sensors/chart", icon: <FileText size={20} /> },
+    { label: "Thresholds", to: "/sensors/thresholds", icon: <Settings2 size={20} /> },
+    { label: "System Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
+    { label: "Home", to: "/", icon: <House size={20} />, end: true },
+  ],
+};
+
+const titlesByRole = {
+  admin: "Admin Panel",
+  authority: "Authority Console",
+  field_officer: "Sensor Operations",
+};
 
 export default function AdminLayout({ children, title }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user, isLoading, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const currentUser = await getMe();
-        setUser(currentUser);
-      } catch {
-        setUser(null);
-      }
-    }
-    loadUser();
-  }, []);
-
-  function handleLogout() {
-    logout();
-    navigate("/");
+  if (isLoading) {
+    return <LoadingSpinner message="Loading account..." />;
   }
 
-  const adminLinks = [
-    { label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, exact: true },
-    { label: "Zones", to: "/admin/zones", icon: <Map size={20} /> },
-    { label: "Users", to: "/admin/users", icon: <Users size={20} /> },
-  ];
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  const authorityLinks = [
-    { label: "Dashboard", to: "/authority", icon: <LayoutDashboard size={20} />, exact: true },
-    { label: "Reports", to: "/authority/reports", icon: <FileText size={20} /> },
-    { label: "Create Alert", to: "/authority/create-alert", icon: <AlertTriangle size={20} /> },
-  ];
+  const links = linksByRole[user.role] || [];
+  const panelTitle = title || titlesByRole[user.role] || "FloodGuard";
+  const initial = user.name?.charAt(0).toUpperCase();
 
-  const fieldOfficerLinks = [
-    { label: "Sensor Dash", to: "/sensors", icon: <LayoutDashboard size={20} />, exact: true },
-    { label: "Water Levels", to: "/sensors/chart", icon: <FileText size={20} /> },
-    { label: "Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
-  ];
+  function handleLogout() {
+    signOut();
+    setMenuOpen(false);
+    navigate("/", { replace: true });
+  }
 
-  let links = [];
-  if (user?.role === "admin") {
-    links = adminLinks;
-  } else if (user?.role === "authority") {
-    links = authorityLinks;
-  } else if (user?.role === "field_officer") {
-    links = fieldOfficerLinks;
+  function renderLinks() {
+    return links.map((link) => (
+      <NavLink
+        key={link.to}
+        to={link.to}
+        end={link.end}
+        onClick={() => setMenuOpen(false)}
+        className={linkClass}
+      >
+        {link.icon}
+        {link.label}
+      </NavLink>
+    ));
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-bg text-ink-primary font-sans">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 bg-gradient-to-b from-brand to-brand-gradientEnd text-white shadow-xl hidden md:flex flex-col">
+    <div className="flex min-h-screen bg-surface-bg font-sans text-ink-primary">
+      <aside className="hidden w-64 flex-shrink-0 flex-col bg-gradient-to-b from-brand to-brand-gradientEnd text-white shadow-xl md:flex">
         <div className="p-6">
-          <Link to="/" className="flex items-center gap-2 group">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm text-white group-hover:bg-white/30 transition-all duration-200">
+          <Link to="/" className="group flex items-center gap-2">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white transition-all group-hover:bg-white/30">
               <ShieldCheck size={24} strokeWidth={2.5} />
             </span>
             <span className="text-xl font-bold tracking-tight">FloodGuard</span>
           </Link>
-          <div className="mt-8 text-sm font-semibold text-white/70 uppercase tracking-wider">
-            {title || "Admin Panel"}
+          <div className="mt-8 text-sm font-semibold uppercase tracking-wider text-white/70">
+            {panelTitle}
           </div>
         </div>
-        <nav className="flex-1 px-4 space-y-2">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.exact}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? "bg-white/20 text-white shadow-sm"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
-                }`
-              }
-            >
-              {link.icon}
-              {link.label}
-            </NavLink>
-          ))}
+
+        <nav className="flex-1 space-y-2 px-4" aria-label="Dashboard navigation">
+          {renderLinks()}
         </nav>
-        <div className="p-4 border-t border-white/10">
-          <div className="flex items-center gap-3 px-2 mb-4">
+
+        <div className="border-t border-white/10 p-4">
+          <div className="mb-4 flex items-center gap-3 px-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 font-bold text-white">
-              {user?.name?.charAt(0).toUpperCase() || "A"}
+              {initial}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-white truncate">{user?.name || "Admin"}</p>
-              <p className="text-xs text-white/70 truncate">{user?.email || "admin@example.com"}</p>
+              <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+              <p className="truncate text-xs text-white/70">{user.email}</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-all"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/10"
           >
             <LogOut size={18} />
             Logout
@@ -107,17 +131,47 @@ export default function AdminLayout({ children, title }) {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden h-screen">
-        {/* Mobile Header */}
-        <div className="md:hidden bg-gradient-to-r from-brand to-brand-gradientEnd p-4 flex justify-between items-center text-white shadow-md flex-shrink-0">
-          <span className="font-bold">{title || "Admin Panel"}</span>
-          <Link to="/" className="text-white hover:text-white/80">
+      <main className="flex h-screen flex-1 flex-col overflow-hidden">
+        <div className="flex flex-shrink-0 items-center justify-between bg-gradient-to-r from-brand to-brand-gradientEnd p-4 text-white shadow-md md:hidden">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="rounded-lg p-2 hover:bg-white/20"
+              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <span className="font-bold">{panelTitle}</span>
+          </div>
+          <Link to="/" aria-label="FloodGuard home" onClick={() => setMenuOpen(false)}>
             <ShieldCheck size={24} />
           </Link>
         </div>
+
+        {menuOpen && (
+          <div className="border-b border-blue-100 bg-gradient-to-b from-brand to-brand-gradientEnd p-4 text-white md:hidden">
+            <nav className="space-y-2" aria-label="Mobile dashboard navigation">
+              {renderLinks()}
+            </nav>
+            <div className="mt-3 border-t border-white/20 pt-3">
+              <p className="truncate text-sm font-semibold">{user.name}</p>
+              <p className="truncate text-xs text-white/70">{user.email}</p>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 overflow-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
+          <div className="mx-auto max-w-7xl">{children}</div>
         </div>
       </main>
     </div>

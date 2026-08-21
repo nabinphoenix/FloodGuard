@@ -29,7 +29,7 @@ from database import get_db
 from models.alert import AlertLevel, AlertZone
 from models.sensor import SensorReading, SensorStation
 from models.user import UserRole
-from routers.auth import require_any_role, require_role
+from routers.auth import require_any_role
 from services.sqs_service import send_sensor_reading, sqs_client
 
 logger = logging.getLogger(__name__)
@@ -74,14 +74,16 @@ def reading_to_dict(reading: SensorReading, district: str | None = None) -> dict
 
 
 def station_to_dict(station: SensorStation, latest: dict | None = None) -> dict:
-    status_level = "safe"
     water_level = latest.get("water_level") if latest else None
+    status_level = "no_data"
 
     if water_level is not None:
         if water_level >= station.danger_threshold:
-            status_level = "danger"
+            status_level = "emergency"
         elif water_level >= station.warning_threshold:
             status_level = "warning"
+        else:
+            status_level = "safe"
 
     return {
         "id": station.id,
@@ -183,7 +185,10 @@ def sync_zone_level(db: Session, station: SensorStation, level: AlertLevel) -> N
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/reading", dependencies=[Depends(require_role(UserRole.field_officer))])
+@router.post(
+    "/reading",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
 def receive_sensor_reading(reading: SensorReadingIn, db: Session = Depends(get_db)) -> dict:
     """Ingest a water-level measurement and persist it to sensor_readings."""
     station = db.get(SensorStation, reading.station_id)
@@ -297,7 +302,10 @@ def get_stations(db: Session = Depends(get_db)) -> list[dict]:
     return [station_to_dict(s, latest_by_station.get(s.id)) for s in stations]
 
 
-@router.put("/stations/{station_id}/thresholds", dependencies=[Depends(require_role(UserRole.admin))])
+@router.put(
+    "/stations/{station_id}/thresholds",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
 def update_thresholds(
     station_id: str,
     payload: ThresholdUpdate,
@@ -324,7 +332,10 @@ def update_thresholds(
     return station_to_dict(station, latest_by_station.get(station_id))
 
 
-@router.get("/health", dependencies=[Depends(require_role(UserRole.field_officer))])
+@router.get(
+    "/health",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
 def get_sensor_health(db: Session = Depends(get_db)) -> dict:
     """Report health of the relational database and the SQS sensor queue.
 

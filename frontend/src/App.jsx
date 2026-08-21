@@ -37,7 +37,7 @@ function NotFound() {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-surface-bg text-ink-primary font-sans">
+    <div className="min-h-screen bg-surface-bg font-sans text-ink-primary">
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -47,118 +47,20 @@ export default function App() {
         <Route path="/map" element={<FloodMap />} />
         <Route path="/reports/community" element={<CommunityFeed />} />
         <Route path="/reports/:reportId" element={<ReportDetail />} />
-        <Route
-          path="/reports/submit"
-          element={
-            <ProtectedRoute>
-              <SubmitReport />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports/my"
-          element={
-            <ProtectedRoute>
-              <MyReports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute role="public">
-              <PublicDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute role="admin">
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/authority"
-          element={
-            <ProtectedRoute role="authority">
-              <AuthorityDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/authority/reports"
-          element={
-            <ProtectedRoute role="authority">
-              <AuthorityManageReports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/authority/create-alert"
-          element={
-            <ProtectedRoute role="authority">
-              <AuthorityCreateAlert />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/zones"
-          element={
-            <ProtectedRoute role="admin">
-              <ManageZones />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute role="admin">
-              <ManageUsers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/sensors"
-          element={
-            <ProtectedRoute role={["field_officer", "admin"]}>
-              <SensorDash />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/sensors/chart"
-          element={
-            <ProtectedRoute role={["field_officer", "admin"]}>
-              <WaterLevelChart />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/sensors/thresholds"
-          element={
-            <ProtectedRoute role="admin">
-              <Thresholds />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/sensors/health"
-          element={
-            <ProtectedRoute role="field_officer">
-              <SystemHealth />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/reports/submit" element={<ProtectedRoute><SubmitReport /></ProtectedRoute>} />
+        <Route path="/reports/my" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute role="public"><PublicDashboard /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute role="admin"><Dashboard /></ProtectedRoute>} />
+        <Route path="/authority" element={<ProtectedRoute role="authority"><AuthorityDashboard /></ProtectedRoute>} />
+        <Route path="/authority/reports" element={<ProtectedRoute role="authority"><AuthorityManageReports /></ProtectedRoute>} />
+        <Route path="/authority/create-alert" element={<ProtectedRoute role="authority"><AuthorityCreateAlert /></ProtectedRoute>} />
+        <Route path="/admin/zones" element={<ProtectedRoute role="admin"><ManageZones /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
+        <Route path="/sensors" element={<ProtectedRoute role={["field_officer", "admin"]}><SensorDash /></ProtectedRoute>} />
+        <Route path="/sensors/chart" element={<ProtectedRoute role={["field_officer", "admin"]}><WaterLevelChart /></ProtectedRoute>} />
+        <Route path="/sensors/thresholds" element={<ProtectedRoute role={["field_officer", "admin"]}><Thresholds /></ProtectedRoute>} />
+        <Route path="/sensors/health" element={<ProtectedRoute role={["field_officer", "admin"]}><SystemHealth /></ProtectedRoute>} />
         <Route path="/admin/*" element={<Navigate to="/admin" replace />} />
         <Route path="/authority/*" element={<Navigate to="/authority" replace />} />
         <Route path="/sensors/*" element={<Navigate to="/sensors" replace />} />

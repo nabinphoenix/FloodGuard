@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 
 import { getStations, updateThresholds } from "../../api/sensors";
+import AdminLayout from "../../components/AdminLayout";
 import LoadingSpinner from "../../components/LoadingSpinner";
+
+function validateThresholds(draft) {
+  const warning = Number(draft.warning_threshold);
+  const danger = Number(draft.danger_threshold);
+
+  if (!Number.isFinite(warning) || !Number.isFinite(danger)) {
+    return "Both thresholds must be valid numbers.";
+  }
+  if (warning < 0) return "Warning threshold must be at least 0 m.";
+  if (danger < warning) return "Danger threshold must be greater than or equal to warning threshold.";
+
+  return "";
+}
 
 export default function Thresholds() {
   const [stations, setStations] = useState([]);
@@ -16,17 +30,10 @@ export default function Thresholds() {
       try {
         const data = await getStations();
         setStations(data);
-        setDrafts(
-          Object.fromEntries(
-            data.map((station) => [
-              station.id,
-              {
-                warning_threshold: station.warning_threshold,
-                danger_threshold: station.danger_threshold,
-              },
-            ])
-          )
-        );
+        setDrafts(Object.fromEntries(data.map((station) => [
+          station.id,
+          { warning_threshold: station.warning_threshold, danger_threshold: station.danger_threshold },
+        ])));
       } catch (err) {
         setError(err.response?.data?.detail || "Could not load sensor stations.");
       } finally {
@@ -38,29 +45,34 @@ export default function Thresholds() {
   }, []);
 
   function updateDraft(stationId, field, value) {
-    setDrafts((current) => ({
-      ...current,
-      [stationId]: {
-        ...current[stationId],
-        [field]: value,
-      },
-    }));
+    setDrafts((current) => ({ ...current, [stationId]: { ...current[stationId], [field]: value } }));
     setMessage("");
+    setError("");
   }
 
   async function handleSave(stationId) {
+    const validationError = validateThresholds(drafts[stationId]);
+    if (validationError) {
+      setError(validationError);
+      setMessage("");
+      return;
+    }
+
     setSavingId(stationId);
     setError("");
     setMessage("");
 
     try {
-      const payload = {
+      const updated = await updateThresholds(stationId, {
         warning_threshold: Number(drafts[stationId].warning_threshold),
         danger_threshold: Number(drafts[stationId].danger_threshold),
-      };
-      const updated = await updateThresholds(stationId, payload);
-      setStations((current) => current.map((station) => (station.id === stationId ? updated : station)));
-      setMessage("Thresholds updated.");
+      });
+      setStations((current) => current.map((station) => station.id === stationId ? updated : station));
+      setDrafts((current) => ({
+        ...current,
+        [stationId]: { warning_threshold: updated.warning_threshold, danger_threshold: updated.danger_threshold },
+      }));
+      setMessage(`Thresholds saved for ${updated.name}. New readings will use these limits.`);
     } catch (err) {
       setError(err.response?.data?.detail || "Could not update thresholds.");
     } finally {
@@ -69,11 +81,11 @@ export default function Thresholds() {
   }
 
   return (
-    <main className="min-h-screen bg-blue-50 px-4 py-10">
-      <section className="mx-auto max-w-6xl">
+    <AdminLayout title="Sensor Thresholds">
+      <section>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-blue-950">Sensor Thresholds</h1>
-          <p className="mt-2 text-sm text-blue-700">Adjust warning and danger water-level limits by station.</p>
+          <p className="mt-2 text-sm text-blue-700">Set warning and danger water-level limits in metres (m). Changes apply to the next reading received.</p>
         </div>
 
         {error && <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -98,45 +110,22 @@ export default function Thresholds() {
                 <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
                   <div>
                     <label className="block text-sm font-medium text-blue-950" htmlFor={`${station.id}-warning`}>Warning threshold (m)</label>
-                    <input
-                      id={`${station.id}-warning`}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={drafts[station.id]?.warning_threshold ?? ""}
-                      onChange={(event) => updateDraft(station.id, "warning_threshold", event.target.value)}
-                      className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-                    />
+                    <input id={`${station.id}-warning`} type="number" min="0" step="0.01" value={drafts[station.id]?.warning_threshold ?? ""} onChange={(event) => updateDraft(station.id, "warning_threshold", event.target.value)} className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-blue-950" htmlFor={`${station.id}-danger`}>Danger threshold (m)</label>
-                    <input
-                      id={`${station.id}-danger`}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={drafts[station.id]?.danger_threshold ?? ""}
-                      onChange={(event) => updateDraft(station.id, "danger_threshold", event.target.value)}
-                      className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-                    />
+                    <input id={`${station.id}-danger`} type="number" min="0" step="0.01" value={drafts[station.id]?.danger_threshold ?? ""} onChange={(event) => updateDraft(station.id, "danger_threshold", event.target.value)} className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleSave(station.id)}
-                    disabled={savingId === station.id}
-                    className="self-end rounded-md bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-                  >
+                  <button type="button" onClick={() => handleSave(station.id)} disabled={savingId === station.id} className="self-end rounded-md bg-blue-700 px-5 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
                     {savingId === station.id ? "Saving..." : "Save"}
                   </button>
                 </div>
               </article>
             ))}
-            {stations.length === 0 && (
-              <div className="rounded-lg border border-blue-100 bg-white p-8 text-center text-blue-800">No stations found.</div>
-            )}
+            {stations.length === 0 && <div className="rounded-lg border border-blue-100 bg-white p-8 text-center text-blue-800">No sensor stations configured.</div>}
           </div>
         )}
       </section>
-    </main>
+    </AdminLayout>
   );
 }
