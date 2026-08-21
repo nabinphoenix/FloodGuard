@@ -10,7 +10,7 @@ from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport, ReportStatus
 from models.user import User, UserRole
 from routers.auth import require_role
-from schemas.alert import BroadcastRequest, FloodAlertOut
+from schemas.alert import AlertZoneOut, BroadcastRequest, FloodAlertOut
 from services.s3_service import get_presigned_url
 from services.sns_service import broadcast_alert
 
@@ -54,6 +54,12 @@ def flood_alert_to_out(alert: FloodAlert) -> FloodAlertOut:
         sns_message_id=alert.sns_message_id,
         triggered_at=alert.triggered_at,
     )
+
+
+@router.get("/zones", response_model=list[AlertZoneOut])
+def get_authority_zones(db: Session = Depends(get_db)) -> list[AlertZone]:
+    """Return alert zones that an authority may target when broadcasting."""
+    return list(db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all())
 
 
 @router.get("/dashboard")

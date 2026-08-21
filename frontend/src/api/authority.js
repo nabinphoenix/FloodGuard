@@ -5,6 +5,11 @@ export async function getAuthorityDashboard() {
   return response.data;
 }
 
+export async function getAuthorityZones() {
+  const response = await api.get("/authority/zones");
+  return response.data;
+}
+
 export async function getAuthorityReports({ status = "", district = "", page = 1, limit = 20 } = {}) {
   const response = await api.get("/authority/reports", {
     params: {

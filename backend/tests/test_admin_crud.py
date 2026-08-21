@@ -5,6 +5,7 @@ from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport, ReportStatus
 from models.user import User, UserRole
 from routers import admin as admin_router
+from routers import authority as authority_router
 from routers.auth import hash_password
 from schemas.alert import AlertZoneUpdate
 from schemas.user import (
@@ -146,3 +147,45 @@ def test_zone_crud_and_historical_alert_protection(db):
         admin_router.delete_zone(zone.id, db)
     assert exc.value.status_code == 409
     assert db.get(AlertZone, zone.id) is not None
+
+
+def test_zone_route_rbac_and_authority_broadcast(client, db, monkeypatch):
+    test_client, current_user = client
+    admin = make_user(db, "Admin", "admin@example.com", UserRole.admin)
+    authority = make_user(db, "Authority", "authority@example.com", UserRole.authority)
+    public = make_user(db, "Public", "public@example.com", UserRole.public)
+    zone = admin_router.create_zone(
+        admin_router.AlertZoneCreate(
+            district="Chitwan area",
+            alert_level=AlertLevel.safe,
+            latitude=27.67,
+            longitude=84.43,
+        ),
+        db,
+    )
+
+    current_user["value"] = admin
+    admin_response = test_client.get("/admin/zones")
+    assert admin_response.status_code == 200
+    assert admin_response.json()[0]["district"] == "Chitwan area"
+
+    current_user["value"] = authority
+    assert test_client.get("/admin/zones").status_code == 403
+    authority_response = test_client.get("/authority/zones")
+    assert authority_response.status_code == 200
+    assert authority_response.json()[0]["district"] == "Chitwan area"
+
+    monkeypatch.setattr(authority_router, "broadcast_alert", lambda **kwargs: "sns-route-1")
+    broadcast_response = test_client.post(
+        "/authority/broadcast-alert",
+        json={
+            "zone_id": zone.id,
+            "alert_level": "warning",
+            "message": "Water levels are rising in Chitwan area.",
+        },
+    )
+    assert broadcast_response.status_code == 201
+    assert broadcast_response.json()["sns_message_id"] == "sns-route-1"
+
+    current_user["value"] = public
+    assert test_client.get("/authority/zones").status_code == 403

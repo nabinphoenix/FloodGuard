@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle, AlertTriangle } from "lucide-react";
 
-import { getZones } from "../../api/admin";
-import { broadcastAlert } from "../../api/authority";
+import { broadcastAlert, getAuthorityZones } from "../../api/authority";
 import AdminLayout from "../../components/AdminLayout";
 
 const levels = [
@@ -27,7 +26,7 @@ export default function CreateAlert() {
   useEffect(() => {
     async function loadZones() {
       try {
-        const data = await getZones();
+        const data = await getAuthorityZones();
         setZones(data);
         if (data.length > 0) {
           setFormData((current) => ({ ...current, zone_id: String(data[0].id) }));
