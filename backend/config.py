@@ -1,4 +1,4 @@
-﻿from functools import lru_cache
+from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +19,10 @@ class Settings(BaseSettings):
 
     sns_topic_arn: str = Field(..., alias="SNS_TOPIC_ARN")
     sqs_sensor_queue_url: str = Field(..., alias="SQS_SENSOR_QUEUE_URL")
+    # Optional: this repository currently persists telemetry in RDS. If an
+    # existing DynamoDB sensor table is configured in a deployment, health
+    # checks can verify it without creating or replacing that resource.
+    dynamodb_sensor_table_name: str = Field("", alias="DYNAMODB_SENSOR_TABLE_NAME")
     broadcast_api_url: str = Field(..., alias="BROADCAST_API_URL")
     cors_origins: str = Field(..., alias="CORS_ORIGINS")
 

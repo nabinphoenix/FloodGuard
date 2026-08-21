@@ -1,4 +1,8 @@
-"""Authenticated FloodGuard water-level simulator."""
+"""Authenticated FloodGuard water-level simulator.
+
+This utility deliberately submits real API readings. It never seeds the
+database, fabricates frontend state, prints credentials, or prints JWTs.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +19,7 @@ import requests
 
 
 DEFAULT_API_URL = "http://localhost:8000"
+STATES = ("safe", "watch", "warning", "emergency")
 
 
 def api_base_url(value: str) -> str:
@@ -32,6 +37,18 @@ def classify_level(level: float, watch: float, warning: float, danger: float) ->
     return "safe"
 
 
+def state_level(phase: str, watch: float, warning: float, danger: float) -> float:
+    if phase == "safe":
+        return round(max(0.0, watch * 0.65), 2)
+    if phase == "watch":
+        return round(watch + ((warning - watch) * 0.45), 2)
+    if phase == "warning":
+        return round(warning + ((danger - warning) * 0.45), 2)
+    if phase == "emergency":
+        return round(danger + max(0.1, danger * 0.05), 2)
+    raise ValueError(f"Unknown simulator state: {phase}")
+
+
 def simulation_cycle(watch: float, warning: float, danger: float) -> list[tuple[str, float]]:
     if watch < 0:
         raise ValueError("Watch threshold must be at least 0.")
@@ -40,25 +57,24 @@ def simulation_cycle(watch: float, warning: float, danger: float) -> list[tuple[
     if warning >= danger:
         raise ValueError("Warning threshold must be less than emergency threshold.")
 
-    safe_level = watch * 0.65
-    watch_level = watch + ((warning - watch) * 0.45)
-    warning_level = warning + ((danger - warning) * 0.45)
-    emergency_level = danger + max(0.1, danger * 0.05)
-    return [
-        ("safe", round(safe_level, 2)),
-        ("safe", round(safe_level, 2)),
-        ("watch", round(watch_level, 2)),
-        ("watch", round(watch_level, 2)),
-        ("warning", round(warning_level, 2)),
-        ("warning", round(warning_level, 2)),
-        ("emergency", round(emergency_level, 2)),
-        ("warning", round(warning_level, 2)),
-        ("watch", round(watch_level, 2)),
-        ("safe", round(safe_level, 2)),
+    phases = [
+        "safe", "safe",
+        "watch", "watch",
+        "warning", "warning",
+        "emergency", "emergency",
+        "warning", "watch", "safe",
     ]
+    return [(phase, state_level(phase, watch, warning, danger)) for phase in phases]
 
 
-def vary_level(level: float, phase: str, watch: float, warning: float, danger: float, rng: random.Random) -> float:
+def vary_level(
+    level: float,
+    phase: str,
+    watch: float,
+    warning: float,
+    danger: float,
+    rng: random.Random,
+) -> float:
     span = max(danger - watch, 0.1)
     value = level + rng.uniform(-span * 0.04, span * 0.04)
     if phase == "safe":
@@ -86,7 +102,13 @@ def login(session: requests.Session, api_root: str, email: str, password: str) -
 def station_config(session: requests.Session, api_root: str, station_id: str) -> dict[str, Any]:
     response = session.get(f"{api_root}/sensors/stations", timeout=15)
     response.raise_for_status()
-    station = next((item for item in response.json() if item.get("id") == station_id), None)
+    station = next(
+        (
+            item for item in response.json()
+            if item.get("id") == station_id or item.get("station_code") == station_id
+        ),
+        None,
+    )
     if station is None:
         raise LookupError(f"Sensor station '{station_id}' was not found.")
     return station
@@ -96,7 +118,7 @@ def post_reading(session: requests.Session, api_root: str, station_id: str, wate
     response = session.post(
         f"{api_root}/sensors/reading",
         json={
-            "station_id": station_id,
+            "station_code": station_id,
             "water_level": water_level,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
@@ -111,10 +133,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Post authenticated synthetic water-level readings to FloodGuard."
     )
     parser.add_argument("--api-url", default=DEFAULT_API_URL, help="Backend base URL, for example http://localhost:8000")
-    parser.add_argument("--station", required=True, help="Station ID, for example STN001")
+    parser.add_argument("--station", required=True, help="Station code, for example STN001")
     parser.add_argument("--email", default=os.getenv("FLOODGUARD_EMAIL"), help="Login email or FLOODGUARD_EMAIL")
     parser.add_argument("--interval", type=float, default=5.0, help="Seconds between readings (default: 5)")
     parser.add_argument("--count", type=int, default=0, help="Number of readings; 0 runs until Ctrl+C")
+    parser.add_argument("--scenario", choices=["cycle"], default="cycle", help="Threshold-derived scenario (default: cycle)")
+    parser.add_argument("--state", choices=STATES, help="Send readings inside one fixed state instead of the cycle")
     return parser.parse_args(argv)
 
 
@@ -147,7 +171,11 @@ def main(argv: list[str] | None = None) -> int:
         watch = float(station["watch_threshold"])
         warning = float(station["warning_threshold"])
         danger = float(station["danger_threshold"])
-        phases = simulation_cycle(watch, warning, danger)
+        phases = (
+            [(args.state, state_level(args.state, watch, warning, danger))]
+            if args.state
+            else simulation_cycle(watch, warning, danger)
+        )
     except LookupError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -162,11 +190,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print("FloodGuard Water-Level Simulator")
+    print(f"Station: {station.get('station_code') or station.get('id')} - {station.get('station_name') or station.get('name')}")
     print(f"Province: {station.get('province') or 'Not configured'}")
     print(f"District: {station.get('district') or 'Not configured'}")
     print(f"River: {station.get('river_name') or 'Not configured'}")
-    print(f"Station: {station.get('id')}")
-    print(f"Watch: {watch:.2f} m | Warning: {warning:.2f} m | Emergency: {danger:.2f} m")
+    print(f"Watch: {watch:.2f} m")
+    print(f"Warning: {warning:.2f} m")
+    print(f"Emergency: {danger:.2f} m")
     print("Posting threshold-derived phases. Press Ctrl+C to stop.")
 
     rng = random.Random()
@@ -177,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
             level = vary_level(base_level, phase, watch, warning, danger, rng)
             actual_phase = classify_level(level, watch, warning, danger)
             result = post_reading(session, api_root, args.station, level)
-            returned_phase = result.get("alert_level", actual_phase)
+            returned_phase = result.get("status", result.get("alert_level", actual_phase))
             print(
                 f"[{datetime.now().strftime('%H:%M:%S')}] "
                 f"{level:.2f} m -> {returned_phase.upper()}",

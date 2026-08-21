@@ -9,6 +9,7 @@ from scripts.simulate_water_level import (
     classify_level,
     parse_args,
     simulation_cycle,
+    state_level,
 )
 
 
@@ -166,12 +167,17 @@ def test_simulator_helpers_use_api_thresholds():
     phases = simulation_cycle(2.5, 3.5, 4.5)
     assert [phase for phase, _ in phases] == [
         "safe", "safe", "watch", "watch", "warning",
-        "warning", "emergency", "warning", "watch", "safe",
+        "warning", "emergency", "emergency", "warning", "watch", "safe",
     ]
     assert all(classify_level(level, 2.5, 3.5, 4.5) == phase for phase, level in phases)
 
 
 def test_simulator_cli_requires_station():
-    args = parse_args(["--station", "STN001", "--count", "2"])
+    args = parse_args(["--station", "STN001", "--count", "2", "--scenario", "cycle"])
     assert args.station == "STN001"
     assert args.count == 2
+    assert args.scenario == "cycle"
+
+    fixed = parse_args(["--station", "STN001", "--state", "warning"])
+    assert fixed.state == "warning"
+    assert classify_level(state_level("warning", 2.5, 3.5, 4.5), 2.5, 3.5, 4.5) == "warning"

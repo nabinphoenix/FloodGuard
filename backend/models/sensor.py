@@ -61,7 +61,11 @@ class SensorStation(Base):
 
 
 class SensorReading(Base):
-    """A single water-level measurement stored in the relational database."""
+    """A single water-level measurement stored in the project's RDS database.
+
+    The persisted status preserves the classification at ingestion time so
+    changing station thresholds does not rewrite historical sensor states.
+    """
 
     __tablename__ = "sensor_readings"
     __table_args__ = (
@@ -75,6 +79,7 @@ class SensorReading(Base):
         nullable=False,
     )
     water_level: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

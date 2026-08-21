@@ -21,6 +21,8 @@ import MyReports from "./pages/reports/MyReports";
 import ReportDetail from "./pages/reports/ReportDetail";
 import SubmitReport from "./pages/reports/SubmitReport";
 import SensorDash from "./pages/sensors/SensorDash";
+import LiveWaterLevels from "./pages/sensors/LiveWaterLevels";
+import SensorStations from "./pages/sensors/SensorStations";
 import SystemHealth from "./pages/sensors/SystemHealth";
 import Thresholds from "./pages/sensors/Thresholds";
 import WaterLevelChart from "./pages/sensors/WaterLevelChart";
@@ -60,7 +62,10 @@ export default function App() {
         <Route path="/admin/zones" element={<ProtectedRoute role="admin"><ManageZones /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/sensors" element={<ProtectedRoute role={["field_officer", "admin"]}><SensorDash /></ProtectedRoute>} />
-        <Route path="/sensors/chart" element={<ProtectedRoute role={["field_officer", "admin"]}><WaterLevelChart /></ProtectedRoute>} />
+        <Route path="/sensors/stations" element={<ProtectedRoute role={["field_officer", "admin"]}><SensorStations /></ProtectedRoute>} />
+        <Route path="/sensors/live" element={<ProtectedRoute role={["field_officer", "admin"]}><LiveWaterLevels /></ProtectedRoute>} />
+        <Route path="/sensors/chart" element={<ProtectedRoute role={["field_officer", "admin"]}><LiveWaterLevels /></ProtectedRoute>} />
+        <Route path="/sensors/history" element={<ProtectedRoute role={["field_officer", "admin"]}><WaterLevelChart /></ProtectedRoute>} />
         <Route path="/sensors/thresholds" element={<ProtectedRoute role={["field_officer", "admin"]}><Thresholds /></ProtectedRoute>} />
         <Route path="/sensors/health" element={<ProtectedRoute role={["field_officer", "admin"]}><SystemHealth /></ProtectedRoute>} />
         <Route path="/admin/*" element={<Navigate to="/admin" replace />} />

@@ -17,6 +17,13 @@ sns_client = boto3.client(
 )
 
 PENDING_CONFIRMATION_ARN = "PendingConfirmation"
+SENSOR_SEVERITY = {
+    "no_data": -1,
+    "safe": 0,
+    "watch": 1,
+    "warning": 2,
+    "emergency": 3,
+}
 
 
 def is_subscription_confirmed(subscription_arn: str | None) -> bool:
@@ -87,7 +94,7 @@ def broadcast_alert(
     level: str,
     message: str,
 ) -> str:
-    """Publish a FloodGuard emergency alert to the configured SNS topic."""
+    """Publish an official FloodGuard authority alert to the configured SNS topic."""
 
     subject = f"FloodGuard {level.upper()} Alert - {district}"
 
@@ -113,6 +120,10 @@ def broadcast_alert(
                     "DataType": "String",
                     "StringValue": level,
                 },
+                "alert_type": {
+                    "DataType": "String",
+                    "StringValue": "official_authority_alert",
+                },
             },
         )
     except (BotoCoreError, ClientError) as exc:
@@ -129,3 +140,129 @@ def broadcast_alert(
         )
 
     return message_id
+
+
+def sensor_transition_requires_notification(previous_status: str | None, new_status: str) -> bool:
+    """Return whether a sensor status transition merits one email notification."""
+    previous = previous_status or "no_data"
+    if new_status == "safe":
+        return previous in {"warning", "emergency"}
+    if new_status not in {"watch", "warning", "emergency"}:
+        return False
+    return SENSOR_SEVERITY[new_status] > SENSOR_SEVERITY.get(previous, -1)
+
+
+def publish_sensor_transition(
+    *,
+    station_name: str,
+    province: str | None,
+    district: str,
+    river_name: str | None,
+    water_level: float,
+    status: str,
+    previous_status: str | None,
+    watch_threshold: float | None,
+    warning_threshold: float,
+    danger_threshold: float,
+) -> dict[str, str | bool]:
+    """Publish one automated sensor transition through the existing SNS topic.
+
+    A repeated reading at the same severity is intentionally a no-op. SNS
+    failures are returned to the caller as metadata and never raise, because
+    telemetry has already been committed successfully.
+    """
+
+    previous = previous_status or "no_data"
+    if not sensor_transition_requires_notification(previous, status):
+        return {
+            "attempted": False,
+            "published": False,
+            "status": "not_sent",
+            "reason": "no_severity_transition",
+        }
+
+    location = f"{river_name or station_name}, {district}"
+    if status == "safe":
+        subject = f"FloodGuard Sensor SAFE Update - {location}"
+        body = (
+            "FloodGuard Automated Sensor Alert\n\n"
+            f"Station: {station_name}\n"
+            f"Province: {province or 'Not configured'}\n"
+            f"District: {district}\n"
+            f"River: {river_name or 'Not configured'}\n\n"
+            f"Current water level: {water_level:.2f} m\n"
+            "Status: SAFE\n"
+            f"Watch threshold: {watch_threshold:.2f} m\n"
+            f"Warning threshold: {warning_threshold:.2f} m\n"
+            f"Emergency threshold: {danger_threshold:.2f} m\n\n"
+            "Water level has returned below the configured Watch threshold.\n"
+            "This is an automated sensor-generated notification."
+        )
+    else:
+        subject = f"FloodGuard Sensor {status.upper()} Alert - {location}"
+        body = (
+            "FloodGuard Automated Sensor Alert\n\n"
+            f"Station: {station_name}\n"
+            f"Province: {province or 'Not configured'}\n"
+            f"District: {district}\n"
+            f"River: {river_name or 'Not configured'}\n\n"
+            f"Current water level: {water_level:.2f} m\n"
+            f"Status: {status.upper()}\n"
+            f"Watch threshold: {watch_threshold:.2f} m\n"
+            f"Warning threshold: {warning_threshold:.2f} m\n"
+            f"Emergency threshold: {danger_threshold:.2f} m\n\n"
+            "This is an automated sensor-generated notification.\n"
+            "Please monitor official FloodGuard alerts and follow local authority instructions."
+        )
+
+    try:
+        response = sns_client.publish(
+            TopicArn=settings.sns_topic_arn,
+            Subject=subject[:100],
+            Message=body,
+            MessageAttributes={
+                "alert_type": {
+                    "DataType": "String",
+                    "StringValue": "automated_sensor_alert",
+                },
+                "sensor_status": {
+                    "DataType": "String",
+                    "StringValue": status,
+                },
+                "station": {
+                    "DataType": "String",
+                    "StringValue": station_name[:256],
+                },
+            },
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.error(
+            "SNS sensor notification failed for %s (%s -> %s): %s",
+            station_name,
+            previous,
+            status,
+            exc,
+        )
+        return {
+            "attempted": True,
+            "published": False,
+            "status": "failed",
+            "error": "SNS notification failed; the sensor reading was saved.",
+        }
+
+    message_id = response.get("MessageId")
+    if not message_id:
+        logger.error("SNS sensor notification returned no message ID for %s", station_name)
+        return {
+            "attempted": True,
+            "published": False,
+            "status": "failed",
+            "error": "SNS notification returned no message ID; the sensor reading was saved.",
+        }
+
+    return {
+        "attempted": True,
+        "published": True,
+        "status": "published",
+        "message_id": message_id,
+    }

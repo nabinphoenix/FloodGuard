@@ -1,110 +1,49 @@
-import { Activity, Clock, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Activity, AlertTriangle, Clock, Plus, Radio, RefreshCw, ShieldCheck, Waves } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
-import { getLiveReadings } from "../../api/sensors";
+import { getSensorDashboard } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
-import SensorFilters, { filterStations } from "../../components/SensorFilters";
 
-function statusColor(status) {
-  switch (status) {
-    case "safe": return "bg-green-500";
-    case "watch": return "bg-yellow-400";
-    case "warning": return "bg-orange-500";
-    case "emergency": return "bg-red-600";
-    default: return "bg-gray-400";
-  }
+const summaryCards = [
+  ["total_stations", "Total Stations", Radio, "bg-blue-100 text-blue-700"],
+  ["active_stations", "Active Stations", ShieldCheck, "bg-green-100 text-green-700"],
+  ["stations_no_data", "Stations with No Data", Clock, "bg-slate-100 text-slate-700"],
+  ["safe_stations", "SAFE", ShieldCheck, "bg-green-100 text-green-700"],
+  ["watch_stations", "WATCH", Waves, "bg-yellow-100 text-yellow-700"],
+  ["warning_stations", "WARNING", AlertTriangle, "bg-orange-100 text-orange-700"],
+  ["emergency_stations", "EMERGENCY", AlertTriangle, "bg-red-100 text-red-700"],
+];
+
+function statusClass(status) {
+  return {
+    safe: "bg-green-100 text-green-800",
+    watch: "bg-yellow-100 text-yellow-800",
+    warning: "bg-orange-100 text-orange-800",
+    emergency: "bg-red-100 text-red-800",
+    no_data: "bg-slate-100 text-slate-700",
+  }[status] || "bg-slate-100 text-slate-700";
 }
 
 function statusLabel(status) {
   return status === "no_data" ? "NO DATA" : String(status || "unknown").toUpperCase();
 }
 
-function StationCard({ station }) {
-  const waterLevel = station.latest_reading?.water_level;
-  const hasReading = waterLevel !== null && waterLevel !== undefined;
-  const status = station.status || "no_data";
-  const color = statusColor(status);
-  const emergency = station.danger_threshold || 1;
-  const percent = hasReading ? Math.min(100, Math.round((waterLevel / emergency) * 100)) : 0;
-  const lastUpdated = station.latest_reading?.timestamp
-    ? new Date(station.latest_reading.timestamp).toLocaleString()
-    : "Waiting for reading";
-
-  return (
-    <article className="relative overflow-hidden rounded-xl border border-ink-border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
-      <div className={"absolute left-0 right-0 top-0 h-1.5 " + color} />
-      <div className="mb-5 flex items-start justify-between gap-4 pt-2">
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-widest text-brand">{station.station_code || station.id}</p>
-          <h2 className="mt-1 truncate text-xl font-bold tracking-tight text-ink-primary">{station.station_name || station.name}</h2>
-          <p className="mt-0.5 text-sm text-ink-secondary">{station.province || "Province not configured"} · {station.district}</p>
-        </div>
-        <span className={"shrink-0 rounded-full px-3 py-1 text-xs font-bold tracking-wider text-white shadow-sm " + color}>
-          {statusLabel(status)}
-        </span>
-      </div>
-
-      <div className="mb-5 flex items-end gap-2">
-        <span className="text-5xl font-black tracking-tighter text-ink-primary">{hasReading ? waterLevel.toFixed(2) : "--"}</span>
-        <span className="pb-1 text-xl font-bold text-ink-secondary">m</span>
-      </div>
-
-      <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-        <div className="rounded-lg bg-surface-bg p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-ink-secondary">River</p>
-          <p className="mt-1 font-semibold text-ink-primary">{station.river_name || "Not configured"}</p>
-        </div>
-        <div className="rounded-lg bg-surface-bg p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-ink-secondary">Basin</p>
-          <p className="mt-1 font-semibold text-ink-primary">{station.river_basin || "Not configured"}</p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <div className="mb-2 flex justify-between text-xs font-semibold text-ink-secondary">
-            <span>Level vs emergency</span>
-            <span>{hasReading ? percent + "%" : "—"}</span>
-          </div>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
-            <div className={"h-full rounded-full transition-all duration-700 " + color} style={{ width: percent + "%" }} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-semibold">
-          <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2 text-yellow-800">Watch<br /><strong>{station.watch_threshold?.toFixed(2) ?? "—"} m</strong></div>
-          <div className="rounded-md border border-orange-200 bg-orange-50 p-2 text-orange-800">Warning<br /><strong>{station.warning_threshold?.toFixed(2) ?? "—"} m</strong></div>
-          <div className="rounded-md border border-red-200 bg-red-50 p-2 text-red-800">Emergency<br /><strong>{station.danger_threshold?.toFixed(2) ?? "—"} m</strong></div>
-        </div>
-
-        <div className="flex items-center gap-1.5 border-t border-gray-100 pt-4 text-xs text-ink-secondary">
-          <Clock size={14} />
-          <span>{lastUpdated}</span>
-        </div>
-        {!hasReading && <p className="text-xs font-semibold text-gray-500">Waiting for reading</p>}
-      </div>
-    </article>
-  );
-}
-
 export default function SensorDash() {
-  const [stations, setStations] = useState([]);
-  const [filters, setFilters] = useState({ province: "", district: "", river_basin: "", river: "", station: "" });
-  const [error, setError] = useState("");
+  const [dashboard, setDashboard] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [countdown, setCountdown] = useState(30);
 
-  async function loadReadings(manual = false) {
+  async function load(manual = false) {
     if (manual) setIsRefreshing(true);
     try {
-      setStations(await getLiveReadings());
+      setDashboard(await getSensorDashboard());
       setLastUpdated(new Date());
-      setCountdown(30);
       setError("");
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not load live sensor readings.");
+      setError(err.response?.data?.detail || "Could not load sensor dashboard.");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -112,65 +51,80 @@ export default function SensorDash() {
   }
 
   useEffect(() => {
-    loadReadings();
-    const fetchTimer = window.setInterval(() => loadReadings(), 30000);
-    const countdownTimer = window.setInterval(() => setCountdown((value) => (value > 0 ? value - 1 : 30)), 1000);
-    return () => {
-      window.clearInterval(fetchTimer);
-      window.clearInterval(countdownTimer);
-    };
+    load();
+    const timer = window.setInterval(load, 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
-  function handleFilterChange(field, value) {
-    const resets = {
-      province: { district: "", river_basin: "", river: "", station: "" },
-      district: { river_basin: "", river: "", station: "" },
-      river_basin: { river: "", station: "" },
-      river: { station: "" },
-    };
-    setFilters((current) => ({ ...current, [field]: value, ...(resets[field] || {}) }));
-  }
-
-  const visibleStations = useMemo(() => filterStations(stations, filters), [stations, filters]);
+  const summary = dashboard?.summary;
+  const stations = dashboard?.stations || [];
+  const recent = dashboard?.recent_readings || [];
 
   return (
     <AdminLayout title="Sensor Dashboard">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-ink-primary">Live Sensor Dashboard</h1>
-          <p className="mt-2 text-ink-secondary">Live readings from active water-level stations. Data refreshes every 30 seconds.</p>
-          {lastUpdated && <p className="mt-1 text-xs text-ink-secondary">Last refreshed {lastUpdated.toLocaleTimeString()}</p>}
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-3 rounded-lg border border-ink-border bg-white px-4 py-2 text-sm shadow-sm">
-            <Activity size={16} className="animate-pulse text-brand" />
-            <span className="font-medium text-ink-secondary">Refreshing in <strong className="font-mono text-brand">{countdown}s</strong></span>
+      <section>
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-ink-primary">Field Officer Dashboard</h1>
+            <p className="mt-2 text-ink-secondary">Operational sensor monitoring and recent station telemetry.</p>
+            {lastUpdated && <p className="mt-1 text-xs text-ink-secondary">Last refreshed {lastUpdated.toLocaleTimeString()}</p>}
           </div>
-          <button type="button" onClick={() => loadReadings(true)} disabled={isRefreshing} className="flex items-center gap-2 rounded-lg border border-ink-border bg-white px-4 py-2 text-sm font-semibold text-ink-primary shadow-sm hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-60">
-            <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-            {isRefreshing ? "Refreshing..." : "Refresh"}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/sensors/stations?create=1" className="flex items-center gap-2 rounded-lg bg-brand px-4 py-3 font-bold text-white hover:bg-brand-gradientEnd"><Plus size={17} /> Add Sensor Station</Link>
+            <button type="button" onClick={() => load(true)} disabled={isRefreshing} className="flex items-center gap-2 rounded-lg border border-ink-border bg-white px-4 py-3 font-semibold shadow-sm hover:border-brand hover:text-brand disabled:opacity-60"><RefreshCw size={17} className={isRefreshing ? "animate-spin" : ""} /> Refresh</button>
+          </div>
         </div>
-      </div>
 
-      <SensorFilters stations={stations} filters={filters} onChange={handleFilterChange} />
-      {error && <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm font-medium text-flood-emergency">{error}</div>}
+        {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 
-      {isLoading && !stations.length ? (
-        <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand border-t-transparent" />
-          <p className="font-medium text-ink-secondary">Connecting to sensor network...</p>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {visibleStations.map((station) => <StationCard key={station.id} station={station} />)}
-          {visibleStations.length === 0 && !isLoading && (
-            <div className="col-span-full rounded-xl border border-dashed border-ink-border bg-white p-12 text-center text-ink-secondary">
-              {stations.length ? "No stations match the selected geography." : "No sensor stations configured."}
+        {isLoading ? (
+          <div className="rounded-xl border border-blue-100 bg-white p-12 text-center text-slate-600">Loading sensor dashboard...</div>
+        ) : stations.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-12 text-center shadow-sm">
+            <Activity className="mx-auto text-blue-300" size={38} />
+            <h2 className="mt-4 text-xl font-black text-blue-950">No sensor stations configured.</h2>
+            <p className="mx-auto mt-2 max-w-lg text-slate-600">Create your first monitoring station to start collecting water-level data.</p>
+            <Link to="/sensors/stations?create=1" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-3 font-bold text-white"><Plus size={17} /> Add Sensor Station</Link>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {summaryCards.map(([key, label, Icon, color]) => (
+                <article key={key} className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className={"mb-4 flex h-10 w-10 items-center justify-center rounded-lg " + color}><Icon size={20} /></div>
+                  <p className="text-sm font-semibold text-slate-500">{label}</p>
+                  <p className="mt-1 text-3xl font-black text-blue-950">{summary?.[key] ?? 0}</p>
+                </article>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+            <div className="mt-6 rounded-xl border border-blue-100 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm"><strong className="text-blue-950">Latest reading time:</strong> {summary?.latest_reading_time ? new Date(summary.latest_reading_time).toLocaleString() : "No readings found"}</div>
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+              <article className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+                <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-black text-blue-950">Station status</h2><p className="mt-1 text-sm text-slate-600">Latest backend-classified state for every configured station.</p></div><Link to="/sensors/live" className="text-sm font-bold text-brand hover:underline">Live view</Link></div>
+                <div className="mt-5 overflow-x-auto">
+                  <table className="min-w-[700px] w-full text-left text-sm">
+                    <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-2 py-3">Station</th><th className="px-2 py-3">Location</th><th className="px-2 py-3">Latest level</th><th className="px-2 py-3">Status</th><th className="px-2 py-3">Last updated</th></tr></thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {stations.map((station) => {
+                        const reading = station.latest_reading;
+                        return <tr key={station.id}><td className="px-2 py-4"><p className="font-bold text-blue-950">{station.station_code}</p><p className="text-xs text-slate-500">{station.station_name}</p></td><td className="px-2 py-4 text-slate-600">{station.province} · {station.district}<br /><span className="text-xs">{station.river_name}</span></td><td className="px-2 py-4 font-bold">{reading ? Number(reading.water_level).toFixed(2) + " m" : "--"}</td><td className="px-2 py-4"><span className={"rounded-full px-2.5 py-1 text-xs font-bold " + statusClass(station.status)}>{statusLabel(station.status)}</span></td><td className="px-2 py-4 text-xs text-slate-500">{reading ? new Date(reading.timestamp).toLocaleString() : "Station configured. Waiting for first sensor reading."}</td></tr>;
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+              <article className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-black text-blue-950">Recent readings</h2>
+                <p className="mt-1 text-sm text-slate-600">Most recent telemetry points received by the API.</p>
+                <div className="mt-5 space-y-3">
+                  {recent.length === 0 ? <p className="rounded-lg bg-blue-50 p-4 text-sm font-semibold text-blue-800">No sensor readings are available yet.</p> : recent.map((reading) => <div key={reading.station_code + reading.timestamp} className="rounded-lg border border-slate-100 p-3"><div className="flex items-center justify-between gap-2"><p className="font-bold text-blue-950">{reading.station_code} · {Number(reading.water_level).toFixed(2)} m</p><span className={"rounded-full px-2 py-1 text-[11px] font-bold " + statusClass(reading.status)}>{statusLabel(reading.status)}</span></div><p className="mt-1 text-xs text-slate-500">{reading.station_name} · {new Date(reading.timestamp).toLocaleString()}</p></div>)}
+                </div>
+              </article>
+            </div>
+            <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900"><h2 className="font-black">Sensor Demo</h2><p className="mt-2">Run <code className="font-mono font-bold">scripts/simulate_water_level.py</code> after creating a station. It sends authenticated readings through the API and demonstrates each threshold state without exposing credentials in the browser.</p></div>
+          </>
+        )}
+      </section>
     </AdminLayout>
   );
 }
