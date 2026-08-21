@@ -60,15 +60,13 @@ def get_presigned_url(s3_key: str) -> str:
             Key=optimized_key,
         )
         object_key = optimized_key
-    except ClientError as exc:
-        error_code = exc.response.get("Error", {}).get("Code", "")
-
-        if error_code not in {"404", "NoSuchKey", "NotFound"}:
-            logger.warning(
-                "Could not check optimized image %s: %s",
-                optimized_key,
-                exc,
-            )
+    except (BotoCoreError, ClientError) as exc:
+        if isinstance(exc, ClientError):
+            error_code = exc.response.get("Error", {}).get("Code", "")
+            if error_code not in {"404", "NoSuchKey", "NotFound"}:
+                logger.warning("Could not check optimized image %s: %s", optimized_key, exc)
+        else:
+            logger.warning("Could not check optimized image %s: %s", optimized_key, exc)
 
         object_key = original_key
 

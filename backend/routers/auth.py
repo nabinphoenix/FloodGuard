@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models.user import User, UserRole
-from services.sns_service import subscribe_email, unsubscribe
+from services.sns_service import is_subscription_pending, subscribe_email, unsubscribe
 from schemas.user import Token, TokenData, UserCreate, UserOut, UserUpdate, ProfileUpdateResponse
 
 
@@ -172,35 +172,33 @@ def update_profile(
     db: Session = Depends(get_db),
 ) -> ProfileUpdateResponse:
     update_data = profile_in.model_dump(exclude_unset=True)
-    # Handle email alerts preference
-    if 'email_alerts' in update_data:
-        new_val = update_data['email_alerts']
-        # Only act if the value actually changes
-        if new_val != current_user.email_alerts:
-            if new_val:
-                # Enabling alerts: subscribe if not already subscribed
-                if not current_user.sns_subscription_arn:
-                    subscription_arn = subscribe_email(current_user.email)
-                    current_user.sns_subscription_arn = subscription_arn
-                    message = "Subscription request sent. Check your email to confirm."
-                else:
-                    # Already have a subscription ARN (could be pending or confirmed)
-                    message = "Email alerts already enabled."
+    message = None
+    if "email_alerts" in update_data:
+        new_val = update_data["email_alerts"]
+        if new_val is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Email alerts must be enabled or disabled explicitly.",
+            )
+        if new_val:
+            if not current_user.sns_subscription_arn:
+                current_user.sns_subscription_arn = subscribe_email(current_user.email)
+                message = "Subscription request sent. Check your email to confirm."
+            elif is_subscription_pending(current_user.sns_subscription_arn):
+                message = "Email subscription is pending confirmation. Check your inbox."
             else:
-                # Disabling alerts: unsubscribe if we have a confirmed ARN
-                if current_user.sns_subscription_arn:
-                    unsubscribe(current_user.sns_subscription_arn)
-                    current_user.sns_subscription_arn = None
-                message = "Email alerts disabled."
+                message = "Email alerts are confirmed and enabled."
         else:
-            message = None
-    else:
-        message = None
+            if current_user.sns_subscription_arn:
+                unsubscribe(current_user.sns_subscription_arn)
+                current_user.sns_subscription_arn = None
+            message = "Email alerts disabled."
+        current_user.email_alerts = new_val
 
     # Apply remaining fields
     for field, value in update_data.items():
-        if field == 'email_alerts':
-            continue  # already handled
+        if field == "email_alerts":
+            continue
         if isinstance(value, str):
             value = value.strip() or None
         setattr(current_user, field, value)

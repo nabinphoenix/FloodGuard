@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -166,7 +166,7 @@ def broadcast_zone_alert(
     )
 
     zone.alert_level = payload.alert_level
-    zone.updated_at = datetime.utcnow()
+    zone.updated_at = datetime.now(timezone.utc)
 
     alert = FloodAlert(
         zone_id=zone.id,

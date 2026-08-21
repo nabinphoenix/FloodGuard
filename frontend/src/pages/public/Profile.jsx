@@ -9,7 +9,6 @@ export default function Profile() {
     phone: "",
     district: "",
     email_alerts: true,
-    sms_alerts: false,
   });
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
@@ -27,7 +26,6 @@ export default function Profile() {
           phone: currentUser.phone || "",
           district: currentUser.district || "",
           email_alerts: currentUser.email_alerts ?? true,
-          sms_alerts: currentUser.sms_alerts ?? false,
         });
       } catch (err) {
         setError(err.response?.data?.detail || "Could not load your profile.");
@@ -56,10 +54,9 @@ export default function Profile() {
         phone: formData.phone.trim() || null,
         district: formData.district.trim() || null,
         email_alerts: formData.email_alerts,
-        sms_alerts: formData.sms_alerts,
       });
-      setUser(updated);
-      setMessage("Profile updated.");
+      setUser(updated.user);
+      setMessage(updated.message || "Profile updated.");
     } catch (err) {
       setError(err.response?.data?.detail || "Could not update your profile.");
     } finally {
@@ -114,25 +111,24 @@ export default function Profile() {
             />
           </div>
 
-          <label className="flex items-center gap-3 rounded-md border border-blue-100 p-4">
+          <div className="rounded-md border border-blue-100 bg-blue-50 p-4 md:col-span-2">
             <input
               type="checkbox"
               checked={formData.email_alerts}
               onChange={(event) => updateField("email_alerts", event.target.checked)}
               className="h-4 w-4"
             />
-            <span className="text-sm font-medium text-slate-800">Receive email alerts</span>
-          </label>
-
-          <label className="flex items-center gap-3 rounded-md border border-blue-100 p-4">
-            <input
-              type="checkbox"
-              checked={formData.sms_alerts}
-              onChange={(event) => updateField("sms_alerts", event.target.checked)}
-              className="h-4 w-4"
-            />
-            <span className="text-sm font-medium text-slate-800">Receive SMS alerts</span>
-          </label>
+            <span className="ml-2 text-sm font-medium text-slate-800">Receive email alerts</span>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              FloodGuard uses Amazon SNS. Enabling alerts sends a confirmation email; alerts start after you confirm the subscription.
+            </p>
+            {user?.email_alert_status === "pending" && (
+              <p className="mt-2 text-xs font-semibold text-amber-700">Confirmation is still pending. Check your inbox.</p>
+            )}
+            {user?.email_alert_status === "confirmed" && (
+              <p className="mt-2 text-xs font-semibold text-green-700">Your email subscription is confirmed.</p>
+            )}
+          </div>
 
           <button
             type="submit"

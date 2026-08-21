@@ -16,6 +16,13 @@ class AlertZoneOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AlertZoneUpdate(BaseModel):
+    district: str | None = Field(default=None, min_length=2, max_length=100)
+    alert_level: AlertLevel | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+
+
 class FloodAlertCreate(BaseModel):
     zone_id: int
     alert_level: AlertLevel

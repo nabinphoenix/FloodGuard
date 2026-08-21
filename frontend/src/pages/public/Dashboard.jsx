@@ -154,16 +154,11 @@ export default function PublicDashboard() {
               Email alerts
             </p>
             <p className="mt-1 font-semibold text-slate-900">
-              {user?.email_alerts ? "Enabled" : "Disabled"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
-            <p className="text-sm text-slate-500">
-              SMS alerts
-            </p>
-            <p className="mt-1 font-semibold text-slate-900">
-              {user?.sms_alerts ? "Enabled" : "Disabled"}
+              {user?.email_alert_status === "confirmed"
+                ? "Confirmed"
+                : user?.email_alert_status === "pending"
+                  ? "Pending confirmation"
+                  : "Disabled"}
             </p>
           </div>
         </section>

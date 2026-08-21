@@ -54,3 +54,12 @@ class User(Base):
         "FloodAlert",
         back_populates="triggered_by_user",
     )
+
+    @property
+    def email_alert_status(self) -> str:
+        """Return the user-facing state of the SNS email subscription."""
+        if not self.email_alerts or not self.sns_subscription_arn:
+            return "disabled"
+        if self.sns_subscription_arn == "PendingConfirmation":
+            return "pending"
+        return "confirmed"

@@ -21,7 +21,7 @@ class UserOut(BaseModel):
     district: str | None
     role: UserRole
     email_alerts: bool
-    sns_subscription_arn: str | None
+    email_alert_status: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +42,23 @@ class UserUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     district: str | None = Field(default=None, max_length=100)
     email_alerts: bool | None = None
+
+
+class AdminUserCreate(UserCreate):
+    role: UserRole = UserRole.public
+    email_alerts: bool = False
+
+
+class AdminUserUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=100)
+    email: str | None = Field(default=None, min_length=5, max_length=255)
+    phone: str | None = Field(default=None, max_length=30)
+    district: str | None = Field(default=None, max_length=100)
+    email_alerts: bool | None = None
+
+
+class AdminUserPasswordReset(BaseModel):
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class ProfileUpdateResponse(BaseModel):

@@ -10,13 +10,14 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,
-    pool_recycle=280,
-    pool_size=5,
-    max_overflow=10,
-)
+engine_options = {
+    "pool_pre_ping": True,
+    "pool_recycle": 280,
+}
+if not settings.database_url.startswith("sqlite"):
+    engine_options.update({"pool_size": 5, "max_overflow": 10})
+
+engine = create_engine(settings.database_url, **engine_options)
 
 SessionLocal = sessionmaker(
     autocommit=False,

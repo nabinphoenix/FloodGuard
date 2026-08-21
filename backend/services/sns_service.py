@@ -16,12 +16,26 @@ sns_client = boto3.client(
     region_name=settings.aws_region,
 )
 
+PENDING_CONFIRMATION_ARN = "PendingConfirmation"
+
 
 def is_subscription_confirmed(subscription_arn: str | None) -> bool:
     """Return True when the SNS subscription has been confirmed."""
     if not subscription_arn:
         return False
-    return subscription_arn != "PendingConfirmation"
+    return subscription_arn != PENDING_CONFIRMATION_ARN
+
+
+def is_subscription_pending(subscription_arn: str | None) -> bool:
+    return subscription_arn == PENDING_CONFIRMATION_ARN
+
+
+def subscription_status(subscription_arn: str | None, email_alerts: bool) -> str:
+    if not email_alerts or not subscription_arn:
+        return "disabled"
+    if is_subscription_pending(subscription_arn):
+        return "pending"
+    return "confirmed"
 
 
 def subscribe_email(email: str) -> str:
@@ -39,7 +53,14 @@ def subscribe_email(email: str) -> str:
             detail="Could not subscribe email to SNS.",
         ) from exc
 
-    return response["SubscriptionArn"]
+    subscription_arn = response.get("SubscriptionArn")
+    if not subscription_arn:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="SNS did not return a subscription identifier.",
+        )
+
+    return subscription_arn
 
 
 def unsubscribe(subscription_arn: str | None) -> None:
@@ -52,11 +73,15 @@ def unsubscribe(subscription_arn: str | None) -> None:
             SubscriptionArn=subscription_arn,
         )
     except (BotoCoreError, ClientError) as exc:
-        logger.warning(
+        logger.error(
             "Failed to unsubscribe SNS subscription %s: %s",
             subscription_arn,
             exc,
         )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not unsubscribe email from SNS.",
+        ) from exc
 
 
 def broadcast_alert(
@@ -98,4 +123,11 @@ def broadcast_alert(
             detail="Could not publish alert to SNS.",
         ) from exc
 
-    return response["MessageId"]
+    message_id = response.get("MessageId")
+    if not message_id:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="SNS did not return a message identifier.",
+        )
+
+    return message_id

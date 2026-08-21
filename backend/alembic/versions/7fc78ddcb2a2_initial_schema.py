@@ -49,7 +49,6 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("email_alerts", sa.Boolean(), server_default="1", nullable=False),
-        sa.Column("sms_alerts", sa.Boolean(), server_default="0", nullable=False),
         sa.Column("sns_subscription_arn", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
