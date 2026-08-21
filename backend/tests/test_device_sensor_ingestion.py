@@ -1,7 +1,12 @@
+from config import settings
 from models.sensor import SensorReading, SensorStation
 from models.user import User, UserRole
 from routers import sensors as sensors_router
 from routers.auth import hash_password
+
+def device_headers():
+    return {"X-Sensor-Token": settings.sensor_ingestion_token}
+
 
 
 def make_station(db, station_id="DEVICE001", active=True):
@@ -56,7 +61,7 @@ def test_device_config_requires_token_and_returns_real_thresholds(client, db):
 
     response = test_client.get(
         f"/api/sensors/device-stations/{station.id}",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
     )
     assert response.status_code == 200
     assert response.json()["watch_threshold"] == 2.5
@@ -84,7 +89,7 @@ def test_valid_device_reading_reuses_processing_and_saves_classification(client,
 
     response = test_client.post(
         "/api/sensors/device-reading",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
         json={"station_code": station.id, "water_level": 3.6},
     )
 
@@ -103,7 +108,7 @@ def test_device_endpoint_rejects_trusted_status_field(client, db):
 
     response = test_client.post(
         "/api/sensors/device-reading",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
         json={"station_code": station.id, "water_level": 3.6, "status": "safe"},
     )
 
@@ -114,17 +119,17 @@ def test_device_station_unknown_and_inactive_are_rejected(client, db):
     test_client, _ = client
     assert test_client.get(
         "/api/sensors/device-stations/MISSING",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
     ).status_code == 404
 
     station = make_station(db, station_id="INACTIVE", active=False)
     assert test_client.get(
         f"/api/sensors/device-stations/{station.id}",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
     ).status_code == 400
     assert test_client.post(
         "/api/sensors/device-reading",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
         json={"station_code": station.id, "water_level": 1.0},
     ).status_code == 400
 
@@ -136,7 +141,7 @@ def test_device_ingestion_is_unavailable_without_server_token(client, db, monkey
 
     response = test_client.post(
         "/api/sensors/device-reading",
-        headers={"X-Sensor-Token": "test-device-token"},
+        headers=device_headers(),
         json={"station_code": "DEVICE001", "water_level": 1.0},
     )
 
