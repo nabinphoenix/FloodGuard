@@ -112,8 +112,9 @@ export default function WaterLevelChart() {
 
     if (selectedStation) {
       datasets.push(
+        thresholdLine("Watch threshold", selectedStation.watch_threshold, "#EAB308", labels.length),
         thresholdLine("Warning threshold", selectedStation.warning_threshold, "#F97316", labels.length),
-        thresholdLine("Danger threshold", selectedStation.danger_threshold, "#EF4444", labels.length)
+        thresholdLine("Emergency threshold", selectedStation.danger_threshold, "#EF4444", labels.length)
       );
     }
 
@@ -179,7 +180,7 @@ export default function WaterLevelChart() {
         <div>
           <h1 className="text-3xl font-bold text-ink-primary tracking-tight">Historical Water Levels</h1>
           <p className="mt-2 text-ink-secondary">
-            View the latest readings with warning and danger thresholds.
+            View live station history with watch, warning, and emergency thresholds.
           </p>
         </div>
         <div className="relative md:w-72">

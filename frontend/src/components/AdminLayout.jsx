@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BookOpen,
   FileText,
   House,
   LayoutDashboard,
@@ -41,6 +42,7 @@ const linksByRole = {
   field_officer: [
     { label: "Dashboard", to: "/sensors", icon: <LayoutDashboard size={20} />, end: true },
     { label: "Water Levels", to: "/sensors/chart", icon: <FileText size={20} /> },
+    { label: "Historical Flood Data", to: "/history", icon: <BookOpen size={20} /> },
     { label: "Thresholds", to: "/sensors/thresholds", icon: <Settings2 size={20} /> },
     { label: "System Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
     { label: "Home", to: "/", icon: <House size={20} />, end: true },

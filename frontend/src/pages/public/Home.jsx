@@ -1,7 +1,8 @@
-import { Activity, BellRing, FileWarning, MapPin, Activity as StatsIcon, AlertTriangle, FileText, ShieldCheck } from "lucide-react";
+import { Activity, BellRing, BookOpen, FileWarning, MapPin, AlertTriangle, FileText, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { getFloodSummary } from "../../api/history";
 import { getAlertZones, getPublicStats } from "../../api/public";
 import { getCommunityReports } from "../../api/reports";
 import AlertBadge from "../../components/AlertBadge";
@@ -35,6 +36,7 @@ export default function Home() {
   const [zones, setZones] = useState([]);
   const [reports, setReports] = useState([]);
   const [stats, setStats] = useState(null);
+  const [historySummary, setHistorySummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,6 +59,10 @@ export default function Home() {
     }
 
     loadHomeData();
+  }, []);
+
+  useEffect(() => {
+    getFloodSummary().then(setHistorySummary).catch(() => {});
   }, []);
 
   return (
@@ -173,6 +179,35 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {historySummary && (
+        <section className="mx-auto max-w-7xl px-6 py-12">
+          <div className="rounded-2xl bg-gradient-to-br from-blue-900 to-blue-700 p-8 text-white shadow-lg">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-blue-200"><BookOpen size={20} /><span className="text-sm font-bold uppercase tracking-wide">Flood History in Nepal</span></div>
+                <h2 className="mt-3 text-3xl font-black">Documented flood impacts, 2011–2023</h2>
+                <p className="mt-2 max-w-2xl text-blue-100">Explore historical flood incidents, impacts, affected regions and major river systems across Nepal. Historical figures are separate from live sensor data.</p>
+              </div>
+              <Link to="/history" className="shrink-0 rounded-full bg-white px-5 py-3 text-center font-bold text-blue-800 hover:bg-blue-50">Explore Flood History →</Link>
+            </div>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Flood incidents", historySummary.flood_incidents],
+                ["Deaths", historySummary.deaths],
+                ["Missing", historySummary.missing],
+                ["Affected families", historySummary.affected_families],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl bg-white/10 p-4">
+                  <p className="text-2xl font-black">{new Intl.NumberFormat("en-NP").format(value)}</p>
+                  <p className="mt-1 text-sm text-blue-100">{label}</p>
+                  <p className="mt-1 text-xs font-semibold text-blue-200">2011–2023 national series</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

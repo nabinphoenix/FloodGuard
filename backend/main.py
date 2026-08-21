@@ -42,6 +42,7 @@ def include_project_router(module_name: str, prefix: str, tags: list[str]) -> No
 
 include_project_router("auth", "/auth", ["auth"])
 include_project_router("public", "/public", ["public"])
+include_project_router("history", "/history", ["history"])
 include_project_router("reports", "/reports", ["reports"])
 include_project_router("admin", "/admin", ["admin"])
 include_project_router("authority", "/authority", ["authority"])

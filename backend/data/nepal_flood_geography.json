@@ -1,0 +1,133 @@
+{
+  "dataset_title": "Nepal flood geography reference",
+  "dataset_scope": "Districts represented in the current flood research dataset",
+  "provinces": [
+    {
+      "name": "Koshi",
+      "districts": [
+        {"name": "Jhapa", "ecological_region": "Terai", "rivers": ["Kankai", "Mechi", "Ratuwa"], "river_basins": ["Koshi Basin"]},
+        {"name": "Morang", "ecological_region": "Terai", "rivers": ["Budhi Khola", "Singhiya", "Kesaliya"], "river_basins": ["Koshi Basin"]},
+        {"name": "Sunsari", "ecological_region": "Terai", "rivers": ["Koshi", "Budhi Khola"], "river_basins": ["Koshi Basin"]}
+      ]
+    },
+    {
+      "name": "Madhesh",
+      "districts": [
+        {"name": "Saptari", "ecological_region": "Terai", "rivers": ["Koshi", "Khado"], "river_basins": ["Koshi Basin"]},
+        {"name": "Siraha", "ecological_region": "Terai", "rivers": ["Kamala", "Balan"], "river_basins": ["Kamala Basin"]},
+        {"name": "Sarlahi", "ecological_region": "Terai", "rivers": ["Bagmati", "Lakhandei"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Rautahat", "ecological_region": "Terai", "rivers": ["Bagmati", "Lalbakaiya"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Mahottari", "ecological_region": "Terai", "rivers": ["Ratu", "Bighi"], "river_basins": ["Ratu Basin"]},
+        {"name": "Dhanusha", "ecological_region": "Terai", "rivers": ["Kamala", "Jalad"], "river_basins": ["Kamala Basin"]},
+        {"name": "Bara", "ecological_region": "Terai", "rivers": ["Bangari", "Pasaha"], "river_basins": []},
+        {"name": "Parsa", "ecological_region": "Terai", "rivers": ["Sirsiya"], "river_basins": []}
+      ]
+    },
+    {
+      "name": "Bagmati",
+      "districts": [
+        {"name": "Chitwan", "ecological_region": "Inner Terai", "rivers": ["Narayani", "Rapti"], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Makwanpur", "ecological_region": "Hill / Inner Terai", "rivers": ["Rapti", "Kulekhani"], "river_basins": ["Gandaki / Narayani Basin", "Bagmati Basin"]},
+        {"name": "Kathmandu", "ecological_region": "Valley", "rivers": ["Bagmati", "Bishnumati", "Manohara"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Lalitpur", "ecological_region": "Valley", "rivers": ["Bagmati", "Nakkhu"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Sindhuli", "ecological_region": "Hill", "rivers": ["Kamala", "Marin"], "river_basins": ["Kamala Basin"]}
+      ]
+    },
+    {
+      "name": "Gandaki",
+      "districts": [
+        {
+          "name": "Kaski",
+          "ecological_region": "Hill / Valley",
+          "rivers": ["Seti"],
+          "river_basins": ["Gandaki / Narayani Basin"],
+          "source_note": "Included because the existing FloodGuard station STN003 is identified as Seti River in Kaski; it is not a province-level annual flood total."
+        }
+      ]
+    },
+    {
+      "name": "Lumbini",
+      "districts": [
+        {"name": "Rupandehi", "ecological_region": "Terai", "rivers": ["Tinau", "Dano"], "river_basins": ["Tinau Basin"]},
+        {"name": "Kapilvastu", "ecological_region": "Terai", "rivers": ["Banganga"], "river_basins": []},
+        {"name": "Dang", "ecological_region": "Inner Terai", "rivers": ["Babai", "West Rapti"], "river_basins": ["West Rapti Basin"]},
+        {"name": "Banke", "ecological_region": "Terai", "rivers": ["Rapti", "Duduwa"], "river_basins": ["West Rapti Basin"]},
+        {"name": "Bardiya", "ecological_region": "Terai", "rivers": ["Karnali", "Babai"], "river_basins": ["Karnali Basin"]}
+      ]
+    },
+    {
+      "name": "Karnali",
+      "districts": [
+        {"name": "Surkhet", "ecological_region": "Valley / foothills", "rivers": ["Bheri", "Karnali"], "river_basins": ["Karnali Basin"]}
+      ]
+    },
+    {
+      "name": "Sudurpashchim",
+      "districts": [
+        {"name": "Kailali", "ecological_region": "Terai", "rivers": ["Mohana", "Karnali"], "river_basins": ["Karnali Basin"]},
+        {"name": "Kanchanpur", "ecological_region": "Terai", "rivers": ["Mahakali", "Dodha"], "river_basins": ["Mahakali Basin"]},
+        {"name": "Darchula", "ecological_region": "Mountain", "rivers": ["Mahakali"], "river_basins": ["Mahakali Basin"]}
+      ]
+    }
+  ],
+  "historical_boundary_notes": [
+    "The supplied research lists historical Nawalparasi as Lumbini/Gandaki. It is retained in basin metadata and is not mapped here to one modern province or district.",
+    "This is not a complete list of all 77 Nepal districts. More districts can be added without changing the API shape."
+  ],
+  "basins": [
+    {
+      "name": "Koshi Basin",
+      "important_rivers": ["Koshi", "Arun", "Tamor", "Sun Koshi", "Dudh Koshi", "Kankai", "Khado"],
+      "commonly_affected_districts": ["Jhapa", "Morang", "Sunsari", "Saptari", "Sankhuwasabha", "Sindhupalchok"],
+      "flood_characteristics": "Large monsoon floods, riverbank erosion, embankment failure, sedimentation"
+    },
+    {
+      "name": "Gandaki / Narayani Basin",
+      "important_rivers": ["Narayani", "Kali Gandaki", "Marsyangdi", "Seti", "Trishuli", "Rapti"],
+      "commonly_affected_districts": ["Chitwan", "Nawalparasi", "Tanahun", "Gorkha", "Kaski", "Dhading", "Makwanpur"],
+      "flood_characteristics": "Flash floods in hills and river flooding in Chitwan and southern plains"
+    },
+    {
+      "name": "Karnali Basin",
+      "important_rivers": ["Karnali", "Bheri", "West Seti", "Babai", "Mohana"],
+      "commonly_affected_districts": ["Surkhet", "Bardiya", "Kailali", "Achham", "Bajura"],
+      "flood_characteristics": "Large downstream floods, river-channel migration, agricultural and settlement damage"
+    },
+    {
+      "name": "Mahakali Basin",
+      "important_rivers": ["Mahakali", "Chameliya", "Darchula tributaries"],
+      "commonly_affected_districts": ["Darchula", "Baitadi", "Dadeldhura", "Kanchanpur"],
+      "flood_characteristics": "Flash floods, landslides and transboundary flooding"
+    },
+    {
+      "name": "Bagmati Basin",
+      "important_rivers": ["Bagmati", "Bishnumati", "Manohara", "Kulekhani", "Lakhandei"],
+      "commonly_affected_districts": ["Kathmandu", "Lalitpur", "Bhaktapur", "Makwanpur", "Rautahat", "Sarlahi"],
+      "flood_characteristics": "Urban flooding, cloudburst floods, embankment and drainage problems"
+    },
+    {
+      "name": "West Rapti Basin",
+      "important_rivers": ["West Rapti", "Madi", "Jhimruk"],
+      "commonly_affected_districts": ["Dang", "Banke", "Pyuthan", "Rolpa", "Arghakhanchi"],
+      "flood_characteristics": "Monsoon river flooding across western inner-Terai and plain districts"
+    },
+    {
+      "name": "Kamala Basin",
+      "important_rivers": ["Kamala", "Tawa", "Marin"],
+      "commonly_affected_districts": ["Sindhuli", "Dhanusha", "Siraha"],
+      "flood_characteristics": "Monsoon river flooding affecting hill-to-Terai corridors"
+    },
+    {
+      "name": "Tinau Basin",
+      "important_rivers": ["Tinau", "Dano"],
+      "commonly_affected_districts": ["Rupandehi", "Palpa"],
+      "flood_characteristics": "Monsoon flooding and downstream urban and agricultural exposure"
+    },
+    {
+      "name": "Ratu Basin",
+      "important_rivers": ["Ratu", "Bighi"],
+      "commonly_affected_districts": ["Mahottari", "Sarlahi", "Dhanusha"],
+      "flood_characteristics": "Southern plains flooding during intense monsoon rainfall"
+    }
+  ]
+}

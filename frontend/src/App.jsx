@@ -12,6 +12,7 @@ import AlertFeed from "./pages/public/AlertFeed";
 import PublicDashboard from "./pages/public/Dashboard";
 import FloodMap from "./pages/public/FloodMap";
 import Home from "./pages/public/Home";
+import History from "./pages/public/History";
 import Login from "./pages/public/Login";
 import Profile from "./pages/public/Profile";
 import Register from "./pages/public/Register";
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/alerts" element={<AlertFeed />} />
         <Route path="/map" element={<FloodMap />} />
+        <Route path="/history" element={<History />} />
         <Route path="/reports/community" element={<CommunityFeed />} />
         <Route path="/reports/:reportId" element={<ReportDetail />} />
         <Route path="/reports/submit" element={<ProtectedRoute><SubmitReport /></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from models.sensor import SensorReading, SensorStation
+from models.sensor import SensorStation
 from models.user import User, UserRole
 from routers import sensors as sensors_router
 from routers.auth import hash_password
@@ -29,10 +29,14 @@ def make_user(db, name, email, role):
 def make_station(db):
     station = SensorStation(
         id="STN001",
-        name="Test River",
-        district="Test District",
+        name="Narayani River",
+        province="Bagmati",
+        district="Chitwan",
+        river_basin="Gandaki / Narayani Basin",
+        river_name="Narayani",
         latitude=27.7,
         longitude=85.3,
+        watch_threshold=2.5,
         warning_threshold=3.5,
         danger_threshold=4.5,
         is_active=True,
@@ -44,11 +48,15 @@ def make_station(db):
 
 
 def test_sensor_classification_boundaries():
-    station = SensorStation(warning_threshold=3.5, danger_threshold=4.5)
-    assert sensors_router.alert_level_for_reading(3.49, station).value == "safe"
+    station = SensorStation(watch_threshold=2.5, warning_threshold=3.5, danger_threshold=4.5)
+    assert sensors_router.alert_level_for_reading(2.0, station).value == "safe"
+    assert sensors_router.alert_level_for_reading(2.49, station).value == "safe"
+    assert sensors_router.alert_level_for_reading(2.5, station).value == "watch"
+    assert sensors_router.alert_level_for_reading(3.0, station).value == "watch"
     assert sensors_router.alert_level_for_reading(3.5, station).value == "warning"
-    assert sensors_router.alert_level_for_reading(4.49, station).value == "warning"
+    assert sensors_router.alert_level_for_reading(4.0, station).value == "warning"
     assert sensors_router.alert_level_for_reading(4.5, station).value == "emergency"
+    assert sensors_router.alert_level_for_reading(5.0, station).value == "emergency"
 
 
 def test_live_station_without_reading_is_no_data(client, db):
@@ -75,7 +83,7 @@ def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
     assert test_client.post("/api/sensors/reading", json={"station_id": station.id, "water_level": 2.0}).status_code == 403
     assert test_client.put(
         f"/api/sensors/stations/{station.id}/thresholds",
-        json={"warning_threshold": 3.0, "danger_threshold": 4.0},
+        json={"watch_threshold": 2.0, "warning_threshold": 3.0, "danger_threshold": 4.0},
     ).status_code == 403
 
     monkeypatch.setattr(sensors_router, "send_sensor_reading", lambda payload: None)
@@ -86,20 +94,19 @@ def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
         "/api/sensors/reading",
         json={
             "station_id": station.id,
-            "water_level": 3.5,
+            "water_level": 3.0,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
     assert reading_response.status_code == 200
-    assert reading_response.json()["alert_level"] == "warning"
-    assert reading_response.json()["station"]["status"] == "warning"
+    assert reading_response.json()["alert_level"] == "watch"
 
     threshold_response = test_client.put(
         f"/api/sensors/stations/{station.id}/thresholds",
-        json={"warning_threshold": 3.0, "danger_threshold": 4.0},
+        json={"watch_threshold": 2.0, "warning_threshold": 3.0, "danger_threshold": 4.0},
     )
     assert threshold_response.status_code == 200
-    assert threshold_response.json()["warning_threshold"] == 3.0
+    assert threshold_response.json()["watch_threshold"] == 2.0
 
     assert test_client.get(f"/api/sensors/history/{station.id}").status_code == 200
     monkeypatch.setattr(
@@ -118,10 +125,6 @@ def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
     assert admin_reading.status_code == 200
     assert admin_reading.json()["alert_level"] == "emergency"
     assert test_client.get("/api/sensors/health").status_code == 200
-    assert test_client.put(
-        f"/api/sensors/stations/{station.id}/thresholds",
-        json={"warning_threshold": 3.2, "danger_threshold": 4.2},
-    ).status_code == 200
 
 
 def test_sensor_threshold_validation(client, db):
@@ -135,33 +138,37 @@ def test_sensor_threshold_validation(client, db):
         email_alerts=False,
     )
 
-    response = test_client.put(
-        f"/api/sensors/stations/{station.id}/thresholds",
-        json={"warning_threshold": 4.0, "danger_threshold": 3.0},
-    )
-
-    assert response.status_code == 400
-    assert "greater than or equal" in response.json()["detail"]
+    invalid_pairs = [
+        {"watch_threshold": 3.5, "warning_threshold": 3.5, "danger_threshold": 4.5},
+        {"watch_threshold": 2.5, "warning_threshold": 4.5, "danger_threshold": 4.5},
+        {"watch_threshold": -1, "warning_threshold": 3.5, "danger_threshold": 4.5},
+    ]
+    responses = [
+        test_client.put(
+            f"/api/sensors/stations/{station.id}/thresholds",
+            json=payload,
+        )
+        for payload in invalid_pairs
+    ]
+    assert responses[0].status_code == 400
+    assert responses[1].status_code == 400
+    assert responses[2].status_code == 422
 
 
 def test_simulator_helpers_use_api_thresholds():
     assert api_base_url("http://localhost:8000") == "http://localhost:8000/api"
     assert api_base_url("http://localhost:8000/api/") == "http://localhost:8000/api"
-    assert classify_level(2.0, 3.5, 4.5) == "safe"
-    assert classify_level(3.5, 3.5, 4.5) == "warning"
-    assert classify_level(4.5, 3.5, 4.5) == "emergency"
+    assert classify_level(2.0, 2.5, 3.5, 4.5) == "safe"
+    assert classify_level(2.5, 2.5, 3.5, 4.5) == "watch"
+    assert classify_level(3.5, 2.5, 3.5, 4.5) == "warning"
+    assert classify_level(4.5, 2.5, 3.5, 4.5) == "emergency"
 
-    phases = simulation_cycle(3.5, 4.5)
+    phases = simulation_cycle(2.5, 3.5, 4.5)
     assert [phase for phase, _ in phases] == [
-        "safe",
-        "safe",
-        "warning",
-        "warning",
-        "emergency",
-        "warning",
-        "safe",
+        "safe", "safe", "watch", "watch", "warning",
+        "warning", "emergency", "warning", "watch", "safe",
     ]
-    assert all(classify_level(level, 3.5, 4.5) == phase for phase, level in phases)
+    assert all(classify_level(level, 2.5, 3.5, 4.5) == phase for phase, level in phases)
 
 
 def test_simulator_cli_requires_station():

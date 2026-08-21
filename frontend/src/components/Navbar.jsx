@@ -51,9 +51,13 @@ export default function Navbar() {
     { label: "Home", to: "/" },
     { label: "Alerts", to: "/alerts" },
     { label: "Map", to: "/map" },
-    { label: "Report Flood", to: "/reports/submit" },
+    { label: "Flood History", to: "/history" },
     { label: "Community", to: "/reports/community" },
   ];
+
+  if (user) {
+    links.splice(4, 0, { label: "Report Flood", to: "/reports/submit" });
+  }
 
   if (user?.role === "public") links.push({ label: "Dashboard", to: "/dashboard" });
   if (user?.role === "admin") links.push({ label: "Admin Dashboard", to: "/admin" });

@@ -1,21 +1,29 @@
 INSERT INTO sensor_stations (
     id,
     name,
+    province,
     district,
+    river_basin,
+    river_name,
     latitude,
     longitude,
+    watch_threshold,
     warning_threshold,
     danger_threshold,
     is_active
 ) VALUES
-    ('STN001', 'Narayani River', 'Chitwan', 27.6710, 84.4305, 3.5, 4.5, 1),
-    ('STN002', 'Bagmati River', 'Kathmandu', 27.7172, 85.3240, 3.2, 4.2, 1),
-    ('STN003', 'Seti River', 'Kaski', 28.2096, 83.9856, 3.0, 4.0, 1)
+    ('STN001', 'Narayani River', 'Bagmati', 'Chitwan', 'Gandaki / Narayani Basin', 'Narayani', 27.6710, 84.4305, 2.5, 3.5, 4.5, 1),
+    ('STN002', 'Bagmati River', 'Bagmati', 'Kathmandu', 'Bagmati Basin', 'Bagmati', 27.7172, 85.3240, 2.2, 3.2, 4.2, 1),
+    ('STN003', 'Seti River', 'Gandaki', 'Kaski', 'Gandaki / Narayani Basin', 'Seti', 28.2096, 83.9856, 2.0, 3.0, 4.0, 1)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
+    province = VALUES(province),
     district = VALUES(district),
+    river_basin = VALUES(river_basin),
+    river_name = VALUES(river_name),
     latitude = VALUES(latitude),
     longitude = VALUES(longitude),
+    watch_threshold = VALUES(watch_threshold),
     warning_threshold = VALUES(warning_threshold),
     danger_threshold = VALUES(danger_threshold),
     is_active = VALUES(is_active);

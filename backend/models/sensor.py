@@ -15,15 +15,34 @@ if TYPE_CHECKING:
 class SensorStation(Base):
     __tablename__ = "sensor_stations"
     __table_args__ = (
-        CheckConstraint("warning_threshold >= 0", name="ck_sensor_stations_warning_threshold_nonnegative"),
-        CheckConstraint("danger_threshold >= warning_threshold", name="ck_sensor_stations_danger_threshold_valid"),
+        CheckConstraint(
+            "watch_threshold IS NULL OR watch_threshold >= 0",
+            name="ck_sensor_stations_watch_threshold_nonnegative",
+        ),
+        CheckConstraint(
+            "watch_threshold IS NULL OR watch_threshold < warning_threshold",
+            name="ck_sensor_stations_watch_threshold_before_warning",
+        ),
+        CheckConstraint(
+            "warning_threshold >= 0",
+            name="ck_sensor_stations_warning_threshold_nonnegative",
+        ),
+        CheckConstraint(
+            "danger_threshold > warning_threshold",
+            name="ck_sensor_stations_danger_threshold_valid",
+        ),
     )
 
+    # Existing id/name columns remain the station code/name for compatibility.
     id: Mapped[str] = mapped_column(String(20), primary_key=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
+    province: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    river_basin: Mapped[str | None] = mapped_column(String(150), nullable=True, index=True)
+    river_name: Mapped[str | None] = mapped_column(String(150), nullable=True, index=True)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    watch_threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
     warning_threshold: Mapped[float] = mapped_column(Float, nullable=False)
     danger_threshold: Mapped[float] = mapped_column(Float, nullable=False)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="1")
@@ -33,7 +52,6 @@ class SensorStation(Base):
         server_default=func.now(),
     )
 
-    # One station has many readings.
     readings: Mapped[list[SensorReading]] = relationship(
         "SensorReading",
         back_populates="station",
@@ -43,20 +61,10 @@ class SensorStation(Base):
 
 
 class SensorReading(Base):
-    """A single water-level measurement from a sensor station.
-
-    ``recorded_at`` is the authoritative timestamp for the measurement
-    (either the time provided by the sensor or the UTC time the reading
-    was received by the API).  ``created_at`` is the database insert time.
-
-    The composite index on ``(station_id, recorded_at)`` makes the common
-    query patterns — latest reading per station and ordered history for a
-    station — efficient.
-    """
+    """A single water-level measurement stored in the relational database."""
 
     __tablename__ = "sensor_readings"
     __table_args__ = (
-        # Composite index used by: latest-per-station subquery, history query.
         Index("ix_sensor_readings_station_recorded", "station_id", "recorded_at"),
     )
 
@@ -67,14 +75,11 @@ class SensorReading(Base):
         nullable=False,
     )
     water_level: Mapped[float] = mapped_column(Float, nullable=False)
-    # The canonical measurement timestamp (tz-aware).  Stored as provided by
-    # the sensor; falls back to UTC now() when the sensor omits it.
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         index=True,
     )
-    # DB insert time — useful for auditing lag between measurement and ingestion.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

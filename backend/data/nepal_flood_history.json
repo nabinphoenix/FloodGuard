@@ -1,0 +1,73 @@
+{
+  "period": "2011-2023",
+  "summary": {
+    "flood_incidents": 1967,
+    "deaths": 894,
+    "missing": 584,
+    "injured": 217,
+    "affected_families": 69042,
+    "estimated_loss_npr": 17083333888
+  },
+  "source_metadata": [
+    {
+      "source": "Nepal DRR Portal-based study",
+      "period": "2011-2023",
+      "reliability": "Curated national annual series supplied for FloodGuard",
+      "notes": "Values are national annual totals and are not province- or district-level aggregates."
+    },
+    {
+      "source": "DesInventar historical series",
+      "period": "1971-2013",
+      "reliability": "Separate historical series",
+      "notes": "Do not add this series to the 2011-2023 DRR Portal-based study because definitions and periods overlap."
+    }
+  ],
+  "annual": [
+    {"year": 2011, "flood_incidents": 259, "deaths": 126, "missing": 93, "injured": 19, "affected_families": 400, "estimated_loss_npr": 512104500},
+    {"year": 2012, "flood_incidents": 45, "deaths": 9, "missing": 7, "injured": 3, "affected_families": 139, "estimated_loss_npr": 21376000},
+    {"year": 2013, "flood_incidents": 266, "deaths": 131, "missing": 133, "injured": 5, "affected_families": 892, "estimated_loss_npr": 20327300},
+    {"year": 2014, "flood_incidents": 65, "deaths": 129, "missing": 133, "injured": 36, "affected_families": 36514, "estimated_loss_npr": 14917613938},
+    {"year": 2015, "flood_incidents": 15, "deaths": 0, "missing": 3, "injured": 6, "affected_families": 23, "estimated_loss_npr": 16585000},
+    {"year": 2016, "flood_incidents": 230, "deaths": 101, "missing": 36, "injured": 17, "affected_families": 7123, "estimated_loss_npr": 30711501},
+    {"year": 2017, "flood_incidents": 338, "deaths": 166, "missing": 42, "injured": 35, "affected_families": 15118, "estimated_loss_npr": 26413500},
+    {"year": 2018, "flood_incidents": 80, "deaths": 17, "missing": 3, "injured": 26, "affected_families": 1078, "estimated_loss_npr": 34530900},
+    {"year": 2019, "flood_incidents": 206, "deaths": 73, "missing": 27, "injured": 20, "affected_families": 3075, "estimated_loss_npr": 1063495249},
+    {"year": 2020, "flood_incidents": 98, "deaths": 42, "missing": 37, "injured": 11, "affected_families": 512, "estimated_loss_npr": 49411000},
+    {"year": 2021, "flood_incidents": 154, "deaths": 63, "missing": 34, "injured": 14, "affected_families": 279, "estimated_loss_npr": 115391500},
+    {"year": 2022, "flood_incidents": 55, "deaths": 19, "missing": 15, "injured": 17, "affected_families": 142, "estimated_loss_npr": 14588000},
+    {"year": 2023, "flood_incidents": 156, "deaths": 18, "missing": 21, "injured": 8, "affected_families": 3747, "estimated_loss_npr": 260785500}
+  ],
+  "major_events": [
+    {"year": 1978, "event": "Tinau Basin flood", "areas": ["Rupandehi and surrounding districts"], "river_basins": ["Tinau Basin"], "rivers": ["Tinau"], "notes": null},
+    {"year": 1980, "event": "Koshi River flood", "areas": ["Sunsari", "Saptari", "eastern Terai"], "river_basins": ["Koshi Basin"], "rivers": ["Koshi"], "notes": null},
+    {"year": 1985, "event": "Tadi River Basin flood", "areas": ["Nuwakot and nearby central districts"], "river_basins": [], "rivers": ["Tadi"], "notes": null},
+    {"year": 1987, "event": "Sun Koshi Basin flood", "areas": ["Sindhupalchok and central/eastern areas"], "river_basins": ["Koshi Basin"], "rivers": ["Sun Koshi"], "notes": null},
+    {"year": 1993, "event": "Central Nepal cloudburst and floods", "areas": ["Makwanpur", "Sindhuli", "Rautahat", "Sarlahi", "Chitwan", "Kathmandu Valley"], "river_basins": ["Bagmati Basin", "Gandaki / Narayani Basin", "Kamala Basin"], "rivers": [], "notes": "Death estimates vary by source."},
+    {"year": 2008, "event": "Koshi embankment breach", "areas": ["Sunsari", "Saptari"], "river_basins": ["Koshi Basin"], "rivers": ["Koshi"], "notes": null},
+    {"year": 2013, "event": "Mahakali River flood", "areas": ["Darchula and Far-Western districts"], "river_basins": ["Mahakali Basin"], "rivers": ["Mahakali"], "available_impact": "Approximately 9 deaths in Darchula, approximately 4,400 people affected and approximately 2,500 displaced."},
+    {"year": 2014, "event": "Western and Mid-Western floods", "areas": ["Surkhet", "Bardiya", "Banke", "Kailali", "Dang"], "river_basins": ["Karnali Basin", "West Rapti Basin"], "rivers": [], "available_impact": "129 deaths in the DRR Portal annual series."},
+    {"year": 2017, "event": "Terai monsoon flood", "areas": ["31 districts"], "river_basins": [], "rivers": [], "available_impact": "338 recorded incidents, 166 deaths and approximately 450,000 people affected in humanitarian reporting."},
+    {"year": 2019, "event": "Bagmati and southern Terai floods", "areas": ["Sarlahi", "Rautahat", "Mahottari", "Siraha", "Dhanusha"], "river_basins": ["Bagmati Basin", "Kamala Basin", "Ratu Basin"], "rivers": ["Bagmati", "Kamala"], "available_impact": "73 flood-related deaths in the annual DRR series."},
+    {"year": 2021, "event": "Melamchi and regional floods", "areas": ["Sindhupalchok"], "river_basins": ["Bagmati Basin"], "rivers": ["Melamchi"], "notes": "Severe damage to roads, bridges, settlements and hydropower infrastructure."}
+  ],
+  "long_term_context": {
+    "source": "DesInventar",
+    "period": "1971-2013",
+    "flood_records": 3953,
+    "deaths": 3538,
+    "missing": 547,
+    "injured": 782,
+    "affected_people": 4453647,
+    "notes": "Separate series; do not add to the 2011-2023 annual totals."
+  },
+  "limitations": [
+    "Nepal does not have one single flood database covering all decades with the same definitions.",
+    "Different databases define a flood occurrence differently.",
+    "Historical administrative boundaries changed after federal restructuring.",
+    "Flood death and missing totals may differ across sources.",
+    "River names are not recorded for every historical event.",
+    "National annual totals cannot automatically be converted into province or district totals.",
+    "Missing persons should not automatically be added to death totals.",
+    "DesInventar, DRR Portal and EM-DAT series should not simply be added together."
+  ]
+}
