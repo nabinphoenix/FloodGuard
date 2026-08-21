@@ -20,7 +20,7 @@ PENDING_CONFIRMATION_ARN = "PendingConfirmation"
 
 
 def is_subscription_confirmed(subscription_arn: str | None) -> bool:
-    """Return True when the SNS subscription has been confirmed."""
+    """Return whether an ARN is usable for an SNS unsubscribe request."""
     if not subscription_arn:
         return False
     return subscription_arn != PENDING_CONFIRMATION_ARN
@@ -33,9 +33,7 @@ def is_subscription_pending(subscription_arn: str | None) -> bool:
 def subscription_status(subscription_arn: str | None, email_alerts: bool) -> str:
     if not email_alerts or not subscription_arn:
         return "disabled"
-    if is_subscription_pending(subscription_arn):
-        return "pending"
-    return "confirmed"
+    return "pending"
 
 
 def subscribe_email(email: str) -> str:

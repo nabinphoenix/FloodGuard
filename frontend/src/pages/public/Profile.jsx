@@ -122,11 +122,10 @@ export default function Profile() {
             <p className="mt-2 text-xs leading-5 text-slate-600">
               FloodGuard uses Amazon SNS. Enabling alerts sends a confirmation email; alerts start after you confirm the subscription.
             </p>
-            {user?.email_alert_status === "pending" && (
-              <p className="mt-2 text-xs font-semibold text-amber-700">Confirmation is still pending. Check your inbox.</p>
-            )}
-            {user?.email_alert_status === "confirmed" && (
-              <p className="mt-2 text-xs font-semibold text-green-700">Your email subscription is confirmed.</p>
+            {user?.email_alerts && (
+              <p className="mt-2 text-xs font-semibold text-amber-700">
+                Email alerts: Pending confirmation. Check your inbox and confirm the subscription.
+              </p>
             )}
           </div>
 

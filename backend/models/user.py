@@ -57,9 +57,13 @@ class User(Base):
 
     @property
     def email_alert_status(self) -> str:
-        """Return the user-facing state of the SNS email subscription."""
+        """Return a conservative user-facing SNS email subscription state.
+
+        The stored ARN records a subscription request, but Subscribe returning
+        successfully does not prove that the recipient followed SNS's email
+        confirmation link.  Confirmation is therefore never inferred from
+        the stored value alone.
+        """
         if not self.email_alerts or not self.sns_subscription_arn:
             return "disabled"
-        if self.sns_subscription_arn == "PendingConfirmation":
-            return "pending"
-        return "confirmed"
+        return "pending"

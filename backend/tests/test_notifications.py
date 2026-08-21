@@ -53,12 +53,57 @@ def test_sns_failures_become_http_errors(monkeypatch):
 
 def test_profile_subscription_state_is_persisted(db, monkeypatch):
     user = make_user(db, "Public", "public@example.com", UserRole.public)
-    monkeypatch.setattr(auth_router, "subscribe_email", lambda email: "PendingConfirmation")
+    subscribe = MagicMock(return_value="arn:aws:sns:us-east-1:123456789012:test-subscription")
+    monkeypatch.setattr(auth_router, "subscribe_email", subscribe)
 
     result = auth_router.update_profile(UserUpdate(email_alerts=True), user, db)
+    subscribe.assert_called_once_with("public@example.com")
     assert result["user"].email_alerts is True
     assert result["user"].email_alert_status == "pending"
-    assert result["message"]
+    assert "confirm" in result["message"].lower()
+    assert "confirmed" not in result["message"].lower()
+
+
+def test_subscribe_success_does_not_claim_confirmation(monkeypatch):
+    sns_client = MagicMock()
+    sns_client.subscribe.return_value = {
+        "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:test-subscription"
+    }
+    monkeypatch.setattr(sns_service, "sns_client", sns_client)
+
+    subscription_arn = sns_service.subscribe_email("public@example.com")
+    assert subscription_arn.startswith("arn:")
+    assert sns_service.subscription_status(subscription_arn, True) == "pending"
+
+
+def test_disabling_pending_email_alerts_is_safe(db, monkeypatch):
+    user = make_user(db, "Public", "pending@example.com", UserRole.public)
+    user.email_alerts = True
+    user.sns_subscription_arn = "PendingConfirmation"
+    db.commit()
+    sns_client = MagicMock()
+    monkeypatch.setattr(sns_service, "sns_client", sns_client)
+
+    result = auth_router.update_profile(UserUpdate(email_alerts=False), user, db)
+    assert result["user"].email_alerts is False
+    assert result["user"].sns_subscription_arn is None
+    sns_client.unsubscribe.assert_not_called()
+
+
+def test_disabling_confirmed_email_alerts_unsubscribes(db, monkeypatch):
+    user = make_user(db, "Public", "confirmed@example.com", UserRole.public)
+    user.email_alerts = True
+    user.sns_subscription_arn = "arn:aws:sns:us-east-1:123456789012:confirmed-subscription"
+    db.commit()
+    sns_client = MagicMock()
+    monkeypatch.setattr(sns_service, "sns_client", sns_client)
+
+    result = auth_router.update_profile(UserUpdate(email_alerts=False), user, db)
+    assert result["user"].email_alerts is False
+    assert result["user"].sns_subscription_arn is None
+    sns_client.unsubscribe.assert_called_once_with(
+        SubscriptionArn="arn:aws:sns:us-east-1:123456789012:confirmed-subscription"
+    )
 
 
 def test_authority_broadcast_stores_sns_message_id(db, monkeypatch):

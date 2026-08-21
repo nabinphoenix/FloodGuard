@@ -1,4 +1,4 @@
-import { Menu, ShieldCheck, X, ChevronDown, LogOut } from "lucide-react";
+import { Menu, ShieldCheck, X, ChevronDown, LogOut, UserCircle } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 
@@ -137,6 +137,16 @@ export default function Navbar() {
                     <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
                     <p className="text-xs text-gray-500 truncate">{user.email}</p>
                   </div>
+                  {user.role === "public" && (
+                    <Link
+                      to="/profile"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                    >
+                      <UserCircle size={16} />
+                      Profile & Alerts
+                    </Link>
+                  )}
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -202,6 +212,16 @@ export default function Navbar() {
                     <p className="text-xs text-white/70">{user.email}</p>
                   </div>
                 </div>
+                {user.role === "public" && (
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-all"
+                  >
+                    <UserCircle size={18} />
+                    Profile & Alerts
+                  </Link>
+                )}
                 <button
                   type="button"
                   onClick={handleLogout}

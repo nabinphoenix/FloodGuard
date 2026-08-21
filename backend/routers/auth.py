@@ -183,11 +183,11 @@ def update_profile(
         if new_val:
             if not current_user.sns_subscription_arn:
                 current_user.sns_subscription_arn = subscribe_email(current_user.email)
-                message = "Subscription request sent. Check your email to confirm."
+                message = "Subscription request sent. Check your email and confirm the subscription."
             elif is_subscription_pending(current_user.sns_subscription_arn):
                 message = "Email subscription is pending confirmation. Check your inbox."
             else:
-                message = "Email alerts are confirmed and enabled."
+                message = "Email alerts remain enabled. Check your inbox if confirmation is still required."
         else:
             if current_user.sns_subscription_arn:
                 unsubscribe(current_user.sns_subscription_arn)
