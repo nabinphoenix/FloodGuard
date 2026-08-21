@@ -96,7 +96,6 @@ def get_users(db: Session = Depends(get_db)) -> list[dict]:
             "district": user.district,
             "role": user.role.value,
             "email_alerts": user.email_alerts,
-            "sms_alerts": user.sms_alerts,
             "created_at": user.created_at,
         }
         for user in users
