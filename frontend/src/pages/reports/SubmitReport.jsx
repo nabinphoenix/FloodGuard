@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { submitReport } from "../../api/reports";
+import CharacterCounter from "../../components/CharacterCounter";
+import FeedbackMessage from "../../components/FeedbackMessage";
+import { backendError, validateCoordinate } from "../../utils/validation";
 
 const DISTRICTS = [
   "Chitwan",
@@ -23,6 +26,7 @@ export default function SubmitReport() {
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const canSubmit = useMemo(
     () => formData.district && formData.description.trim().length >= 10 && !isSubmitting,
@@ -39,6 +43,8 @@ export default function SubmitReport() {
 
   function updateField(name, value) {
     setFormData((current) => ({ ...current, [name]: value }));
+    setFieldErrors((current) => ({ ...current, [name]: "" }));
+    setError("");
   }
 
   function handlePhotoChange(event) {
@@ -87,9 +93,18 @@ export default function SubmitReport() {
     event.preventDefault();
     setError("");
     setConfirmation(null);
+    const nextFieldErrors = {};
+    if (!formData.district.trim()) nextFieldErrors.district = "District is required.";
+    if (formData.description.trim().length < 10) nextFieldErrors.description = "Description must be at least 10 characters.";
+    if (formData.description.length > 2000) nextFieldErrors.description = "Description must be 2000 characters or fewer.";
+    const latitudeError = validateCoordinate(formData.latitude, -90, 90, "Latitude");
+    const longitudeError = validateCoordinate(formData.longitude, -180, 180, "Longitude");
+    if (latitudeError) nextFieldErrors.latitude = latitudeError;
+    if (longitudeError) nextFieldErrors.longitude = longitudeError;
+    setFieldErrors(nextFieldErrors);
 
-    if (!canSubmit) {
-      setError("Please select a district and enter at least 10 characters.");
+    if (Object.keys(nextFieldErrors).length > 0 || !canSubmit) {
+      setError("Please correct the highlighted fields before submitting.");
       return;
     }
 
@@ -113,9 +128,10 @@ export default function SubmitReport() {
         photo: null,
       });
       setPreviewUrl("");
+      setFieldErrors({});
       setUploadProgress(100);
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not submit your report. Please try again.");
+      setError(backendError(err, "Could not submit your report. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -131,18 +147,11 @@ export default function SubmitReport() {
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {confirmation && (
-          <div className="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Report submitted successfully. Your report ID is{" "}
-            <span className="font-semibold">#{confirmation.id}</span>.
-          </div>
-        )}
+        <FeedbackMessage message={error} />
+        <FeedbackMessage
+          message={confirmation ? "Report submitted successfully. Your report ID is #" + confirmation.id + "." : ""}
+          type="success"
+        />
 
         <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
           <div>
@@ -196,10 +205,13 @@ export default function SubmitReport() {
               value={formData.description}
               onChange={(event) => updateField("description", event.target.value)}
               required
+              maxLength={2000}
               rows={5}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="Describe water level, blocked roads, nearby landmarks, or urgent risks."
             />
+            <CharacterCounter value={formData.description} maxLength={2000} minLength={10} />
+            {fieldErrors.description && <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p>}
           </div>
 
           <div>
@@ -210,11 +222,15 @@ export default function SubmitReport() {
               id="latitude"
               type="number"
               step="any"
+              min="-90"
+              max="90"
               value={formData.latitude}
               onChange={(event) => updateField("latitude", event.target.value)}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="3.139000"
             />
+            <p className="mt-1 text-xs text-blue-700">Valid range: -90 to 90</p>
+            {fieldErrors.latitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.latitude}</p>}
           </div>
 
           <div>
@@ -225,11 +241,15 @@ export default function SubmitReport() {
               id="longitude"
               type="number"
               step="any"
+              min="-180"
+              max="180"
               value={formData.longitude}
               onChange={(event) => updateField("longitude", event.target.value)}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="101.686900"
             />
+            <p className="mt-1 text-xs text-blue-700">Valid range: -180 to 180</p>
+            {fieldErrors.longitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.longitude}</p>}
           </div>
 
           <div className="md:col-span-2">

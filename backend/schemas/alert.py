@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.alert import AlertLevel
+from schemas.common import NormalizedModel
 
 
 class AlertZoneOut(BaseModel):
@@ -16,14 +17,14 @@ class AlertZoneOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class AlertZoneUpdate(BaseModel):
+class AlertZoneUpdate(NormalizedModel):
     district: str | None = Field(default=None, min_length=2, max_length=100)
     alert_level: AlertLevel | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
-class FloodAlertCreate(BaseModel):
+class FloodAlertCreate(NormalizedModel):
     zone_id: int
     alert_level: AlertLevel
     message: str = Field(..., min_length=5, max_length=2000)
@@ -39,7 +40,7 @@ class FloodAlertOut(BaseModel):
     triggered_at: datetime
 
 
-class BroadcastRequest(BaseModel):
+class BroadcastRequest(NormalizedModel):
     zone_id: int
     alert_level: AlertLevel
     message: str = Field(..., min_length=5, max_length=2000)

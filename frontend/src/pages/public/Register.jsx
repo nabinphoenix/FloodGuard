@@ -3,6 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { register } from "../../api/auth";
+import { backendError, validatePhone } from "../../utils/validation";
 
 const DISTRICTS = [
   "Kathmandu",
@@ -66,6 +67,11 @@ export default function Register() {
       errors.password = "Password must be at least 8 characters.";
     }
 
+    const phoneError = validatePhone(formData.phone);
+    if (phoneError) {
+      errors.phone = phoneError;
+    }
+
     if (!formData.district) {
       errors.district = "Please select your district.";
     }
@@ -96,16 +102,7 @@ export default function Register() {
 
       navigate("/login");
     } catch (err) {
-      const detail = err.response?.data?.detail;
-
-      if (Array.isArray(detail)) {
-        setError(detail.map((item) => item.msg).join(" "));
-      } else {
-        setError(
-          detail ||
-            "Registration failed. Please check your details."
-        );
-      }
+      setError(backendError(err, "Registration failed. Please check your details."));
     } finally {
       setIsSubmitting(false);
     }
@@ -210,13 +207,17 @@ export default function Register() {
             <input
               id="phone"
               name="phone"
-              type="tel"
+              type="text"
+              inputMode="numeric"
+              maxLength={10}
+              pattern="[0-9]{10}"
               autoComplete="tel"
               value={formData.phone}
               onChange={handleChange}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="+977..."
+              placeholder="9812345678"
             />
+            {fieldErrors.phone && <p className="mt-2 text-sm text-red-600">{fieldErrors.phone}</p>}
           </div>
 
           <div>

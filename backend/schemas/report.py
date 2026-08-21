@@ -2,10 +2,12 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas.common import NormalizedModel
+
 from models.report import ReportStatus
 
 
-class ReportCreate(BaseModel):
+class ReportCreate(NormalizedModel):
     district: str = Field(..., min_length=2, max_length=100)
     severity: int = Field(..., ge=1, le=5)
     description: str = Field(..., min_length=10, max_length=2000)

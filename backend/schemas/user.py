@@ -1,15 +1,18 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from models.user import UserRole
+from schemas.common import NormalizedModel
+
+PHONE_PATTERN = r"^[0-9]{10}$"
 
 
-class UserCreate(BaseModel):
+class UserCreate(NormalizedModel):
     name: str = Field(..., min_length=2, max_length=100)
-    email: str = Field(..., min_length=5, max_length=255)
+    email: EmailStr = Field(..., max_length=255)
     password: str = Field(..., min_length=8, max_length=128)
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=10, pattern=PHONE_PATTERN)
     district: str | None = Field(default=None, max_length=100)
 
 
@@ -37,9 +40,9 @@ class TokenData(BaseModel):
     role: UserRole
 
 
-class UserUpdate(BaseModel):
+class UserUpdate(NormalizedModel):
     name: str | None = Field(default=None, min_length=2, max_length=100)
-    phone: str | None = Field(default=None, max_length=30)
+    phone: str | None = Field(default=None, max_length=10, pattern=PHONE_PATTERN)
     district: str | None = Field(default=None, max_length=100)
     email_alerts: bool | None = None
 
@@ -48,10 +51,10 @@ class AdminUserCreate(UserCreate):
     role: UserRole = UserRole.public
 
 
-class AdminUserUpdate(BaseModel):
+class AdminUserUpdate(NormalizedModel):
     name: str | None = Field(default=None, min_length=2, max_length=100)
-    email: str | None = Field(default=None, min_length=5, max_length=255)
-    phone: str | None = Field(default=None, max_length=30)
+    email: EmailStr | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=10, pattern=PHONE_PATTERN)
     district: str | None = Field(default=None, max_length=100)
 
 

@@ -5,6 +5,10 @@ import { CheckCircle, XCircle, FileText } from "lucide-react";
 import { getAuthorityReports, approveReport, rejectReport } from "../../api/authority";
 import StatusPill from "../../components/StatusPill";
 import AdminLayout from "../../components/AdminLayout";
+import CharacterCounter from "../../components/CharacterCounter";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import FeedbackMessage from "../../components/FeedbackMessage";
+import { backendError } from "../../utils/validation";
 
 const statuses = ["pending", "approved", "rejected"];
 
@@ -16,8 +20,11 @@ export default function ManageReports() {
   const [reports, setReports] = useState([]);
   const [statusFilter, setStatusFilter] = useState("pending");
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [rejectingReport, setRejectingReport] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   async function loadReports() {
     setIsLoading(true);
@@ -51,20 +58,32 @@ export default function ManageReports() {
     }
   }
 
-  async function handleReject(reportId) {
-    const reason = window.prompt("Enter rejection reason:");
-    if (!reason || reason.trim().length < 3) {
+  function requestReject(report) {
+    setError("");
+    setMessage("");
+    setRejectionReason("");
+    setRejectingReport(report);
+  }
+
+  async function confirmReject() {
+    if (!rejectingReport) return;
+    const reason = rejectionReason.trim();
+    if (reason.length < 3 || reason.length > 1000) {
+      setError("Rejection reason must be between 3 and 1000 characters.");
       return;
     }
 
-    setProcessingId(reportId);
+    setProcessingId(rejectingReport.id);
     setError("");
-
+    setMessage("");
     try {
-      const updated = await rejectReport(reportId, reason.trim());
-      setReports((current) => current.map((report) => (report.id === reportId ? updated : report)));
+      const updated = await rejectReport(rejectingReport.id, reason);
+      setReports((current) => current.map((report) => (report.id === rejectingReport.id ? updated : report)));
+      setMessage("Report rejected successfully.");
+      setRejectingReport(null);
+      setRejectionReason("");
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not reject report.");
+      setError(backendError(err, "Could not reject report."));
     } finally {
       setProcessingId(null);
     }
@@ -96,11 +115,8 @@ export default function ManageReports() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium">
-          {error}
-        </div>
-      )}
+      <FeedbackMessage message={error} />
+      <FeedbackMessage message={message} type="success" />
 
       <section className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
         <div className="overflow-x-auto">
@@ -161,7 +177,7 @@ export default function ManageReports() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleReject(report.id)}
+                        onClick={() => requestReject(report)}
                         disabled={processingId === report.id || report.status === "rejected"}
                         className="flex items-center gap-1.5 rounded-lg bg-flood-emergency px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 transition-colors shadow-sm"
                       >
@@ -191,6 +207,29 @@ export default function ManageReports() {
           </table>
         </div>
       </section>
+      <ConfirmDialog
+        open={Boolean(rejectingReport)}
+        title="Reject report?"
+        description={rejectingReport ? "Provide a reason before rejecting report #" + rejectingReport.id + "." : ""}
+        confirmLabel="Reject Report"
+        onCancel={() => setRejectingReport(null)}
+        onConfirm={confirmReject}
+        isConfirming={processingId === rejectingReport?.id}
+        danger
+      >
+        <label className="block text-sm font-semibold text-ink-primary">
+          Rejection reason
+          <textarea
+            value={rejectionReason}
+            onChange={(event) => setRejectionReason(event.target.value)}
+            maxLength={1000}
+            rows={4}
+            className="mt-2 w-full rounded-lg border border-ink-border px-3 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            placeholder="Explain why this report is being rejected."
+          />
+          <CharacterCounter value={rejectionReason} maxLength={1000} minLength={3} />
+        </label>
+      </ConfirmDialog>
     </AdminLayout>
   );
 }

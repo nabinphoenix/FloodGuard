@@ -11,6 +11,7 @@ from models.report import IncidentReport, ReportStatus
 from models.user import User, UserRole
 from routers.auth import require_role
 from schemas.alert import AlertZoneOut, BroadcastRequest, FloodAlertOut
+from schemas.common import NormalizedModel
 from services.s3_service import get_presigned_url
 from services.sns_service import broadcast_alert
 
@@ -22,7 +23,7 @@ router = APIRouter(
 )
 
 
-class RejectReportRequest(BaseModel):
+class RejectReportRequest(NormalizedModel):
     reason: str = Field(..., min_length=3, max_length=1000)
 
 

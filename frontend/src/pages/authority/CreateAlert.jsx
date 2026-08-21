@@ -4,6 +4,10 @@ import { CheckCircle, AlertTriangle } from "lucide-react";
 
 import { broadcastAlert, getAuthorityZones } from "../../api/authority";
 import AdminLayout from "../../components/AdminLayout";
+import CharacterCounter from "../../components/CharacterCounter";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import FeedbackMessage from "../../components/FeedbackMessage";
+import { backendError } from "../../utils/validation";
 
 const levels = [
   { value: "safe", label: "Safe", color: "bg-green-500", borderColor: "border-green-500", textColor: "text-green-700" },
@@ -22,6 +26,7 @@ export default function CreateAlert() {
   const [messageId, setMessageId] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
 
   useEffect(() => {
     async function loadZones() {
@@ -53,18 +58,28 @@ export default function CreateAlert() {
     event.preventDefault();
     setError("");
     setMessageId("");
-    setIsSubmitting(true);
+    if (!formData.zone_id || formData.message.trim().length < 5 || formData.message.length > 2000) {
+      setError("Select a zone and enter a message between 5 and 2000 characters.");
+      return;
+    }
+    setConfirmation({
+      zone_id: Number(formData.zone_id),
+      alert_level: formData.alert_level,
+      message: formData.message.trim(),
+    });
+  }
 
+  async function confirmBroadcast() {
+    if (!confirmation) return;
+    setIsSubmitting(true);
+    setError("");
     try {
-      const result = await broadcastAlert({
-        zone_id: Number(formData.zone_id),
-        alert_level: formData.alert_level,
-        message: formData.message.trim(),
-      });
+      const result = await broadcastAlert(confirmation);
       setMessageId(result.sns_message_id);
       setFormData((current) => ({ ...current, message: "" }));
+      setConfirmation(null);
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not broadcast alert.");
+      setError(backendError(err, "Could not broadcast alert."));
     } finally {
       setIsSubmitting(false);
     }
@@ -77,19 +92,8 @@ export default function CreateAlert() {
         <p className="mt-2 text-ink-secondary">Send an SNS flood alert and update the zone severity level immediately.</p>
       </div>
 
-      {error && (
-        <div className="mb-8 rounded-lg border border-flood-emergency/20 bg-flood-emergency/10 px-4 py-3 text-sm text-flood-emergency font-medium flex items-center gap-2">
-          <AlertTriangle size={18} />
-          {error}
-        </div>
-      )}
-
-      {messageId && (
-        <div className="mb-8 rounded-lg border border-flood-safe/20 bg-flood-safe/10 px-4 py-3 text-sm text-flood-safe font-medium flex items-center gap-2">
-          <CheckCircle size={18} />
-          Alert broadcast successfully. SNS Message ID: <span className="font-semibold">{messageId}</span>
-        </div>
-      )}
+      <FeedbackMessage message={error} />
+      <FeedbackMessage message={messageId ? "Alert broadcast successfully. SNS Message ID: " + messageId : ""} type="success" />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
         <form onSubmit={handleSubmit} className="rounded-xl border border-ink-border bg-surface-card p-8 shadow-sm">
@@ -149,10 +153,12 @@ export default function CreateAlert() {
               value={formData.message}
               onChange={(event) => updateField("message", event.target.value)}
               required
+              maxLength={2000}
               rows={6}
               className="w-full rounded-lg border border-ink-border bg-white px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-sm resize-none"
               placeholder="E.g., Heavy rainfall has caused water levels in Bagmati River to exceed danger thresholds. Low-lying areas including Teku are at immediate risk..."
             />
+            <CharacterCounter value={formData.message} maxLength={2000} minLength={5} />
           </div>
 
           <button
@@ -208,6 +214,24 @@ export default function CreateAlert() {
           </div>
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmation)}
+        title="Broadcast this flood alert?"
+        description="This will notify subscribed users through Amazon SNS and update the monitored zone status."
+        confirmLabel="Broadcast Alert"
+        onCancel={() => setConfirmation(null)}
+        onConfirm={confirmBroadcast}
+        isConfirming={isSubmitting}
+      >
+        {confirmation && (
+          <div className="space-y-2 rounded-lg bg-surface-bg p-3 text-sm text-ink-secondary">
+            <p><span className="font-semibold text-ink-primary">Zone:</span> {selectedZone?.district || "Selected zone"}</p>
+            <p><span className="font-semibold text-ink-primary">Severity:</span> {confirmation.alert_level.toUpperCase()}</p>
+            <p><span className="font-semibold text-ink-primary">Message:</span> {confirmation.message}</p>
+          </div>
+        )}
+      </ConfirmDialog>
     </AdminLayout>
   );
 }

@@ -11,6 +11,7 @@ from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport
 from models.user import User, UserRole
 from routers.auth import hash_password, require_role
+from schemas.common import NormalizedModel
 from schemas.alert import AlertZoneOut, AlertZoneUpdate
 from schemas.user import (
     AdminUserCreate,
@@ -28,7 +29,7 @@ router = APIRouter(
 )
 
 
-class AlertZoneCreate(BaseModel):
+class AlertZoneCreate(NormalizedModel):
     district: str = Field(..., min_length=2, max_length=100)
     alert_level: AlertLevel = AlertLevel.safe
     latitude: float = Field(..., ge=-90, le=90)

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 import { getMe, updateProfile } from "../../api/auth";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import FeedbackMessage from "../../components/FeedbackMessage";
+import { backendError, validatePhone } from "../../utils/validation";
 
 export default function Profile() {
   const [formData, setFormData] = useState({
@@ -12,6 +14,7 @@ export default function Profile() {
   });
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,12 +43,19 @@ export default function Profile() {
   function updateField(name, value) {
     setFormData((current) => ({ ...current, [name]: value }));
     setMessage("");
+    setFieldErrors((current) => ({ ...current, [name]: "" }));
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setMessage("");
+    const nextFieldErrors = {};
+    if (formData.name.trim().length < 2) nextFieldErrors.name = "Name must be at least 2 characters.";
+    const phoneError = validatePhone(formData.phone);
+    if (phoneError) nextFieldErrors.phone = phoneError;
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) return;
     setIsSubmitting(true);
 
     try {
@@ -58,7 +68,7 @@ export default function Profile() {
       setUser(updated.user);
       setMessage(updated.message || "Profile updated.");
     } catch (err) {
-      setError(err.response?.data?.detail || "Could not update your profile.");
+      setError(backendError(err, "Could not update your profile."));
     } finally {
       setIsSubmitting(false);
     }
@@ -74,8 +84,8 @@ export default function Profile() {
           <p className="mt-2 text-sm text-blue-700">{user?.email}</p>
         </div>
 
-        {error && <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {message && <div className="mb-5 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{message}</div>}
+        <FeedbackMessage message={error} />
+        <FeedbackMessage message={message} type="success" />
 
         <form onSubmit={handleSubmit} className="grid gap-5 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -88,17 +98,22 @@ export default function Profile() {
               minLength={2}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
             />
+            {fieldErrors.name && <p className="mt-2 text-sm text-red-600">{fieldErrors.name}</p>}
           </div>
 
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-blue-950">Phone</label>
             <input
               id="phone"
-              type="tel"
+              type="text"
+              inputMode="numeric"
+              maxLength={10}
+              pattern="[0-9]{10}"
               value={formData.phone}
               onChange={(event) => updateField("phone", event.target.value)}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
             />
+            {fieldErrors.phone && <p className="mt-2 text-sm text-red-600">{fieldErrors.phone}</p>}
           </div>
 
           <div>

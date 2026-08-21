@@ -5,7 +5,7 @@ import bcrypt as _bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import ExpiredSignatureError, JWTError, jwt
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from config import settings
 from database import get_db
 from models.user import User, UserRole
 from services.sns_service import is_subscription_pending, subscribe_email, unsubscribe
+from schemas.common import NormalizedModel
 from schemas.user import Token, TokenData, UserCreate, UserOut, UserUpdate, ProfileUpdateResponse
 
 
@@ -25,8 +26,8 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 
-class LoginRequest(BaseModel):
-    email: str = Field(..., min_length=5, max_length=255)
+class LoginRequest(NormalizedModel):
+    email: EmailStr = Field(..., max_length=255)
     password: str = Field(..., min_length=1, max_length=128)
 
 
