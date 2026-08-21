@@ -1,0 +1,174 @@
+.wr-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wr-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- Waterfall streaks ---------- */
+
+.wr-streak {
+  position: absolute;
+  top: 0;
+  left: var(--left);
+  width: var(--w);
+  height: var(--h);
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(200, 230, 255, 0.5) 45%,
+    rgba(180, 220, 255, 0.15) 85%,
+    rgba(180, 220, 255, 0) 100%
+  );
+  filter: blur(var(--blur));
+  opacity: var(--opacity);
+  transform: translateY(-100%);
+  animation: wr-fall var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform;
+}
+
+@keyframes wr-fall {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(250%);
+  }
+}
+
+/* Depth cues: back layer softer/dimmer, front layer sharper/brighter */
+.wr-back .wr-streak {
+  filter: blur(calc(var(--blur) + 0.3px));
+}
+.wr-front .wr-streak {
+  filter: blur(var(--blur));
+}
+
+/* ---------- Rain ---------- */
+
+.wr-raindrop {
+  position: absolute;
+  top: 0;
+  left: var(--left);
+  width: var(--w);
+  height: var(--h);
+  border-radius: 999px;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(200, 230, 255, 0.35) 60%,
+    rgba(200, 230, 255, 0) 100%
+  );
+  opacity: var(--opacity);
+  filter: blur(0.5px);
+  transform: translate(calc(-1 * var(--drift)), -10vh) rotate(var(--tilt));
+  animation: wr-rain-fall var(--duration) linear infinite;
+  animation-delay: var(--delay);
+  will-change: transform;
+}
+
+@keyframes wr-rain-fall {
+  0% {
+    transform: translate(calc(-1 * var(--drift)), -10vh) rotate(var(--tilt));
+  }
+  100% {
+    transform: translate(var(--drift), 110vh) rotate(var(--tilt));
+  }
+}
+
+/* ---------- Splash / ripple pool ---------- */
+
+.wr-splash-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12%;
+}
+
+.wr-ripple {
+  position: absolute;
+  bottom: 0;
+  left: var(--left);
+  width: var(--size);
+  height: calc(var(--size) * 0.35);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(200, 230, 255, 0.25) 45%,
+    rgba(200, 230, 255, 0) 75%
+  );
+  transform: translate(-50%, 0) scale(0.3);
+  opacity: 0.6;
+  animation: wr-ripple-expand var(--duration) ease-out infinite;
+  animation-delay: var(--delay);
+  will-change: transform, opacity;
+}
+
+@keyframes wr-ripple-expand {
+  0% {
+    transform: translate(-50%, 0) scale(0.3);
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* ---------- Mist ---------- */
+
+.wr-mist {
+  position: absolute;
+  bottom: -5%;
+  left: 50%;
+  width: 70%;
+  height: 30%;
+  transform: translate(-50%, 0) scale(1);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0) 75%
+  );
+  filter: blur(12px);
+  opacity: 0.6;
+  animation: wr-mist-pulse 4s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes wr-mist-pulse {
+  0% {
+    transform: translate(-50%, 0) scale(0.95);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1.08);
+    opacity: 0.65;
+  }
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-streak,
+  .wr-raindrop,
+  .wr-ripple,
+  .wr-mist {
+    animation-duration: 8s !important;
+    animation-timing-function: ease-in-out !important;
+  }
+}
+

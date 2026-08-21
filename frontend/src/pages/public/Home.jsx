@@ -6,6 +6,8 @@ import { getFloodSummary } from "../../api/history";
 import { getAlertZones, getPublicStats } from "../../api/public";
 import { getCommunityReports } from "../../api/reports";
 import AlertBadge from "../../components/AlertBadge";
+import CloudShader from "../../components/CloudShader";
+import WaterfallRain from "../../components/WaterfallRain";
 
 const featureCards = [
   {
@@ -68,12 +70,25 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-surface-bg font-sans">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-brand to-brand-gradientEnd text-white pt-20 pb-32">
-        {/* Background Decorative Circles */}
-        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-white opacity-10 rounded-full blur-2xl"></div>
+      <section className="relative overflow-hidden text-white pt-20 pb-32">
+        <CloudShader
+          cloudColor="#f0fdfa"
+          skyTopColor="#0e7490"
+          skyBottomColor="#0d9488"
+        />
+        <WaterfallRain
+          showWaterfall={false}
+          showSplash={false}
+          showMist={false}
+          showRain={true}
+          rainCount={70}
+        />
 
-        <div className="relative mx-auto max-w-7xl px-6 flex flex-col items-center text-center">
+        {/* Background Decorative Circles */}
+        <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl" style={{ zIndex: 1 }}></div>
+        <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-white opacity-10 rounded-full blur-2xl" style={{ zIndex: 1 }}></div>
+
+        <div className="relative mx-auto max-w-7xl px-6 flex flex-col items-center text-center" style={{ zIndex: 2 }}>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-sm font-semibold mb-8 shadow-sm">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
