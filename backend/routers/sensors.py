@@ -5,12 +5,12 @@ SQLAlchemy / MySQL-compatible RDS.
 
 Endpoints
 ---------
-POST  /sensors/reading                   — ingest a new water-level reading
-GET   /sensors/live                      — latest reading per active station
-GET   /sensors/history/{station_id}      — ordered history for one station
-GET   /sensors/stations                  — all stations with their latest reading
-PUT   /sensors/stations/{station_id}/thresholds — update warning/danger thresholds
-GET   /sensors/health                    — relational DB + SQS health check
+POST  /api/sensors/reading                   — ingest a new water-level reading
+GET   /api/sensors/live                      — latest reading per active station
+GET   /api/sensors/history/{station_id}      — ordered history for one station
+GET   /api/sensors/stations                  — all stations with their latest reading
+PUT   /api/sensors/stations/{station_id}/thresholds — update warning/danger thresholds
+GET   /api/sensors/health                    — relational DB + SQS health check
 """
 
 from __future__ import annotations

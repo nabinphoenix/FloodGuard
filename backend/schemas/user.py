@@ -46,7 +46,6 @@ class UserUpdate(BaseModel):
 
 class AdminUserCreate(UserCreate):
     role: UserRole = UserRole.public
-    email_alerts: bool = False
 
 
 class AdminUserUpdate(BaseModel):
@@ -54,7 +53,6 @@ class AdminUserUpdate(BaseModel):
     email: str | None = Field(default=None, min_length=5, max_length=255)
     phone: str | None = Field(default=None, max_length=30)
     district: str | None = Field(default=None, max_length=100)
-    email_alerts: bool | None = None
 
 
 class AdminUserPasswordReset(BaseModel):

@@ -58,7 +58,7 @@ def status_for_level(level: float, station: dict) -> str:
 
 def authenticate(base_url: str) -> str:
     response = requests.post(
-        f"{base_url}/auth/login",
+        f"{base_url}/api/auth/login",
         json={"email": SIMULATOR_EMAIL, "password": SIMULATOR_PASSWORD},
         timeout=15,
     )
@@ -79,7 +79,7 @@ def send_reading(base_url: str, token: str, station: dict) -> None:
     }
 
     response = requests.post(
-        f"{base_url}/sensors/reading",
+        f"{base_url}/api/sensors/reading",
         json=payload,
         headers={"Authorization": f"Bearer {token}"},
         timeout=15,

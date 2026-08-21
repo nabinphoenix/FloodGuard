@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi import HTTPException
 
@@ -8,6 +10,7 @@ from routers import admin as admin_router
 from routers import authority as authority_router
 from routers.auth import hash_password
 from schemas.alert import AlertZoneUpdate
+from services import sns_service
 from schemas.user import (
     AdminUserCreate,
     AdminUserPasswordReset,
@@ -31,7 +34,8 @@ def make_user(db, name, email, role=UserRole.public):
 
 def test_user_crud_and_safe_delete(db, monkeypatch):
     admin = make_user(db, "Admin", "admin@example.com", UserRole.admin)
-    monkeypatch.setattr(admin_router, "subscribe_email", lambda email: "PendingConfirmation")
+    subscribe_mock = MagicMock()
+    monkeypatch.setattr(sns_service, "subscribe_email", subscribe_mock)
 
     created = admin_router.create_user(
         AdminUserCreate(
@@ -39,12 +43,14 @@ def test_user_crud_and_safe_delete(db, monkeypatch):
             email="NEW@example.com",
             password="NewPassword123!",
             role=UserRole.authority,
-            email_alerts=True,
         ),
         db,
     )
     assert created.email == "new@example.com"
-    assert created.email_alert_status == "pending"
+    assert created.email_alerts is False
+    assert created.sns_subscription_arn is None
+    assert created.email_alert_status == "disabled"
+    subscribe_mock.assert_not_called()
     assert admin_router.get_user(created.id, db).email == "new@example.com"
 
     updated = admin_router.update_user(
@@ -72,6 +78,48 @@ def test_user_crud_and_safe_delete(db, monkeypatch):
 
     admin_router.delete_user(created.id, admin, db)
     assert db.get(User, created.id) is None
+
+
+def test_admin_cannot_edit_email_alert_preference(db):
+    admin = make_user(db, "Admin", "admin@example.com", UserRole.admin)
+    user = make_user(db, "Public", "public@example.com")
+
+    payload = AdminUserUpdate(name="Updated", email_alerts=True)
+    assert "email_alerts" not in payload.model_dump()
+
+    updated = admin_router.update_user(user.id, payload, db)
+    assert updated.name == "Updated"
+    assert updated.email_alerts is False
+    assert updated.sns_subscription_arn is None
+    assert "email_alerts" not in AdminUserCreate.model_fields
+    assert "email_alerts" not in AdminUserUpdate.model_fields
+
+
+def test_admin_email_change_resets_sns_state_without_resubscribing(db, monkeypatch):
+    make_user(db, "Admin", "admin@example.com", UserRole.admin)
+    user = make_user(db, "Subscribed", "old@example.com")
+    user.email_alerts = True
+    user.sns_subscription_arn = "arn:aws:sns:us-east-1:123456789012:confirmed-subscription"
+    db.commit()
+
+    unsubscribe_mock = MagicMock()
+    subscribe_mock = MagicMock()
+    monkeypatch.setattr(admin_router, "unsubscribe", unsubscribe_mock)
+    monkeypatch.setattr(sns_service, "subscribe_email", subscribe_mock)
+
+    updated = admin_router.update_user(
+        user.id,
+        AdminUserUpdate(email="new@example.com"),
+        db,
+    )
+
+    assert updated.email == "new@example.com"
+    assert updated.email_alerts is False
+    assert updated.sns_subscription_arn is None
+    unsubscribe_mock.assert_called_once_with(
+        "arn:aws:sns:us-east-1:123456789012:confirmed-subscription"
+    )
+    subscribe_mock.assert_not_called()
 
 
 def test_user_with_historical_report_cannot_be_deleted(db):
@@ -165,19 +213,20 @@ def test_zone_route_rbac_and_authority_broadcast(client, db, monkeypatch):
     )
 
     current_user["value"] = admin
-    admin_response = test_client.get("/admin/zones")
+    admin_response = test_client.get("/api/admin/zones")
     assert admin_response.status_code == 200
     assert admin_response.json()[0]["district"] == "Chitwan area"
+    assert test_client.get("/admin/zones").status_code != 401
 
     current_user["value"] = authority
-    assert test_client.get("/admin/zones").status_code == 403
-    authority_response = test_client.get("/authority/zones")
+    assert test_client.get("/api/admin/zones").status_code == 403
+    authority_response = test_client.get("/api/authority/zones")
     assert authority_response.status_code == 200
     assert authority_response.json()[0]["district"] == "Chitwan area"
 
     monkeypatch.setattr(authority_router, "broadcast_alert", lambda **kwargs: "sns-route-1")
     broadcast_response = test_client.post(
-        "/authority/broadcast-alert",
+        "/api/authority/broadcast-alert",
         json={
             "zone_id": zone.id,
             "alert_level": "warning",
@@ -188,4 +237,4 @@ def test_zone_route_rbac_and_authority_broadcast(client, db, monkeypatch):
     assert broadcast_response.json()["sns_message_id"] == "sns-route-1"
 
     current_user["value"] = public
-    assert test_client.get("/authority/zones").status_code == 403
+    assert test_client.get("/api/authority/zones").status_code == 403

@@ -18,7 +18,7 @@ from schemas.user import (
     AdminUserUpdate,
     UserOut,
 )
-from services.sns_service import is_subscription_pending, subscribe_email, unsubscribe
+from services.sns_service import is_subscription_pending, unsubscribe
 
 
 router = APIRouter(
@@ -206,7 +206,6 @@ def create_user(user_in: AdminUserCreate, db: Session = Depends(get_db)) -> User
     if not name:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Name cannot be empty.")
 
-    subscription_arn = subscribe_email(email) if user_in.email_alerts else None
     user = User(
         name=name,
         email=email,
@@ -214,15 +213,14 @@ def create_user(user_in: AdminUserCreate, db: Session = Depends(get_db)) -> User
         district=user_in.district.strip() if user_in.district else None,
         password_hash=hash_password(user_in.password),
         role=user_in.role,
-        email_alerts=user_in.email_alerts,
-        sns_subscription_arn=subscription_arn,
+        email_alerts=False,
+        sns_subscription_arn=None,
     )
     db.add(user)
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        _unsubscribe_if_needed(subscription_arn)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists.",
@@ -255,24 +253,12 @@ def update_user(user_id: int, user_in: AdminUserUpdate, db: Session = Depends(ge
         if field in update_data and isinstance(update_data[field], str):
             update_data[field] = update_data[field].strip() or None
 
-    email_changed = new_email != old_email
-    new_email_alerts = update_data.get("email_alerts", user.email_alerts)
-    if new_email_alerts is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Email alerts must be enabled or disabled explicitly.",
-        )
-    old_subscription = user.sns_subscription_arn
-    new_subscription = old_subscription
-    if old_subscription and (email_changed or not new_email_alerts):
-        _unsubscribe_if_needed(old_subscription)
-        new_subscription = None
-    if new_email_alerts and (email_changed or not new_subscription):
-        new_subscription = subscribe_email(new_email)
+    if new_email != old_email:
+        _unsubscribe_if_needed(user.sns_subscription_arn)
+        user.sns_subscription_arn = None
+        user.email_alerts = False
 
     update_data["email"] = new_email
-    update_data["email_alerts"] = new_email_alerts
-    update_data["sns_subscription_arn"] = new_subscription
     for field, value in update_data.items():
         setattr(user, field, value)
 
@@ -280,8 +266,6 @@ def update_user(user_id: int, user_in: AdminUserUpdate, db: Session = Depends(ge
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        if new_subscription and new_subscription != old_subscription:
-            _unsubscribe_if_needed(new_subscription)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Could not update the user because of a data conflict.",

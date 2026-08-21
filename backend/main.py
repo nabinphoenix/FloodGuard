@@ -31,10 +31,13 @@ app.add_middleware(
 )
 
 
+API_PREFIX = "/api"
+
+
 def include_project_router(module_name: str, prefix: str, tags: list[str]) -> None:
     module = import_module(f"routers.{module_name}")
     router = getattr(module, "router", APIRouter(prefix=prefix, tags=tags))
-    app.include_router(router)
+    app.include_router(router, prefix=API_PREFIX)
 
 
 include_project_router("auth", "/auth", ["auth"])
