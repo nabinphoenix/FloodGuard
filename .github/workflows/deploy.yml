@@ -295,26 +295,47 @@ jobs:
             --query "Environments[0].CNAME" \
             --output text)
 
-          echo "Testing http://${CNAME}/health"
+          echo "Testing HTTP redirect:"
+          echo "http://${CNAME}/health"
+
+          REDIRECT_CODE=$(curl \
+            --silent \
+            --show-error \
+            --output /tmp/health-redirect.txt \
+            --write-out "%{http_code}" \
+            "http://${CNAME}/health" || true)
+
+          echo "HTTP redirect status: ${REDIRECT_CODE}"
+
+          if [ "$REDIRECT_CODE" != "301" ] && [ "$REDIRECT_CODE" != "308" ]; then
+            echo "ERROR: Expected HTTP 301 or 308 redirect from the Elastic Beanstalk hostname."
+            cat /tmp/health-redirect.txt || true
+            exit 1
+          fi
+
+          HTTPS_HEALTH_URL="https://sunitanepali.com.np/health"
+          echo "Testing HTTPS health:"
+          echo "${HTTPS_HEALTH_URL}"
 
           for attempt in {1..20}; do
             CODE=$(curl \
               --silent \
               --show-error \
-              --output /tmp/health.txt \
+              --output /tmp/health-https.txt \
               --write-out "%{http_code}" \
-              "http://${CNAME}/health" || true)
+              "${HTTPS_HEALTH_URL}" || true)
 
             echo "Attempt ${attempt}: HTTP ${CODE}"
 
             if [ "$CODE" = "200" ]; then
-              cat /tmp/health.txt
+              cat /tmp/health-https.txt
+              echo "Production HTTPS health check passed."
               exit 0
             fi
 
             sleep 10
           done
 
-          echo "Production health check failed."
-          cat /tmp/health.txt || true
+          echo "Production HTTPS health check failed."
+          cat /tmp/health-https.txt || true
           exit 1
