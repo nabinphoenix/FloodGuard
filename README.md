@@ -125,6 +125,52 @@ SNS sends only on meaningful backend transitions:
 SNS failures are logged and returned as notification metadata while the
 telemetry remains saved. Official Authority alert publishing is unchanged.
 
+## AWS Automated Sensor Simulator
+
+The local `scripts/simulate_water_level.py` utility remains available for
+quick manual tests. The cloud demonstration uses a stateless Lambda invoked by
+an EventBridge rule every minute:
+
+    EventBridge rate(1 minute)
+        |
+        v
+    FloodGuard-Sensor-Simulator Lambda
+        |
+        v
+    POST /api/sensors/device-reading
+
+Each Lambda invocation fetches the selected station's current thresholds,
+generates one value in the SAFE/WATCH/WARNING/EMERGENCY phase for that UTC
+minute, submits exactly one measurement, and exits. The eleven-minute sequence
+is SAFE, SAFE, WATCH, WATCH, WARNING, WARNING, EMERGENCY, EMERGENCY, WARNING,
+WATCH, SAFE, then repeats. Values are derived from the station's configured
+thresholds rather than fixed meter values.
+
+The device endpoint uses the server-only `X-Sensor-Token` header and shares the
+same RDS persistence, backend classification, SQS dispatch, and SNS transition
+processing as the authenticated Field Officer endpoint. No JWT, password, AWS
+key, or token is exposed to the frontend. The environment-variable fallback is
+used for the AWS Academy deployment; configure a high-entropy
+`SENSOR_INGESTION_TOKEN` in both Elastic Beanstalk and Lambda, never in Git.
+
+Required Lambda variables:
+
+    FLOODGUARD_API_URL=https://<elastic-beanstalk-host>
+    SENSOR_STATION_CODE=STN001
+    SENSOR_INGESTION_TOKEN=<server-side-token>
+    SIMULATOR_ENABLED=false
+    HTTP_TIMEOUT_SECONDS=8
+
+Keep `SIMULATOR_ENABLED=false` while developing. Set it to `true` for the
+demo; a disabled invocation sends no reading. The exact packaging, manual
+Lambda creation, EventBridge rule, enable/disable, and token instructions are
+in `deploy/sensor_simulator/README.md`. The existing deployment workflow does
+not falsely claim to create these AWS resources automatically.
+
+Sensor dashboards show the last reading time and identify telemetry older than
+five minutes as stale; staleness does not change the backend flood status.
+
+
 This repository currently has no DynamoDB sensor-table client or configured
 sensor table: `sensor_readings` is the canonical relational telemetry table,
 and SQS remains the existing event queue. System Health reports

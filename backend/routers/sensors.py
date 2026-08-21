@@ -9,11 +9,11 @@ notifications through the existing SNS topic.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from hmac import compare_digest
 
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, field_validator, model_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -25,6 +25,15 @@ from models.user import UserRole
 from routers.auth import require_any_role
 from services.dynamodb_service import sensor_store_health
 from services.geography_service import load_geography
+from services.sensor_ingestion import (
+    InvalidSensorTimestampError,
+    SensorStationInactiveError,
+    SensorStationNotFoundError,
+    classify_water_level,
+    effective_watch_threshold,
+    process_sensor_reading,
+    station_status as _station_status,
+)
 from services.sns_service import publish_sensor_transition
 from services.sqs_service import send_sensor_reading, sqs_client
 
@@ -50,6 +59,18 @@ class SensorReadingIn(BaseModel):
         self.station_code = station_code or station_id
         return self
 
+
+class DeviceSensorReadingIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    station_code: str = Field(..., min_length=1, max_length=20)
+    water_level: float = Field(..., ge=0)
+    timestamp: str | None = None
+
+    @field_validator("station_code", mode="before")
+    @classmethod
+    def trim_station_code(cls, value: object) -> object:
+        return value if value is None else str(value).strip()
 
 class ThresholdUpdate(BaseModel):
     watch_threshold: float | None = Field(default=None, ge=0)
@@ -95,30 +116,6 @@ class StationStatusUpdate(BaseModel):
     is_active: bool
 
 
-def classify_water_level(
-    water_level: float | None,
-    watch_threshold: float | None,
-    warning_threshold: float,
-    danger_threshold: float,
-) -> str:
-    if water_level is None:
-        return "no_data"
-    if water_level >= danger_threshold:
-        return "emergency"
-    if water_level >= warning_threshold:
-        return "warning"
-    if watch_threshold is not None and water_level >= watch_threshold:
-        return "watch"
-    return "safe"
-
-
-def effective_watch_threshold(station: SensorStation) -> float | None:
-    if station.watch_threshold is not None:
-        return station.watch_threshold
-    if station.warning_threshold > 0:
-        return max(0.0, station.warning_threshold - 1.0)
-    return None
-
 
 def alert_level_for_reading(water_level: float, station: SensorStation):
     """Compatibility helper for the existing official AlertLevel tests."""
@@ -131,29 +128,6 @@ def alert_level_for_reading(water_level: float, station: SensorStation):
         station.danger_threshold,
     ))
 
-
-def _station_status(station: SensorStation, water_level: float | None) -> str:
-    return classify_water_level(
-        water_level,
-        effective_watch_threshold(station),
-        station.warning_threshold,
-        station.danger_threshold,
-    )
-
-
-def _parse_timestamp(raw: str | None) -> datetime:
-    if not raw:
-        return datetime.now(timezone.utc)
-    try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="timestamp must be a valid ISO-8601 timestamp.",
-        ) from exc
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
 
 
 def _validate_geography(payload: StationPayload) -> None:
@@ -278,6 +252,65 @@ def _station_or_404(station_id: str, db: Session) -> SensorStation:
         raise HTTPException(status_code=404, detail="Sensor station not found.")
     return station
 
+
+def _validate_sensor_token(token: str | None) -> None:
+    expected = settings.sensor_ingestion_token
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Device sensor ingestion is not configured.",
+        )
+    if not token or not compare_digest(token, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid sensor ingestion token.",
+            headers={"WWW-Authenticate": "SensorToken"},
+        )
+
+
+def _ingestion_response(result) -> dict:
+    saved = reading_to_dict(result.reading, result.station)
+    return {
+        "message": "Sensor reading saved.",
+        "reading": saved,
+        "station": station_to_dict(result.station, saved),
+        "status": result.current_status,
+        "alert_level": result.current_status,
+        "previous_status": result.previous_status,
+        "notification": result.notification,
+        "queue": result.queue,
+        "source": result.source,
+    }
+
+
+def _process_sensor_reading(
+    db: Session,
+    station_code: str,
+    water_level: float,
+    *,
+    timestamp: str | None,
+    source: str,
+) -> dict:
+    try:
+        result = process_sensor_reading(
+            db,
+            station_code,
+            water_level,
+            timestamp=timestamp,
+            source=source,
+            notification_publisher=publish_sensor_transition,
+            queue_sender=send_sensor_reading,
+        )
+    except SensorStationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Sensor station not found.") from exc
+    except SensorStationInactiveError as exc:
+        raise HTTPException(status_code=400, detail="Sensor station is inactive.") from exc
+    except InvalidSensorTimestampError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return _ingestion_response(result)
 
 def _dashboard_payload(db: Session) -> dict:
     stations = db.scalars(select(SensorStation).order_by(SensorStation.id.asc())).all()
@@ -457,98 +490,52 @@ def update_thresholds(
     dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
 )
 def receive_sensor_reading(reading: SensorReadingIn, db: Session = Depends(get_db)) -> dict:
-    station = _station_or_404(reading.station_id or reading.station_code or "", db)
+    return _process_sensor_reading(
+        db,
+        reading.station_id or reading.station_code or "",
+        reading.water_level,
+        timestamp=reading.timestamp,
+        source="manual",
+    )
+
+
+@router.get("/device-stations/{station_id}")
+def get_device_station(
+    station_id: str,
+    x_sensor_token: str | None = Header(default=None, alias="X-Sensor-Token"),
+    db: Session = Depends(get_db),
+) -> dict:
+    _validate_sensor_token(x_sensor_token)
+    station = _station_or_404(station_id, db)
     if not station.is_active:
         raise HTTPException(status_code=400, detail="Sensor station is inactive.")
-
-    previous_reading = db.scalars(
-        select(SensorReading)
-        .where(SensorReading.station_id == station.id)
-        .order_by(SensorReading.recorded_at.desc(), SensorReading.id.desc())
-        .limit(1)
-    ).first()
-    previous_status = (
-        previous_reading.status
-        if previous_reading and previous_reading.status
-        else _station_status(station, previous_reading.water_level)
-        if previous_reading
-        else "no_data"
-    )
-    current_status = _station_status(station, reading.water_level)
-    db_reading = SensorReading(
-        station_id=station.id,
-        water_level=reading.water_level,
-        status=current_status,
-        recorded_at=_parse_timestamp(reading.timestamp),
-    )
-    db.add(db_reading)
-    db.commit()
-    db.refresh(db_reading)
-
-    saved = reading_to_dict(db_reading, station)
-    try:
-        notification = publish_sensor_transition(
-
-        station_name=station.name,
-        province=station.province,
-        district=station.district,
-        river_name=station.river_name,
-        water_level=db_reading.water_level,
-        status=current_status,
-        previous_status=previous_status,
-        watch_threshold=effective_watch_threshold(station),
-        warning_threshold=station.warning_threshold,
-        danger_threshold=station.danger_threshold,
-        )
-    except Exception as exc:
-        logger.error("Sensor SNS notification failed after reading save for %s: %s", station.id, exc)
-        notification = {
-            "attempted": True,
-            "published": False,
-            "status": "failed",
-            "error": "SNS notification failed; the sensor reading was saved.",
-        }
-
-    queue_status: dict[str, str | bool] = {"queued": False, "status": "failed"}
-    try:
-        send_sensor_reading(
-            {
-                "station_id": station.id,
-                "station_code": station.id,
-                "name": station.name,
-                "province": station.province,
-                "district": station.district,
-                "river_basin": station.river_basin,
-                "river_name": station.river_name,
-                "water_level": db_reading.water_level,
-                "status": current_status,
-                "watch_threshold": effective_watch_threshold(station),
-                "warning_threshold": station.warning_threshold,
-                "danger_threshold": station.danger_threshold,
-                "timestamp": db_reading.recorded_at.isoformat(),
-                "previous_status": previous_status,
-            }
-        )
-        queue_status = {"queued": True, "status": "queued"}
-    except Exception as exc:
-        logger.error("Failed to dispatch sensor reading to SQS for station %s: %s", station.id, exc)
-        queue_status = {
-            "queued": False,
-            "status": "failed",
-            "error": "SQS dispatch failed; the sensor reading was saved.",
-        }
-
     return {
-        "message": "Sensor reading saved.",
-        "reading": saved,
-        "station": station_to_dict(station, saved),
-        "status": current_status,
-        "alert_level": current_status,
-        "previous_status": previous_status,
-        "notification": notification,
-        "queue": queue_status,
+        "station_code": station.id,
+        "station_name": station.name,
+        "province": station.province,
+        "district": station.district,
+        "river_name": station.river_name,
+        "watch_threshold": effective_watch_threshold(station),
+        "warning_threshold": station.warning_threshold,
+        "danger_threshold": station.danger_threshold,
+        "is_active": station.is_active,
     }
 
+
+@router.post("/device-reading", status_code=status.HTTP_201_CREATED)
+def receive_device_sensor_reading(
+    reading: DeviceSensorReadingIn,
+    x_sensor_token: str | None = Header(default=None, alias="X-Sensor-Token"),
+    db: Session = Depends(get_db),
+) -> dict:
+    _validate_sensor_token(x_sensor_token)
+    return _process_sensor_reading(
+        db,
+        reading.station_code,
+        reading.water_level,
+        timestamp=reading.timestamp,
+        source="simulator-aws",
+    )
 
 @router.get("/live")
 def get_live_readings(db: Session = Depends(get_db)) -> list[dict]:

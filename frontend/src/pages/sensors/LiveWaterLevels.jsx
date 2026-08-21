@@ -15,6 +15,16 @@ function statusClass(status) {
   }[status] || "bg-slate-100 text-slate-700";
 }
 
+function formatReadingAge(timestamp) {
+  const timestampMs = Date.parse(timestamp);
+  if (Number.isNaN(timestampMs)) return "Unknown age";
+  const ageSeconds = Math.max(0, Math.floor((Date.now() - timestampMs) / 1000));
+  if (ageSeconds < 60) return `${ageSeconds} second${ageSeconds === 1 ? "" : "s"} ago`;
+  const ageMinutes = Math.floor(ageSeconds / 60);
+  const staleLabel = ageMinutes >= 5 ? " (STALE)" : "";
+  return `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago${staleLabel}`;
+}
+
 function statusLabel(status) {
   return status === "no_data" ? "NO DATA" : String(status || "unknown").toUpperCase();
 }
@@ -106,7 +116,7 @@ export default function LiveWaterLevels() {
                     <div className="rounded-lg bg-orange-50 p-3 text-sm text-orange-900"><p className="text-xs font-bold uppercase">Warning</p><strong>{station.warning_threshold?.toFixed(2)} m</strong></div>
                     <div className="rounded-lg bg-red-50 p-3 text-sm text-red-900"><p className="text-xs font-bold uppercase">Emergency</p><strong>{station.danger_threshold?.toFixed(2)} m</strong></div>
                   </div>
-                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{reading ? "Last updated " + new Date(reading.timestamp).toLocaleString() : "Station configured. Waiting for first sensor reading."}</p>
+                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{reading ? "Last reading " + formatReadingAge(reading.timestamp) + " · " + new Date(reading.timestamp).toLocaleString() : "Station configured. Waiting for first sensor reading."}</p>
                 </article>
               );
             })}

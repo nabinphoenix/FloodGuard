@@ -336,7 +336,7 @@ export default function SensorStations() {
 
         <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900">
           <h2 className="font-black">Sensor Demo</h2>
-          <p className="mt-2">Create a station, configure its thresholds, then run the included <code className="font-mono font-bold">scripts/simulate_water_level.py</code> utility. The utility authenticates as a Field Officer and submits real API readings; credentials are never stored in this page.</p>
+          <p className="mt-2">Create a station, configure its thresholds, then run the included <code className="font-mono font-bold">scripts/simulate_water_level.py</code> utility. The utility authenticates as a Field Officer and submits real API readings; credentials are never stored in this page.</p><p className="mt-2">Automated cloud demo telemetry may be enabled for this environment at a one-minute interval. Its server-side <code className="font-mono font-bold">SIMULATOR_ENABLED</code> setting controls whether scheduled readings are sent.</p>
         </div>
       </section>
     </AdminLayout>

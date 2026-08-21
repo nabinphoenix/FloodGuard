@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = Field(..., alias="DATABASE_URL")
     secret_key: str = Field(..., alias="SECRET_KEY")
+    sensor_ingestion_token: str = Field("", alias="SENSOR_INGESTION_TOKEN")
     aws_region: str = Field(..., alias="AWS_REGION")
 
     s3_bucket_name: str = Field(..., alias="S3_BUCKET_NAME")

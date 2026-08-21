@@ -25,6 +25,16 @@ function statusClass(status) {
   }[status] || "bg-slate-100 text-slate-700";
 }
 
+function formatReadingAge(timestamp) {
+  const timestampMs = Date.parse(timestamp);
+  if (Number.isNaN(timestampMs)) return "Unknown age";
+  const ageSeconds = Math.max(0, Math.floor((Date.now() - timestampMs) / 1000));
+  if (ageSeconds < 60) return `${ageSeconds} second${ageSeconds === 1 ? "" : "s"} ago`;
+  const ageMinutes = Math.floor(ageSeconds / 60);
+  const staleLabel = ageMinutes >= 5 ? " (STALE)" : "";
+  return `${ageMinutes} minute${ageMinutes === 1 ? "" : "s"} ago${staleLabel}`;
+}
+
 function statusLabel(status) {
   return status === "no_data" ? "NO DATA" : String(status || "unknown").toUpperCase();
 }
@@ -107,7 +117,7 @@ export default function SensorDash() {
                     <tbody className="divide-y divide-slate-100">
                       {stations.map((station) => {
                         const reading = station.latest_reading;
-                        return <tr key={station.id}><td className="px-2 py-4"><p className="font-bold text-blue-950">{station.station_code}</p><p className="text-xs text-slate-500">{station.station_name}</p></td><td className="px-2 py-4 text-slate-600">{station.province} · {station.district}<br /><span className="text-xs">{station.river_name}</span></td><td className="px-2 py-4 font-bold">{reading ? Number(reading.water_level).toFixed(2) + " m" : "--"}</td><td className="px-2 py-4"><span className={"rounded-full px-2.5 py-1 text-xs font-bold " + statusClass(station.status)}>{statusLabel(station.status)}</span></td><td className="px-2 py-4 text-xs text-slate-500">{reading ? new Date(reading.timestamp).toLocaleString() : "Station configured. Waiting for first sensor reading."}</td></tr>;
+                        return <tr key={station.id}><td className="px-2 py-4"><p className="font-bold text-blue-950">{station.station_code}</p><p className="text-xs text-slate-500">{station.station_name}</p></td><td className="px-2 py-4 text-slate-600">{station.province} · {station.district}<br /><span className="text-xs">{station.river_name}</span></td><td className="px-2 py-4 font-bold">{reading ? Number(reading.water_level).toFixed(2) + " m" : "--"}</td><td className="px-2 py-4"><span className={"rounded-full px-2.5 py-1 text-xs font-bold " + statusClass(station.status)}>{statusLabel(station.status)}</span></td><td className="px-2 py-4 text-xs text-slate-500">{reading ? formatReadingAge(reading.timestamp) + " · " + new Date(reading.timestamp).toLocaleString() : "Station configured. Waiting for first sensor reading."}</td></tr>;
                       })}
                     </tbody>
                   </table>

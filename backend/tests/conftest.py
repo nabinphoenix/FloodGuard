@@ -14,6 +14,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-only-secret")
+os.environ.setdefault("SENSOR_INGESTION_TOKEN", "test-device-token")
 os.environ.setdefault("AWS_REGION", "us-east-1")
 os.environ.setdefault("S3_BUCKET_NAME", "test-bucket")
 os.environ.setdefault("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:123456789012:test-topic")
