@@ -203,6 +203,24 @@ AWS credentials are supplied through the normal boto3/Elastic Beanstalk
 provider chain. Never commit AWS access keys, session tokens, passwords, JWTs,
 or private S3 settings.
 
+## FloodGuard operational/demo zones
+
+The canonical demo dataset is defined once in
+`backend/data/flood_zone_seeds.py`. It contains 32 approximate operational
+centre points across all seven Nepal provinces. These are FloodGuard academic
+demo monitoring zones, not official government flood-risk boundaries.
+
+Migration `i2j3k4l5m6n` adds real zone names and activation status, permits
+multiple named zones in one district, preserves existing records, and inserts
+only missing seed names. Elastic Beanstalk already runs `alembic upgrade head`
+as a leader-only deployment command, so existing production RDS databases
+receive the one-time seed through the normal migration path.
+
+The same idempotent seed can be invoked manually after migrations when needed:
+
+    cd backend
+    python -m seeders.flood_zones
+
 ## Shared interactive maps
 
 The public route `/map` uses the reusable Leaflet components in

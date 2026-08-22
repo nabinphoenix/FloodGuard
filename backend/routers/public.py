@@ -23,9 +23,10 @@ ALERT_SEVERITY_ORDER = {
 def alert_zone_to_dict(zone: AlertZone) -> dict:
     return {
         "id": zone.id,
-        "name": zone.district,
+        "name": zone.name,
         "province": province_for_district(zone.district),
         "district": zone.district,
+        "is_active": zone.is_active,
         "alert_level": zone.alert_level.value,
         "latitude": zone.latitude,
         "longitude": zone.longitude,
@@ -46,7 +47,9 @@ def get_alerts(db: Session = Depends(get_db)) -> list[dict]:
         else_=1,
     )
     zones = db.scalars(
-        select(AlertZone).order_by(severity_order.desc(), AlertZone.district.asc())
+        select(AlertZone)
+        .where(AlertZone.is_active.is_(True))
+        .order_by(severity_order.desc(), AlertZone.district.asc(), AlertZone.name.asc())
     ).all()
     latest_alert_ids = {}
     if zones:
@@ -98,7 +101,12 @@ def get_alert_history(db: Session = Depends(get_db)) -> list[dict]:
 @router.get("/alerts/{district}")
 def get_alert_by_district(district: str, db: Session = Depends(get_db)) -> dict:
     zone = db.scalar(
-        select(AlertZone).where(func.lower(AlertZone.district) == district.strip().lower())
+        select(AlertZone)
+        .where(
+            AlertZone.is_active.is_(True),
+            func.lower(AlertZone.district) == district.strip().lower(),
+        )
+        .order_by(AlertZone.name.asc())
     )
     if zone is None:
         raise HTTPException(
@@ -119,7 +127,11 @@ def get_zones(
         return []
 
     district_key = district.strip().casefold() if district else None
-    zones = db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all()
+    zones = db.scalars(
+        select(AlertZone)
+        .where(AlertZone.is_active.is_(True))
+        .order_by(AlertZone.district.asc(), AlertZone.name.asc())
+    ).all()
     matching_zones = []
     for zone in zones:
         zone_province = province_for_district(zone.district)
@@ -136,11 +148,16 @@ def get_public_stats(db: Session = Depends(get_db)) -> dict[str, int]:
     total_reports = db.scalar(select(func.count(IncidentReport.id))) or 0
     active_alerts = (
         db.scalar(
-            select(func.count(AlertZone.id)).where(AlertZone.alert_level != AlertLevel.safe)
+            select(func.count(AlertZone.id)).where(
+                AlertZone.is_active.is_(True),
+                AlertZone.alert_level != AlertLevel.safe,
+            )
         )
         or 0
     )
-    total_zones = db.scalar(select(func.count(AlertZone.id))) or 0
+    total_zones = (
+        db.scalar(select(func.count(AlertZone.id)).where(AlertZone.is_active.is_(True))) or 0
+    )
 
     return {
         "total_reports": total_reports,

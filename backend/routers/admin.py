@@ -20,6 +20,7 @@ from schemas.user import (
     UserOut,
 )
 from services.coordinate_validation import coordinate_validation_error
+from services.geography_service import resolve_district
 from services.sns_service import is_subscription_pending, unsubscribe
 
 
@@ -31,7 +32,9 @@ router = APIRouter(
 
 
 class AlertZoneCreate(NormalizedModel):
+    name: str | None = Field(default=None, min_length=2, max_length=150)
     district: str = Field(..., min_length=2, max_length=100)
+    is_active: bool = True
     alert_level: AlertLevel = AlertLevel.safe
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
@@ -101,18 +104,29 @@ def create_zone(zone_in: AlertZoneCreate, db: Session = Depends(get_db)) -> Aler
     if coordinate_error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
 
-    district = zone_in.district.strip()
+    name = zone_in.name.strip() if zone_in.name else ""
+    geography = resolve_district(zone_in.district)
+    if geography is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Select a valid Nepal district for this alert zone.",
+        )
+    _, district = geography
+    if not name:
+        name = district
     existing_zone = db.scalar(
-        select(AlertZone).where(func.lower(AlertZone.district) == district.lower())
+        select(AlertZone).where(func.lower(AlertZone.name) == name.lower())
     )
     if existing_zone:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An alert zone already exists for this district.",
+            detail="An alert zone with this name already exists.",
         )
 
     zone = AlertZone(
+        name=name,
         district=district,
+        is_active=zone_in.is_active,
         alert_level=zone_in.alert_level,
         latitude=zone_in.latitude,
         longitude=zone_in.longitude,
@@ -148,25 +162,34 @@ def update_zone(
     if coordinate_error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
 
-    if "district" in update_data:
-        district = update_data["district"].strip()
-        if not district:
+    if "name" in update_data:
+        name = update_data["name"].strip()
+        if not name:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="District cannot be empty.",
+                detail="Zone name cannot be empty.",
             )
         existing_zone = db.scalar(
             select(AlertZone).where(
-                func.lower(AlertZone.district) == district.lower(),
+                func.lower(AlertZone.name) == name.lower(),
                 AlertZone.id != zone_id,
             )
         )
         if existing_zone:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="An alert zone already exists for this district.",
+                detail="An alert zone with this name already exists.",
             )
-        update_data["district"] = district
+        update_data["name"] = name
+
+    if "district" in update_data:
+        geography = resolve_district(update_data["district"])
+        if geography is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Select a valid Nepal district for this alert zone.",
+            )
+        _, update_data["district"] = geography
 
     for field, value in update_data.items():
         setattr(zone, field, value)

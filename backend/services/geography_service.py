@@ -175,6 +175,18 @@ def province_for_district(district_name: str | None) -> str | None:
     return None
 
 
+def resolve_district(district_name: str | None) -> tuple[str, str] | None:
+    """Return the canonical province and district for a district name."""
+    if not district_name:
+        return None
+    district_key = district_name.strip().casefold()
+    for province in load_geography()["provinces"]:
+        for district in province["districts"]:
+            if district["name"].casefold() == district_key:
+                return province["name"], district["name"]
+    return None
+
+
 def public_geography() -> dict[str, Any]:
     """Return only the province/district hierarchy needed by public forms."""
     return {

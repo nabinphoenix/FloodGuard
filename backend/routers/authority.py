@@ -35,7 +35,7 @@ def report_to_authority_dict(report: IncidentReport) -> dict:
         "province": report.province,
         "district": report.district,
         "zone_id": report.zone_id,
-        "zone_name": report.zone.district if report.zone else None,
+        "zone_name": report.zone.name if report.zone else None,
         "severity": report.severity,
         "description": report.description,
         "image_url": get_presigned_url(report.image_key) if report.image_key else None,
@@ -63,7 +63,13 @@ def flood_alert_to_out(alert: FloodAlert) -> FloodAlertOut:
 @router.get("/zones", response_model=list[AlertZoneOut])
 def get_authority_zones(db: Session = Depends(get_db)) -> list[AlertZone]:
     """Return alert zones that an authority may target when broadcasting."""
-    return list(db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all())
+    return list(
+        db.scalars(
+            select(AlertZone)
+            .where(AlertZone.is_active.is_(True))
+            .order_by(AlertZone.district.asc(), AlertZone.name.asc())
+        ).all()
+    )
 
 
 @router.get("/dashboard")
@@ -78,7 +84,10 @@ def get_dashboard(db: Session = Depends(get_db)) -> dict:
     )
     active_alerts = (
         db.scalar(
-            select(func.count(AlertZone.id)).where(AlertZone.alert_level != AlertLevel.safe)
+            select(func.count(AlertZone.id)).where(
+                AlertZone.is_active.is_(True),
+                AlertZone.alert_level != AlertLevel.safe,
+            )
         )
         or 0
     )
@@ -168,6 +177,8 @@ def broadcast_zone_alert(
     zone = db.get(AlertZone, payload.zone_id)
     if zone is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert zone not found.")
+    if not zone.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Inactive alert zones cannot broadcast alerts.")
 
     sns_message_id = broadcast_alert(
         district=zone.district,

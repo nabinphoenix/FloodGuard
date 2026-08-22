@@ -204,7 +204,8 @@ def test_zone_route_rbac_and_authority_broadcast(client, db, monkeypatch):
     public = make_user(db, "Public", "public@example.com", UserRole.public)
     zone = admin_router.create_zone(
         admin_router.AlertZoneCreate(
-            district="Chitwan area",
+            name="Chitwan area",
+            district="Chitwan",
             alert_level=AlertLevel.safe,
             latitude=27.67,
             longitude=84.43,
@@ -215,14 +216,16 @@ def test_zone_route_rbac_and_authority_broadcast(client, db, monkeypatch):
     current_user["value"] = admin
     admin_response = test_client.get("/api/admin/zones")
     assert admin_response.status_code == 200
-    assert admin_response.json()[0]["district"] == "Chitwan area"
+    assert admin_response.json()[0]["name"] == "Chitwan area"
+    assert admin_response.json()[0]["district"] == "Chitwan"
     assert test_client.get("/admin/zones").status_code != 401
 
     current_user["value"] = authority
     assert test_client.get("/api/admin/zones").status_code == 403
     authority_response = test_client.get("/api/authority/zones")
     assert authority_response.status_code == 200
-    assert authority_response.json()[0]["district"] == "Chitwan area"
+    assert authority_response.json()[0]["name"] == "Chitwan area"
+    assert authority_response.json()[0]["district"] == "Chitwan"
 
     monkeypatch.setattr(authority_router, "broadcast_alert", lambda **kwargs: "sns-route-1")
     broadcast_response = test_client.post(

@@ -28,20 +28,8 @@ ON DUPLICATE KEY UPDATE
     danger_threshold = VALUES(danger_threshold),
     is_active = VALUES(is_active);
 
-INSERT INTO alert_zones (
-    district,
-    alert_level,
-    latitude,
-    longitude
-) VALUES
-    ('Chitwan', 'safe', 27.6710, 84.4305),
-    ('Kathmandu', 'safe', 27.7172, 85.3240),
-    ('Kaski', 'safe', 28.2096, 83.9856)
-ON DUPLICATE KEY UPDATE
-    alert_level = VALUES(alert_level),
-    latitude = VALUES(latitude),
-    longitude = VALUES(longitude),
-    updated_at = CURRENT_TIMESTAMP;
+-- Alert zones are centrally defined in data/flood_zone_seeds.py and are
+-- applied idempotently by the named-zone migration or seeders.flood_zones command.
 
 INSERT INTO users (
     name,

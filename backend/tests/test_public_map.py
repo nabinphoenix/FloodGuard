@@ -30,6 +30,7 @@ def test_public_map_returns_public_safe_layers(client, db):
     )
     zone = AlertZone(
         district="Chitwan",
+        name="Narayani River Flood Zone",
         alert_level=AlertLevel.warning,
         latitude=27.7,
         longitude=85.3,
@@ -69,9 +70,10 @@ def test_public_map_returns_public_safe_layers(client, db):
     assert payload["sensors"][0]["status"] == "warning"
     assert payload["sensors"][0]["is_stale"] is True
     assert payload["zones"][0]["district"] == "Chitwan"
+    assert payload["zones"][0]["name"] == "Narayani River Flood Zone"
     assert payload["alerts"][0]["district"] == "Chitwan"
     assert payload["alerts"][0]["province"] == "Bagmati"
-    assert payload["alerts"][0]["zone_name"] == "Chitwan"
+    assert payload["alerts"][0]["zone_name"] == "Narayani River Flood Zone"
     alert_feed = test_client.get("/api/public/alerts")
     assert alert_feed.status_code == 200
     assert next(item for item in alert_feed.json() if item["district"] == "Chitwan")["alert_id"] == payload["alerts"][0]["id"]

@@ -31,7 +31,7 @@ def report_to_out(report: IncidentReport) -> ReportOut:
         province=report.province,
         district=report.district,
         zone_id=report.zone_id,
-        zone_name=report.zone.district if report.zone else None,
+        zone_name=report.zone.name if report.zone else None,
         severity=report.severity,
         description=report.description,
         image_url=image_url,
@@ -88,6 +88,8 @@ async def submit_report(
         zone = db.get(AlertZone, report_in.zone_id)
         if zone is None:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected FloodGuard zone was not found.")
+        if not zone.is_active:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected FloodGuard zone is inactive.")
         zone_province = province_for_district(zone.district)
         if zone_province is None or zone_province.casefold() != canonical_province.casefold() or zone.district.casefold() != canonical_district.casefold():
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected zone does not belong to this district.")

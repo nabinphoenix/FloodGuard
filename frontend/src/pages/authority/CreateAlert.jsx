@@ -107,7 +107,7 @@ export default function CreateAlert() {
               className="w-full rounded-lg border border-ink-border bg-white px-4 py-3.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none font-medium text-ink-primary shadow-sm"
             >
               {zones.map((zone) => (
-                <option key={zone.id} value={zone.id}>{zone.district}</option>
+                <option key={zone.id} value={zone.id}>{zone.name} — {zone.district}</option>
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-ink-secondary">
@@ -186,7 +186,7 @@ export default function CreateAlert() {
             }`}>
               <p className="font-bold text-sm flex items-center gap-2">
                 <AlertTriangle size={16} />
-                FloodGuard {formData.alert_level.toUpperCase()} Alert - {selectedZone?.district || "District"}
+                FloodGuard {formData.alert_level.toUpperCase()} Alert - {selectedZone?.name || "Zone"}
               </p>
             </div>
             <div className="p-4 text-sm text-gray-700 bg-gray-50/50 min-h-[200px]">
@@ -226,7 +226,7 @@ export default function CreateAlert() {
       >
         {confirmation && (
           <div className="space-y-2 rounded-lg bg-surface-bg p-3 text-sm text-ink-secondary">
-            <p><span className="font-semibold text-ink-primary">Zone:</span> {selectedZone?.district || "Selected zone"}</p>
+            <p><span className="font-semibold text-ink-primary">Zone:</span> {selectedZone?.name || "Selected zone"}</p>
             <p><span className="font-semibold text-ink-primary">Severity:</span> {confirmation.alert_level.toUpperCase()}</p>
             <p><span className="font-semibold text-ink-primary">Message:</span> {confirmation.message}</p>
           </div>

@@ -127,7 +127,7 @@ export default function Home() {
             {zones.slice(0, 8).map((zone) => (
               <div key={zone.id} className="bg-white rounded-xl shadow-sm hover:shadow-md border border-ink-border p-5 transition-shadow flex flex-col justify-between">
                 <div className="flex items-start justify-between gap-2 mb-4">
-                  <h3 className="font-bold text-ink-primary text-lg truncate" title={zone.district}>{zone.district}</h3>
+                  <h3 className="font-bold text-ink-primary text-lg truncate" title={zone.name || zone.district}>{zone.name || zone.district}</h3>
                   <AlertBadge level={zone.alert_level} />
                 </div>
                 <div className="text-xs text-ink-secondary font-medium">

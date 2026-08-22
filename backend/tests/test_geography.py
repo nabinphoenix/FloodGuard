@@ -60,6 +60,7 @@ def test_report_submission_requires_canonical_location_and_valid_zone(client, db
     monkeypatch.setattr(reports_router, "get_presigned_url", lambda key: "https://example.test/photo")
     zone = AlertZone(
         district="Chitwan",
+        name="Narayani River Flood Zone",
         alert_level=AlertLevel.safe,
         latitude=27.67,
         longitude=84.43,
@@ -85,7 +86,7 @@ def test_report_submission_requires_canonical_location_and_valid_zone(client, db
     assert valid.json()["province"] == "Bagmati"
     assert valid.json()["district"] == "Chitwan"
     assert valid.json()["zone_id"] == zone.id
-    assert valid.json()["zone_name"] == "Chitwan"
+    assert valid.json()["zone_name"] == "Narayani River Flood Zone"
 
     missing_photo = test_client.post(
         "/api/reports/submit",

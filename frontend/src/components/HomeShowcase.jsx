@@ -108,7 +108,7 @@ function toneClasses(tone) {
 function PreviewMap({ zones }) {
   const previewZones = zones.length
     ? zones.slice(0, 3).map((zone, index) => ({
-      name: zone.district || `Alert zone ${index + 1}`,
+      name: zone.name || zone.district || `Alert zone ${index + 1}`,
       level: zone.alert_level || "Monitoring",
       detail: "Water stage monitored · advisory protocols active",
       tone: zoneTone[zone.alert_level] || ["rose", "amber", "emerald"][index],
@@ -203,7 +203,7 @@ function PreviewAlerts({ zones }) {
         {zones.length ? zones.slice(0, 4).map((zone) => (
           <div key={zone.id} className="rounded-xl border border-ink-border bg-surface-bg p-4">
             <div className="flex items-start justify-between gap-3">
-              <span className="truncate font-bold text-ink-primary">{zone.district}</span>
+              <span className="truncate font-bold text-ink-primary">{zone.name || zone.district}</span>
               <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-brand">{zone.alert_level || "Monitoring"}</span>
             </div>
             <p className="mt-3 text-xs leading-relaxed text-ink-secondary">Water stage monitored. Advisory protocols are active for this zone.</p>

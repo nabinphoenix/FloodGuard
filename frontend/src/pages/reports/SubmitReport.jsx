@@ -232,7 +232,7 @@ export default function SubmitReport() {
                 >
                   <option value="">{isGeographyLoading ? "Loading provinces..." : "Select province"}</option>
                   {geography?.provinces?.map((province) => (
-                    <option key={province.name} value={province.name}>{province.name}</option>
+                    <option key={province.name} value={province.name}>{province.name} Province</option>
                   ))}
                 </select>
                 {fieldErrors.province && <p className="mt-1 text-xs text-red-600">{fieldErrors.province}</p>}
@@ -265,7 +265,7 @@ export default function SubmitReport() {
                   className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
                 >
                   <option value="">
-                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No configured FloodGuard zones"}
+                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No FloodGuard zones configured for this district."}
                   </option>
                   {zones.map((zone) => (
                     <option key={zone.id} value={zone.id}>{zone.name || zone.district}</option>

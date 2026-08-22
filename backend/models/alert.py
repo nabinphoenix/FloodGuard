@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, func
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,7 +25,15 @@ class AlertZone(Base):
     __tablename__ = "alert_zones"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    district: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(150), unique=True, nullable=False, index=True)
+    district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="1",
+        index=True,
+    )
     alert_level: Mapped[AlertLevel] = mapped_column(
         SqlEnum(AlertLevel, name="alert_level"),
         nullable=False,
@@ -41,6 +49,11 @@ class AlertZone(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+    def __init__(self, **kwargs):
+        if not kwargs.get("name") and kwargs.get("district"):
+            kwargs["name"] = str(kwargs["district"]).strip()
+        super().__init__(**kwargs)
 
     alerts: Mapped[list[FloodAlert]] = relationship(
         "FloodAlert",

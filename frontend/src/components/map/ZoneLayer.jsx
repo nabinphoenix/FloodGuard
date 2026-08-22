@@ -20,7 +20,7 @@ export default function ZoneLayer({ zones = [], onSelect }) {
         eventHandlers={{ click: () => onSelect?.({ type: "zone", item: zone }) }}
       >
         <Popup>
-          <MapPopup title={zone.district || "Alert zone"} subtitle="Flood alert zone">
+          <MapPopup title={zone.name || zone.district || "Alert zone"} subtitle={zone.district || "Flood alert zone"}>
             <p><strong>Level:</strong> {statusLabel(status)}</p>
             <p><strong>Updated:</strong> {formatMapDate(zone.updated_at)}</p>
             <p className="mt-2 text-slate-500">This marker represents the zone centre. A radius or boundary is not configured for this zone.</p>
