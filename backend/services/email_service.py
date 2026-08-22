@@ -82,12 +82,42 @@ def _assert_private_topic(subscriptions: list[dict], recipient_email: str) -> li
     return confirmed
 
 
-def ensure_password_reset_subscription(recipient_email: str) -> str | None:
-    """Return the private topic ARN when its sole email subscription is confirmed.
+PASSWORD_RECOVERY_DISABLED = "disabled"
+PASSWORD_RECOVERY_PENDING = "pending"
+PASSWORD_RECOVERY_CONFIRMED = "confirmed"
+PENDING_SUBSCRIPTION_ARN = "PendingConfirmation"
 
-    The first call creates an account-specific topic and sends the AWS SNS
-    confirmation email. The caller must retry after the recipient confirms.
-    """
+
+def _inspect_password_reset_subscription(topic_arn: str, recipient_email: str) -> tuple[str, str | None]:
+    subscriptions = _list_topic_subscriptions(topic_arn)
+    confirmed = _assert_private_topic(subscriptions, recipient_email)
+    if confirmed:
+        return PASSWORD_RECOVERY_CONFIRMED, str(confirmed[0]["SubscriptionArn"])
+
+    normalized_email = _normalized_email(recipient_email)
+    if any(
+        str(subscription.get("Protocol", "")).lower() == "email"
+        and _normalized_email(str(subscription.get("Endpoint", ""))) == normalized_email
+        for subscription in subscriptions
+    ):
+        return PASSWORD_RECOVERY_PENDING, PENDING_SUBSCRIPTION_ARN
+    return PASSWORD_RECOVERY_DISABLED, None
+
+
+def get_password_reset_subscription_status(topic_arn: str | None, recipient_email: str) -> tuple[str, str | None]:
+    if not topic_arn:
+        return PASSWORD_RECOVERY_DISABLED, None
+    try:
+        return _inspect_password_reset_subscription(topic_arn, recipient_email)
+    except EmailDeliveryError:
+        raise
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("SNS password reset subscription status check failed")
+        raise EmailDeliveryError("Password reset subscription status could not be checked.") from exc
+
+
+def enable_password_reset_subscription(recipient_email: str) -> tuple[str, str, str]:
+    """Create/reuse the user's private topic and request one SNS email subscription."""
     normalized_email = _normalized_email(recipient_email)
     try:
         topic_response = sns_client.create_topic(Name=_private_topic_name(normalized_email))
@@ -95,18 +125,16 @@ def ensure_password_reset_subscription(recipient_email: str) -> str | None:
         if not topic_arn:
             raise EmailDeliveryError("SNS did not return a password reset topic ARN.")
 
-        subscriptions = _list_topic_subscriptions(topic_arn)
-        confirmed = _assert_private_topic(subscriptions, normalized_email)
-        if confirmed:
-            return topic_arn
-
-        sns_client.subscribe(
-            TopicArn=topic_arn,
-            Protocol="email",
-            Endpoint=normalized_email,
-            ReturnSubscriptionArn=True,
-        )
-        return None
+        current_status, subscription_arn = _inspect_password_reset_subscription(topic_arn, normalized_email)
+        if current_status == PASSWORD_RECOVERY_DISABLED:
+            sns_client.subscribe(
+                TopicArn=topic_arn,
+                Protocol="email",
+                Endpoint=normalized_email,
+                ReturnSubscriptionArn=True,
+            )
+            return topic_arn, PENDING_SUBSCRIPTION_ARN, PASSWORD_RECOVERY_PENDING
+        return topic_arn, subscription_arn or PENDING_SUBSCRIPTION_ARN, current_status
     except EmailDeliveryError:
         raise
     except (BotoCoreError, ClientError) as exc:
@@ -114,11 +142,29 @@ def ensure_password_reset_subscription(recipient_email: str) -> str | None:
         raise EmailDeliveryError("Password reset email could not be prepared.") from exc
 
 
-def send_password_reset_email(recipient_email: str, reset_url: str) -> str:
-    """Publish a reset link only to the recipient's audited private SNS topic."""
-    topic_arn = ensure_password_reset_subscription(recipient_email)
-    if topic_arn is None:
+def get_confirmed_password_reset_subscription(topic_arn: str | None, recipient_email: str) -> tuple[str, str] | None:
+    status, subscription_arn = get_password_reset_subscription_status(topic_arn, recipient_email)
+    if status != PASSWORD_RECOVERY_CONFIRMED or not topic_arn or not subscription_arn:
+        return None
+    return topic_arn, subscription_arn
+
+
+def unsubscribe_password_reset_subscription(subscription_arn: str | None) -> None:
+    if not subscription_arn or subscription_arn == PENDING_SUBSCRIPTION_ARN:
+        return
+    try:
+        sns_client.unsubscribe(SubscriptionArn=subscription_arn)
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("SNS password reset subscription removal failed")
+        raise EmailDeliveryError("Password recovery subscription could not be disabled.") from exc
+
+
+def send_password_reset_email(recipient_email: str, reset_url: str, topic_arn: str) -> str:
+    """Publish only after confirming the existing user's private SNS subscription."""
+    confirmed = get_confirmed_password_reset_subscription(topic_arn, recipient_email)
+    if confirmed is None:
         raise EmailSubscriptionPending("SNS email subscription confirmation is required.")
+    confirmed_topic_arn, _ = confirmed
 
     body = (
         "Hello,\n\n"
@@ -131,7 +177,7 @@ def send_password_reset_email(recipient_email: str, reset_url: str) -> str:
     )
     try:
         response = sns_client.publish(
-            TopicArn=topic_arn,
+            TopicArn=confirmed_topic_arn,
             Subject="Reset your FloodGuard password",
             Message=body,
         )

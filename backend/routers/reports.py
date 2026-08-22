@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models.alert import AlertZone
 from models.report import IncidentReport, ReportStatus
-from models.user import User
-from routers.auth import get_current_user
+from models.user import User, UserRole
+from routers.auth import get_current_user, require_exact_role
 from schemas.report import ReportCreate, ReportOut
 from services.geography_service import province_for_district, resolve_province_district
 from services.coordinate_validation import coordinate_validation_error
@@ -54,7 +54,7 @@ async def submit_report(
     latitude: float = Form(...),
     longitude: float = Form(...),
     photo: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_exact_role(UserRole.public)),
     db: Session = Depends(get_db),
 ) -> ReportOut:
     report_in = ReportCreate(
@@ -162,7 +162,7 @@ def get_community_reports(
 
 @router.get("/my-reports", response_model=list[ReportOut])
 def get_my_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_exact_role(UserRole.public)),
     db: Session = Depends(get_db),
 ) -> list[ReportOut]:
     reports = db.scalars(

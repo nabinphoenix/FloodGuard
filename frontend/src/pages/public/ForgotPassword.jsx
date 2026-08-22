@@ -4,8 +4,7 @@ import { Link } from "react-router-dom";
 import { forgotPassword } from "../../api/auth";
 
 const GENERIC_MESSAGE =
-  "If an account exists for this email, check your inbox for a reset link or an SNS subscription " +
-  "confirmation. After confirming a new subscription, request the reset link again.";
+  "If an account exists for this email and password recovery is enabled, check your inbox for reset instructions.";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -31,7 +30,7 @@ export default function ForgotPassword() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-blue-50 px-4 py-12">
       <section className="w-full max-w-md rounded-lg border border-blue-100 bg-white p-8 shadow-xl shadow-blue-100">
-        <div className="text-center"><h1 className="text-3xl font-bold text-blue-900">Forgot password?</h1><p className="mt-2 text-sm leading-6 text-blue-700">Enter your account email. AWS SNS may first ask you to confirm the private password-reset subscription.</p></div>
+        <div className="text-center"><h1 className="text-3xl font-bold text-blue-900">Forgot password?</h1><p className="mt-2 text-sm leading-6 text-blue-700">Enter your account email. If password recovery is enabled and confirmed, FloodGuard will send the reset link to your inbox.</p></div>
         {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-800" role="status">{message}</div>}
         {error && <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div>}
         <form className="mt-7 space-y-5" onSubmit={handleSubmit}>

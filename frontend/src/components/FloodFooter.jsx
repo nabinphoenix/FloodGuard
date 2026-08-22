@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import floodGuardLogo from "../FloodGuard.png";
+import { useAuth } from "../context/AuthContext";
 
 import "./FloodFooter.css";
 
@@ -16,6 +17,8 @@ function randomLevel() {
 
 export default function FloodFooter() {
   const [level, setLevel] = useState(INITIAL_LEVEL);
+  const { user } = useAuth();
+  const canSubmitReport = !user || user.role === "public";
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setLevel(randomLevel()), 4500);
@@ -58,7 +61,9 @@ export default function FloodFooter() {
           <div>
             <h3>Participate</h3>
             <Link to="/reports/community">Community reports <ArrowUpRight size={13} /></Link>
-            <Link to="/reports/submit">Report a flood <ArrowUpRight size={13} /></Link>
+            {canSubmitReport && (
+              <Link to="/reports/submit">Report a flood <ArrowUpRight size={13} /></Link>
+            )}
             <Link to="/register">Create account <ArrowUpRight size={13} /></Link>
           </div>
         </nav>

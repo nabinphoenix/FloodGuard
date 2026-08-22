@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
 import { getPublicMapOverview } from "../../api/publicMap";
 import { isWithinNepalOperationalBounds, normalizeStatus, operationalCoordinatePair, statusLabel } from "../../components/map/mapUtils";
+import { useAuth } from "../../context/AuthContext";
 
 const EMPTY_MAP = { sensors: [], zones: [], alerts: [], reports: [] };
 
@@ -34,6 +35,7 @@ function LayerToggle({ label, checked, onChange, count }) {
 }
 
 export default function FloodMap() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [mapData, setMapData] = useState(EMPTY_MAP);
   const [selected, setSelected] = useState(null);
@@ -45,6 +47,7 @@ export default function FloodMap() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const canSubmitReport = !user || user.role === "public";
 
   const loadMap = async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -192,11 +195,13 @@ export default function FloodMap() {
               </div>
             </section>
 
+            {canSubmitReport && (
             <section className="rounded-2xl border border-brand/20 bg-brand/5 p-4">
               <p className="text-sm font-bold text-brand">Need to report flooding?</p>
               <p className="mt-1 text-xs leading-5 text-ink-secondary">Submit a verified community report and optionally pin its location on the map.</p>
               <a href="/reports/submit" className="mt-3 inline-flex text-sm font-black text-brand hover:underline">Submit report ?</a>
             </section>
+            )}
           </aside>
 
           <section className="min-w-0">

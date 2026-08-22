@@ -30,8 +30,14 @@ from schemas.user import (
 )
 from services.email_service import (
     EmailDeliveryError,
-    ensure_password_reset_subscription,
+    PASSWORD_RECOVERY_CONFIRMED,
+    PASSWORD_RECOVERY_DISABLED,
+    PASSWORD_RECOVERY_PENDING,
+    enable_password_reset_subscription,
+    get_confirmed_password_reset_subscription,
+    get_password_reset_subscription_status,
     send_password_reset_email,
+    unsubscribe_password_reset_subscription,
 )
 from services.password_reset_service import (
     GENERIC_RESET_MESSAGE,
@@ -152,6 +158,22 @@ def require_role(required_role: UserRole | str) -> Callable[[User], User]:
     return role_checker
 
 
+def require_exact_role(required_role: UserRole | str) -> Callable[[User], User]:
+    """Require the user's real role without the admin view-as exception."""
+    role = UserRole(required_role)
+
+    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
+        if current_user.role != role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have permission to access this resource.",
+            )
+        return current_user
+
+    return role_checker
+
 def require_any_role(*allowed_roles: UserRole | str) -> Callable[[User], User]:
     roles = [UserRole(r) for r in allowed_roles]
 
@@ -228,12 +250,20 @@ def forgot_password(
 
     if user and not rate_limited:
         try:
-            if ensure_password_reset_subscription(user.email):
+            confirmed = None
+            if user.password_recovery_enabled:
+                confirmed = get_confirmed_password_reset_subscription(
+                    user.password_recovery_topic_arn,
+                    user.email,
+                )
+            if confirmed:
+                topic_arn, subscription_arn = confirmed
+                user.password_recovery_subscription_arn = subscription_arn
                 raw_token, _ = issue_reset_token(db, user, client_ip)
                 logger.info("Password reset requested for user_id=%s", user.id)
-                send_password_reset_email(user.email, build_reset_url(raw_token))
+                send_password_reset_email(user.email, build_reset_url(raw_token), topic_arn)
             else:
-                logger.info("Password reset SNS confirmation requested for user_id=%s", user.id)
+                logger.info("Password reset not sent because recovery is disabled or unconfirmed for user_id=%s", user.id)
         except EmailDeliveryError:
             logger.exception("Password reset email delivery failed for user_id=%s", user.id)
     elif user and rate_limited:
@@ -280,11 +310,11 @@ def read_current_user(current_user: User = Depends(get_current_user)) -> User:
 @router.put("/profile", response_model=ProfileUpdateResponse)
 def update_profile(
     profile_in: UserUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_exact_role(UserRole.public)),
     db: Session = Depends(get_db),
 ) -> ProfileUpdateResponse:
     update_data = profile_in.model_dump(exclude_unset=True)
-    message = None
+    messages: list[str] = []
     if "email_alerts" in update_data:
         new_val = update_data["email_alerts"]
         if new_val is None:
@@ -295,28 +325,69 @@ def update_profile(
         if new_val:
             if not current_user.sns_subscription_arn:
                 current_user.sns_subscription_arn = subscribe_email(current_user.email)
-                message = "Subscription request sent. Check your email and confirm the subscription."
+                messages.append("Subscription request sent. Check your email and confirm the subscription.")
             elif is_subscription_pending(current_user.sns_subscription_arn):
-                message = "Email subscription is pending confirmation. Check your inbox."
+                messages.append("Email subscription is pending confirmation. Check your inbox.")
             else:
-                message = "Email alerts remain enabled. Check your inbox if confirmation is still required."
-            try:
-                if ensure_password_reset_subscription(current_user.email):
-                    message = f"{message} Password-reset SNS email is ready."
-                else:
-                    message = f"{message} Confirm the separate password-reset SNS subscription email too."
-            except EmailDeliveryError:
-                logger.exception("Password reset SNS setup failed for user_id=%s", current_user.id)
+                messages.append("Email alerts remain enabled. Check your inbox if confirmation is still required.")
         else:
             if current_user.sns_subscription_arn:
                 unsubscribe(current_user.sns_subscription_arn)
                 current_user.sns_subscription_arn = None
-            message = "Email alerts disabled."
+            messages.append("Email alerts disabled.")
         current_user.email_alerts = new_val
 
     # Apply remaining fields
+    if "password_recovery_enabled" in update_data:
+        new_val = update_data["password_recovery_enabled"]
+        if new_val is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Password recovery must be enabled or disabled explicitly.",
+            )
+        if new_val:
+            try:
+                if current_user.password_recovery_topic_arn:
+                    recovery_status, subscription_arn = get_password_reset_subscription_status(
+                        current_user.password_recovery_topic_arn,
+                        current_user.email,
+                    )
+                    if recovery_status == PASSWORD_RECOVERY_DISABLED:
+                        topic_arn, subscription_arn, recovery_status = enable_password_reset_subscription(
+                            current_user.email
+                        )
+                    else:
+                        topic_arn = current_user.password_recovery_topic_arn
+                else:
+                    topic_arn, subscription_arn, recovery_status = enable_password_reset_subscription(
+                        current_user.email
+                    )
+            except EmailDeliveryError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Password recovery subscription could not be enabled.",
+                ) from exc
+
+            current_user.password_recovery_enabled = True
+            current_user.password_recovery_topic_arn = topic_arn
+            current_user.password_recovery_subscription_arn = subscription_arn
+            if recovery_status == PASSWORD_RECOVERY_CONFIRMED:
+                messages.append("Password recovery email is confirmed and ready.")
+            else:
+                messages.append("Password recovery email is pending confirmation. Check your inbox and confirm the SNS subscription.")
+        else:
+            try:
+                unsubscribe_password_reset_subscription(current_user.password_recovery_subscription_arn)
+            except EmailDeliveryError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Password recovery subscription could not be disabled.",
+                ) from exc
+            current_user.password_recovery_enabled = False
+            current_user.password_recovery_subscription_arn = None
+            messages.append("Password recovery email disabled.")
     for field, value in update_data.items():
-        if field == "email_alerts":
+        if field in {"email_alerts", "password_recovery_enabled"}:
             continue
         if isinstance(value, str):
             value = value.strip() or None
@@ -327,10 +398,48 @@ def update_profile(
     db.refresh(current_user)
     return {
         "user": current_user,
-        "message": message,
+        "message": " ".join(messages) or None,
     }
 
 
 @router.post("/logout")
 def logout() -> dict[str, str]:
     return {"message": "Logged out successfully. Remove the token from the client."}
+
+
+@router.post("/password-recovery/check-status", response_model=ProfileUpdateResponse)
+def check_password_recovery_status(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> ProfileUpdateResponse:
+    if not current_user.password_recovery_enabled or not current_user.password_recovery_topic_arn:
+        current_user.password_recovery_enabled = False
+        current_user.password_recovery_subscription_arn = None
+        message = "Password recovery email is disabled."
+    else:
+        try:
+            recovery_status, subscription_arn = get_password_reset_subscription_status(
+                current_user.password_recovery_topic_arn,
+                current_user.email,
+            )
+        except EmailDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Password recovery subscription status could not be checked.",
+            ) from exc
+
+        if recovery_status == PASSWORD_RECOVERY_CONFIRMED:
+            current_user.password_recovery_subscription_arn = subscription_arn
+            message = "Password recovery email is confirmed and ready."
+        elif recovery_status == PASSWORD_RECOVERY_PENDING:
+            current_user.password_recovery_subscription_arn = "PendingConfirmation"
+            message = "Password recovery email is still pending confirmation."
+        else:
+            current_user.password_recovery_enabled = False
+            current_user.password_recovery_subscription_arn = None
+            message = "Password recovery email is disabled."
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return {"user": current_user, "message": message}

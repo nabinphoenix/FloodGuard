@@ -64,6 +64,76 @@ def test_profile_subscription_state_is_persisted(db, monkeypatch):
     assert "confirmed" not in result["message"].lower()
 
 
+def test_email_alerts_do_not_enable_password_recovery(db, monkeypatch):
+    user = make_user(db, "Public", "alerts-only@example.com", UserRole.public)
+    enable_recovery = MagicMock()
+    monkeypatch.setattr(auth_router, "enable_password_reset_subscription", enable_recovery)
+    monkeypatch.setattr(auth_router, "subscribe_email", lambda email: "PendingConfirmation")
+
+    result = auth_router.update_profile(UserUpdate(email_alerts=True), user, db)
+
+    assert result["user"].email_alerts is True
+    assert result["user"].password_recovery_enabled is False
+    enable_recovery.assert_not_called()
+
+
+def test_enabling_password_recovery_is_independent_and_pending(db, monkeypatch):
+    user = make_user(db, "Public", "recovery@example.com", UserRole.public)
+    enable_recovery = MagicMock(
+        return_value=(
+            "arn:aws:sns:us-east-1:123456789012:private-reset-topic",
+            "PendingConfirmation",
+            "pending",
+        )
+    )
+    monkeypatch.setattr(auth_router, "enable_password_reset_subscription", enable_recovery)
+
+    result = auth_router.update_profile(UserUpdate(password_recovery_enabled=True), user, db)
+
+    enable_recovery.assert_called_once_with(user.email)
+    assert result["user"].email_alerts is False
+    assert result["user"].password_recovery_enabled is True
+    assert result["user"].password_recovery_status == "pending"
+    assert "pending confirmation" in result["message"].lower()
+
+
+def test_check_status_promotes_confirmed_password_recovery(db, monkeypatch):
+    user = make_user(db, "Public", "confirmed-recovery@example.com", UserRole.public)
+    user.password_recovery_enabled = True
+    user.password_recovery_topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    user.password_recovery_subscription_arn = "PendingConfirmation"
+    db.commit()
+    monkeypatch.setattr(
+        auth_router,
+        "get_password_reset_subscription_status",
+        lambda topic, email: ("confirmed", f"{topic}:confirmed"),
+    )
+
+    result = auth_router.check_password_recovery_status(user, db)
+
+    assert result["user"].password_recovery_status == "confirmed"
+    assert result["user"].password_recovery_subscription_arn.endswith(":confirmed")
+
+
+def test_disabling_password_recovery_does_not_change_alerts(db, monkeypatch):
+    user = make_user(db, "Public", "independent@example.com", UserRole.public)
+    user.email_alerts = True
+    user.sns_subscription_arn = "alert-subscription"
+    user.password_recovery_enabled = True
+    user.password_recovery_topic_arn = "private-topic"
+    user.password_recovery_subscription_arn = "recovery-subscription"
+    db.commit()
+    unsubscribe_recovery = MagicMock()
+    monkeypatch.setattr(auth_router, "unsubscribe_password_reset_subscription", unsubscribe_recovery)
+
+    result = auth_router.update_profile(UserUpdate(password_recovery_enabled=False), user, db)
+
+    unsubscribe_recovery.assert_called_once_with("recovery-subscription")
+    assert result["user"].email_alerts is True
+    assert result["user"].sns_subscription_arn == "alert-subscription"
+    assert result["user"].password_recovery_enabled is False
+
+
 def test_subscribe_success_does_not_claim_confirmation(monkeypatch):
     sns_client = MagicMock()
     sns_client.subscribe.return_value = {

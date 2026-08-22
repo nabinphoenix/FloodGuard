@@ -40,20 +40,22 @@ def reset_rate_limits():
 def test_forgot_password_response_is_generic_for_known_and_unknown_accounts(client, db, monkeypatch):
     test_client, _ = client
     user = make_user(db)
+    user.password_recovery_enabled = True
+    user.password_recovery_topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    db.commit()
     sent = []
-    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: True)
+    monkeypatch.setattr(auth_router, "get_confirmed_password_reset_subscription", lambda _topic, _email: (user.password_recovery_topic_arn, "confirmed-subscription"))
     monkeypatch.setattr(
         auth_router,
         "send_password_reset_email",
-        lambda recipient, url: sent.append((recipient, url)) or "sns-message-id",
+        lambda recipient, url, topic: sent.append((recipient, url, topic)) or "sns-message-id",
     )
 
     known = test_client.post("/api/auth/forgot-password", json={"email": user.email})
     unknown = test_client.post("/api/auth/forgot-password", json={"email": "nobody@example.com"})
 
     expected = (
-        "If an account exists for this email, check your inbox for a reset link or an SNS subscription "
-        "confirmation. After confirming a new subscription, request the reset link again."
+        "If an account exists for this email and password recovery is enabled, check your inbox for reset instructions."
     )
     assert known.status_code == 202
     assert unknown.status_code == 202
@@ -62,15 +64,15 @@ def test_forgot_password_response_is_generic_for_known_and_unknown_accounts(clie
     assert sent and sent[0][0] == user.email
 
 
-def test_forgot_password_requests_sns_confirmation_before_issuing_a_token(client, db, monkeypatch):
+def test_forgot_password_does_not_create_a_subscription_when_recovery_is_unconfirmed(client, db, monkeypatch):
     test_client, _ = client
     user = make_user(db, email="pending-reset@example.com")
     sent = []
-    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: None)
+    monkeypatch.setattr(auth_router, "get_confirmed_password_reset_subscription", lambda _topic, _email: None)
     monkeypatch.setattr(
         auth_router,
         "send_password_reset_email",
-        lambda recipient, url: sent.append((recipient, url)),
+        lambda recipient, url, topic: sent.append((recipient, url, topic)),
     )
 
     response = test_client.post("/api/auth/forgot-password", json={"email": user.email})
@@ -82,12 +84,15 @@ def test_forgot_password_requests_sns_confirmation_before_issuing_a_token(client
 def test_reset_token_is_hashed_single_use_and_invalidates_old_password_and_jwt(client, db, monkeypatch):
     test_client, _ = client
     user = make_user(db)
+    user.password_recovery_enabled = True
+    user.password_recovery_topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    db.commit()
     sent = []
-    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: True)
+    monkeypatch.setattr(auth_router, "get_confirmed_password_reset_subscription", lambda _topic, _email: (user.password_recovery_topic_arn, "confirmed-subscription"))
     monkeypatch.setattr(
         auth_router,
         "send_password_reset_email",
-        lambda recipient, url: sent.append(url) or "sns-message-id",
+        lambda recipient, url, topic: sent.append(url) or "sns-message-id",
     )
 
     old_login = test_client.post(
@@ -178,7 +183,10 @@ def test_private_sns_topic_requests_confirmation_then_sends_only_to_recipient(mo
     sns.publish.return_value = {"MessageId": "sns-reset-123"}
     monkeypatch.setattr(email_service, "sns_client", sns)
 
-    assert email_service.ensure_password_reset_subscription(recipient) is None
+    topic, subscription, recovery_status = email_service.enable_password_reset_subscription(recipient)
+    assert topic == topic_arn
+    assert subscription == "PendingConfirmation"
+    assert recovery_status == "pending"
     sns.subscribe.assert_called_once_with(
         TopicArn=topic_arn,
         Protocol="email",
@@ -189,6 +197,7 @@ def test_private_sns_topic_requests_confirmation_then_sends_only_to_recipient(mo
     message_id = email_service.send_password_reset_email(
         recipient,
         "https://floodguard.example/reset-password?token=private-token",
+        topic_arn,
     )
 
     assert message_id == "sns-reset-123"
@@ -226,9 +235,11 @@ def test_private_sns_topic_does_not_publish_while_confirmation_is_pending(monkey
         email_service.send_password_reset_email(
             recipient,
             "https://floodguard.example/reset-password?token=private-token",
+            topic_arn,
         )
 
     sns.publish.assert_not_called()
+    sns.create_topic.assert_not_called()
 
 
 def test_private_sns_topic_refuses_any_unexpected_subscriber(monkeypatch):
@@ -251,6 +262,7 @@ def test_private_sns_topic_refuses_any_unexpected_subscriber(monkeypatch):
         email_service.send_password_reset_email(
             "citizen@example.com",
             "https://floodguard.example/reset-password?token=private-token",
+            topic_arn,
         )
 
     sns.publish.assert_not_called()

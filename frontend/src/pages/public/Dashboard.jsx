@@ -68,7 +68,9 @@ export default function PublicDashboard() {
             <p className="mt-1 text-sm text-slate-600">Access the main FloodGuard services from your dashboard.</p>
           </div>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {actions.map((action) => {
+            {actions.filter((action) => (
+              user?.role === "public" || !["/reports/submit", "/reports/my"].includes(action.to)
+            )).map((action) => {
               const Icon = action.icon;
               return (
                 <Link key={action.to} to={action.to} className="group rounded-xl border border-blue-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md">

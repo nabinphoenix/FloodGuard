@@ -49,3 +49,27 @@ def test_non_admin_roles_cannot_escalate_into_other_role_views(client, db):
     assert test_client.get("/api/admin/zones").status_code == 403
     assert test_client.get("/api/authority/dashboard").status_code == 403
     assert test_client.get("/api/sensors/dashboard").status_code == 403
+
+
+def test_only_public_users_can_submit_or_view_their_reports(client, db):
+    test_client, current_user = client
+    roles = [UserRole.admin, UserRole.authority, UserRole.field_officer]
+    report_data = {
+        "province": "Bagmati",
+        "district": "Chitwan",
+        "zone_id": "1",
+        "severity": "3",
+        "description": "Flood water is rising beside the local road.",
+        "latitude": "27.67",
+        "longitude": "84.43",
+    }
+
+    for role in roles:
+        current_user["value"] = make_user(db, role.value.title(), f"{role.value}-report@example.com", role)
+        response = test_client.post(
+            "/api/reports/submit",
+            data=report_data,
+            files={"photo": ("report.jpg", b"fake-image", "image/jpeg")},
+        )
+        assert response.status_code == 403
+        assert test_client.get("/api/reports/my-reports").status_code == 403

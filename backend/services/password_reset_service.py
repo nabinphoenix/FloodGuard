@@ -16,8 +16,7 @@ from models.user import User
 
 
 GENERIC_RESET_MESSAGE = (
-    "If an account exists for this email, check your inbox for a reset link or an SNS subscription "
-    "confirmation. After confirming a new subscription, request the reset link again."
+    "If an account exists for this email and password recovery is enabled, check your inbox for reset instructions."
 )
 INVALID_RESET_MESSAGE = "This password reset link is invalid or has expired."
 

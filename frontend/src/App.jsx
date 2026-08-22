@@ -59,10 +59,10 @@ export default function App() {
         <Route path="/history" element={<History />} />
         <Route path="/reports/community" element={<CommunityFeed />} />
         <Route path="/reports/:reportId" element={<ReportDetail />} />
-        <Route path="/reports/submit" element={<ProtectedRoute><SubmitReport /></ProtectedRoute>} />
-        <Route path="/reports/my" element={<ProtectedRoute><MyReports /></ProtectedRoute>} />
+        <Route path="/reports/submit" element={<ProtectedRoute exactRole="public"><SubmitReport /></ProtectedRoute>} />
+        <Route path="/reports/my" element={<ProtectedRoute exactRole="public"><MyReports /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute role="public"><PublicDashboard /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute exactRole="public"><Profile /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><Dashboard /></ProtectedRoute>} />
         <Route path="/authority" element={<ProtectedRoute role="authority"><AuthorityDashboard /></ProtectedRoute>} />
         <Route path="/authority/reports" element={<ProtectedRoute role="authority"><AuthorityManageReports /></ProtectedRoute>} />

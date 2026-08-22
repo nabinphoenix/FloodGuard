@@ -9,6 +9,7 @@ import CloudShader from "../../components/CloudShader";
 import FloodFooter from "../../components/FloodFooter";
 import HomeShowcase from "../../components/HomeShowcase";
 import WaterfallRain from "../../components/WaterfallRain";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Home() {
   const [zones, setZones] = useState([]);
@@ -16,6 +17,8 @@ export default function Home() {
   const [historySummary, setHistorySummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { user } = useAuth();
+  const canSubmitReport = !user || user.role === "public";
 
   useEffect(() => {
     async function loadHomeData() {
@@ -84,6 +87,7 @@ export default function Home() {
             >
               View Alerts
             </Link>
+            {canSubmitReport && (
             <Link
               to="/reports/submit"
               className="hero-liquid-button bg-white rounded-full border-2 border-white/80 px-8 py-4 text-center font-bold text-brand transition-all"
@@ -91,6 +95,7 @@ export default function Home() {
               <span className="hero-liquid-button__label">Report Flood</span>
               <span className="hero-liquid-button__liquid" aria-hidden="true" />
             </Link>
+            )}
           </div>
         </div>
 

@@ -25,6 +25,8 @@ class UserOut(BaseModel):
     role: UserRole
     email_alerts: bool
     email_alert_status: str
+    password_recovery_enabled: bool
+    password_recovery_status: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -45,6 +47,7 @@ class UserUpdate(NormalizedModel):
     phone: str | None = Field(default=None, max_length=10, pattern=PHONE_PATTERN)
     district: str | None = Field(default=None, max_length=100)
     email_alerts: bool | None = None
+    password_recovery_enabled: bool | None = None
 
 
 class AdminUserCreate(UserCreate):

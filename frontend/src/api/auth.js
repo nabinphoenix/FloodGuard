@@ -36,6 +36,11 @@ export async function updateProfile(data) {
   return response.data;
 }
 
+export async function checkPasswordRecoveryStatus() {
+  const response = await api.post("/auth/password-recovery/check-status");
+  return response.data;
+}
+
 export async function forgotPassword(email) {
   const response = await api.post("/auth/forgot-password", { email });
   return response.data;

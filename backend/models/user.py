@@ -40,6 +40,9 @@ class User(Base):
     )
     email_alerts: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     sns_subscription_arn: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_recovery_enabled: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    password_recovery_topic_arn: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_recovery_subscription_arn: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -78,3 +81,11 @@ class User(Base):
         if not self.email_alerts or not self.sns_subscription_arn:
             return "disabled"
         return "pending"
+
+    @property
+    def password_recovery_status(self) -> str:
+        if not self.password_recovery_enabled or not self.password_recovery_topic_arn:
+            return "disabled"
+        if not self.password_recovery_subscription_arn or self.password_recovery_subscription_arn == "PendingConfirmation":
+            return "pending"
+        return "confirmed"

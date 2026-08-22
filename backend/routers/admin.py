@@ -21,6 +21,7 @@ from schemas.user import (
 )
 from services.coordinate_validation import coordinate_validation_error
 from services.geography_service import resolve_district
+from services.email_service import EmailDeliveryError, unsubscribe_password_reset_subscription
 from services.sns_service import is_subscription_pending, unsubscribe
 
 
@@ -298,6 +299,16 @@ def update_user(user_id: int, user_in: AdminUserUpdate, db: Session = Depends(ge
         _unsubscribe_if_needed(user.sns_subscription_arn)
         user.sns_subscription_arn = None
         user.email_alerts = False
+        try:
+            unsubscribe_password_reset_subscription(user.password_recovery_subscription_arn)
+        except EmailDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="The user's password recovery subscription could not be disabled.",
+            ) from exc
+        user.password_recovery_enabled = False
+        user.password_recovery_topic_arn = None
+        user.password_recovery_subscription_arn = None
 
     update_data["email"] = new_email
     for field, value in update_data.items():
@@ -387,6 +398,10 @@ def delete_user(
         )
 
     _unsubscribe_if_needed(user.sns_subscription_arn)
+    try:
+        unsubscribe_password_reset_subscription(user.password_recovery_subscription_arn)
+    except EmailDeliveryError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The user's password recovery subscription could not be disabled.") from exc
     db.delete(user)
     db.commit()
     return {"message": "User deleted successfully."}
