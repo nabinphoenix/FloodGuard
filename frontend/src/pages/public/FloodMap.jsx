@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Layers3, MapPin, Radio, RefreshCw, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import FloodFooter from "../../components/FloodFooter";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
 import Navbar from "../../components/Navbar";
 import { getPublicMapOverview } from "../../api/publicMap";
@@ -215,7 +214,6 @@ export default function FloodMap() {
           </section>
         ) : null}
       </main>
-      <FloodFooter />
     </div>
   );
 }
