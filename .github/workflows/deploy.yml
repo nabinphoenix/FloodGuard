@@ -18,6 +18,8 @@ env:
   EB_APPLICATION: FloodGuard
   EB_ENVIRONMENT: FloodGuard-Prod
   EB_SOURCE_BUCKET: ddac-floodguard
+  FRONTEND_BASE_URL: https://sunitanepali.com.np
+  SES_FROM_EMAIL: nabinepali012@gmail.com
 
 jobs:
   ci:
@@ -267,7 +269,10 @@ jobs:
         run: |
           aws elasticbeanstalk update-environment \
             --environment-name "$EB_ENVIRONMENT" \
-            --version-label "${{ steps.version.outputs.version }}"
+            --version-label "${{ steps.version.outputs.version }}" \
+            --option-settings \
+            "Namespace=aws:elasticbeanstalk:application:environment,OptionName=FRONTEND_BASE_URL,Value=${FRONTEND_BASE_URL}" \
+            "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SES_FROM_EMAIL,Value=${SES_FROM_EMAIL}"
 
           aws elasticbeanstalk wait environment-updated \
             --environment-names "$EB_ENVIRONMENT"
