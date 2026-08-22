@@ -86,9 +86,10 @@ export default function Home() {
             </Link>
             <Link
               to="/reports/submit"
-              className="rounded-full border-2 border-white/80 px-8 py-4 text-center font-bold text-white hover:bg-white/10 transition-all"
+              className="hero-liquid-button rounded-full border-2 border-white/80 px-8 py-4 text-center font-bold text-white transition-all"
             >
-              Report Flood
+              <span className="hero-liquid-button__label">Report Flood</span>
+              <span className="hero-liquid-button__liquid" aria-hidden="true" />
             </Link>
           </div>
         </div>
