@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, Map, MapPin, Pencil, PlusCircle, Trash2, X } from "lucide-react";
 
 import { createZone, deleteZone, getZone, getZones, updateZone } from "../../api/admin";
 import AlertBadge from "../../components/AlertBadge";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -11,6 +12,7 @@ import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validateCoordinate } from "../../utils/validation";
 
 const levels = ["safe", "watch", "warning", "emergency"];
+const ITEMS_PER_PAGE = 15;
 const emptyZone = { name: "", district: "", is_active: true, alert_level: "safe", latitude: "", longitude: "" };
 
 function validateZoneForm(formData) {
@@ -40,7 +42,7 @@ function zonePayload(formData) {
 }
 
 export default function ManageZones() {
-  const [zones, setZones] = useState([]);
+  const [allZones, setZones] = useState([]);
   const [formData, setFormData] = useState(emptyZone);
   const [selectedZone, setSelectedZone] = useState(null);
   const [modal, setModal] = useState(null);
@@ -51,6 +53,7 @@ export default function ManageZones() {
   const [workingId, setWorkingId] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function loadZones() {
     setIsLoading(true);
@@ -67,6 +70,16 @@ export default function ManageZones() {
   useEffect(() => {
     loadZones();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(allZones.length / ITEMS_PER_PAGE));
+  const paginatedZones = useMemo(
+    () => allZones.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [allZones, currentPage],
+  );
+  const zones = paginatedZones;
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   function updateField(name, value) {
     setFormData((current) => ({ ...current, [name]: value }));
@@ -214,11 +227,13 @@ export default function ManageZones() {
         </aside>
 
         <div className="flex flex-col overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
-          <div className="flex items-center justify-between border-b border-ink-border bg-surface-bg px-6 py-5"><h2 className="flex items-center gap-2 text-lg font-bold text-ink-primary"><Map className="text-brand" size={20} />Monitored Zones</h2><span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand">{zones.length} Zones</span></div>
+          <div className="flex items-center justify-between border-b border-ink-border bg-surface-bg px-6 py-5"><h2 className="flex items-center gap-2 text-lg font-bold text-ink-primary"><Map className="text-brand" size={20} />Monitored Zones</h2><span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-bold text-brand">{allZones.length} Zones</span></div>
           <div className="flex-1 bg-surface-bg p-6"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
             {isLoading ? <div className="col-span-full flex justify-center py-12"><div className="flex flex-col items-center gap-3"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" /><p className="font-medium text-ink-secondary">Loading zones...</p></div></div> : zones.length === 0 ? <div className="col-span-full flex flex-col items-center justify-center py-12 text-center"><MapPin size={24} className="text-gray-300" /><p className="mt-4 text-lg font-medium text-ink-primary">No zones created yet.</p><p className="mt-1 text-ink-secondary">Use the form to add your first monitored zone.</p></div> : zones.map((zone) => <article key={zone.id} className="rounded-xl border border-ink-border bg-white p-5 shadow-sm transition-all hover:border-brand/30 hover:shadow-md"><div className="flex flex-col gap-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate pr-2 text-lg font-bold text-ink-primary">{zone.name}</h3><p className="text-xs font-semibold text-ink-secondary">{zone.district} · {zone.is_active ? "Active" : "Inactive"}</p></div><AlertBadge level={zone.alert_level} /></div><div className="flex items-center gap-1.5 rounded border border-gray-100 bg-gray-50 px-2.5 py-1.5 font-mono text-sm text-ink-secondary"><MapPin size={14} className="text-gray-400" />{Number(zone.latitude).toFixed(4)}, {Number(zone.longitude).toFixed(4)}</div>
             {!isWithinNepalOperationalBounds(zone.latitude, zone.longitude) && <p className="px-1 text-xs font-bold text-red-600">Location outside Nepal — correct before using this zone on the public map.</p>}<p className="px-1 text-[11px] font-medium text-gray-400">Updated {zone.updated_at ? new Date(zone.updated_at).toLocaleString() : "Never"}</p><div className="flex justify-end gap-1 border-t border-gray-100 pt-3"><button type="button" title="View zone" onClick={() => openView(zone)} className="rounded-lg p-2 text-brand hover:bg-brand/10"><Eye size={17} /></button><button type="button" title="Edit zone" onClick={() => openEdit(zone)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Pencil size={17} /></button><button type="button" title="Delete zone" disabled={workingId === zone.id} onClick={() => requestDelete(zone)} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={17} /></button></div></div></article>)}
-          </div></div>
+          </div>
+          <AdminPagination currentPage={currentPage} totalPages={totalPages} totalItems={allZones.length} pageSize={ITEMS_PER_PAGE} onPageChange={setCurrentPage} />
+        </div>
         </div>
       </div>
 

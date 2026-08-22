@@ -21,11 +21,13 @@ import {
   updateUserRole,
 } from "../../api/admin";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validatePhone } from "../../utils/validation";
 
 const roles = ["public", "field_officer", "authority", "admin"];
+const ITEMS_PER_PAGE = 15;
 
 const emptyUser = {
   name: "",
@@ -60,6 +62,7 @@ export default function ManageUsers() {
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function loadUsers() {
     setIsLoading(true);
@@ -88,6 +91,19 @@ export default function ManageUsers() {
       return matchesText && (!roleFilter || user.role === roleFilter);
     });
   }, [users, query, roleFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE));
+  const paginatedUsers = useMemo(
+    () => filteredUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE),
+    [filteredUsers, currentPage],
+  );
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   function closeModal() {
     setModal(null);
@@ -163,6 +179,7 @@ export default function ManageUsers() {
       if (modal === "create") {
         const created = await createUser({ ...payload, password: formData.password, role: formData.role });
         setUsers((current) => [created, ...current]);
+        setCurrentPage(1);
         setMessage("User created successfully.");
       } else {
         const updated = await updateUser(selectedUser.id, payload);
@@ -269,7 +286,7 @@ export default function ManageUsers() {
                 <tr><td colSpan="6" className="px-6 py-12 text-center"><div className="flex flex-col items-center gap-3"><div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" /><p className="font-medium text-ink-secondary">Loading user data...</p></div></td></tr>
               ) : filteredUsers.length === 0 ? (
                 <tr><td colSpan="6" className="px-6 py-12 text-center"><User className="mx-auto text-ink-secondary" size={28} /><p className="mt-3 text-lg font-medium text-ink-primary">No users found</p></td></tr>
-              ) : filteredUsers.map((user) => (
+              ) : paginatedUsers.map((user) => (
                 <tr key={user.id} className="transition-colors hover:bg-gray-50">
                   <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-lg font-bold text-brand">{user.name.charAt(0).toUpperCase()}</div><div><p className="font-bold text-ink-primary">{user.name}</p><p className="text-xs text-ink-secondary">{user.email}</p>{user.phone && <p className="mt-0.5 text-xs text-ink-secondary">{user.phone}</p>}</div></div></td>
                   <td className="px-6 py-4"><div className="flex items-center gap-1.5 font-medium text-ink-primary"><MapPin size={16} className="text-brand opacity-70" />{user.district || <span className="italic text-ink-secondary">Not set</span>}</div></td>
@@ -283,6 +300,13 @@ export default function ManageUsers() {
           </table>
         </div>
       </div>
+        <AdminPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredUsers.length}
+          pageSize={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true">
