@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 # Model imports are required so that routers referencing ORM classes
 # can resolve them at startup. Tables are managed by Alembic migrations.
-from models import alert, report, sensor, user  # noqa: F401
+from models import alert, password_reset, report, sensor, user  # noqa: F401
 
 
 app = FastAPI(

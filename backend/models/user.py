@@ -13,6 +13,7 @@ from database import Base
 if TYPE_CHECKING:
     from models.report import IncidentReport
     from models.alert import FloodAlert
+    from models.password_reset import PasswordResetToken
 
 
 class UserRole(str, Enum):
@@ -44,6 +45,12 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
     )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
 
     reports: Mapped[list[IncidentReport]] = relationship(
         "IncidentReport",
@@ -53,6 +60,10 @@ class User(Base):
     triggered_alerts: Mapped[list[FloodAlert]] = relationship(
         "FloodAlert",
         back_populates="triggered_by_user",
+    )
+    reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
+        "PasswordResetToken",
+        cascade="all, delete-orphan",
     )
 
     @property

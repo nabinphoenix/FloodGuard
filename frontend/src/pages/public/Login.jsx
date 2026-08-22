@@ -60,6 +60,10 @@ export default function Login() {
             </div>
           </div>
 
+          <div className="-mt-2 text-right">
+            <Link to="/forgot-password" className="text-sm font-semibold text-blue-700 hover:text-blue-900">Forgot password?</Link>
+          </div>
+
           <button type="submit" disabled={isSubmitting} className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
             {isSubmitting ? "Signing in..." : "Sign in"}
           </button>

@@ -12,11 +12,13 @@ import AuthorityCreateAlert from "./pages/authority/CreateAlert";
 import AlertFeed from "./pages/public/AlertFeed";
 import PublicDashboard from "./pages/public/Dashboard";
 import FloodMap from "./pages/public/FloodMap";
+import ForgotPassword from "./pages/public/ForgotPassword";
 import Home from "./pages/public/Home";
 import History from "./pages/public/History";
 import Login from "./pages/public/Login";
 import Profile from "./pages/public/Profile";
 import Register from "./pages/public/Register";
+import ResetPassword from "./pages/public/ResetPassword";
 import Safety from "./pages/public/Safety";
 import CommunityFeed from "./pages/reports/CommunityFeed";
 import MyReports from "./pages/reports/MyReports";
@@ -48,6 +50,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/register" element={<Register />} />
         <Route path="/safety" element={<Safety />} />
         <Route path="/alerts" element={<AlertFeed />} />

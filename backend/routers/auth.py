@@ -1,24 +1,47 @@
+import hashlib
+import logging
 from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 
 import bcrypt as _bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from config import settings
+from models.password_reset import PasswordResetToken
 from database import get_db
 from models.user import User, UserRole
 from services.sns_service import is_subscription_pending, subscribe_email, unsubscribe
 from schemas.common import NormalizedModel
-from schemas.user import Token, TokenData, UserCreate, UserOut, UserUpdate, ProfileUpdateResponse
+from schemas.user import (
+    ForgotPasswordRequest,
+    ProfileUpdateResponse,
+    ResetPasswordRequest,
+    Token,
+    TokenData,
+    UserCreate,
+    UserOut,
+    UserUpdate,
+)
+from services.email_service import EmailDeliveryError, send_password_reset_email
+from services.password_reset_service import (
+    GENERIC_RESET_MESSAGE,
+    INVALID_RESET_MESSAGE,
+    build_reset_url,
+    get_valid_reset_token,
+    is_reset_rate_limited,
+    issue_reset_token,
+    record_reset_request,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -44,6 +67,7 @@ def create_access_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "role": user.role.value,
+        "pwd": hashlib.sha256(user.password_hash.encode("utf-8")).hexdigest(),
         "iat": now,
         "exp": now + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
     }
@@ -83,6 +107,21 @@ def get_current_user(
     user = db.get(User, token_data.user_id)
     if user is None:
         raise credentials_exception
+
+    token_password_version = payload.get("pwd")
+    current_password_version = hashlib.sha256(user.password_hash.encode("utf-8")).hexdigest()
+    if token_password_version and token_password_version != current_password_version:
+        raise credentials_exception
+    if user.password_changed_at and payload.get("iat") is not None:
+        try:
+            issued_at = datetime.fromtimestamp(float(payload["iat"]), timezone.utc)
+            changed_at = user.password_changed_at
+            if changed_at.tzinfo is None:
+                changed_at = changed_at.replace(tzinfo=timezone.utc)
+            if issued_at < changed_at.astimezone(timezone.utc):
+                raise credentials_exception
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise credentials_exception from exc
 
     return user
 
@@ -169,6 +208,61 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)) -> Token:
         )
 
     return Token(access_token=create_access_token(user), token_type="bearer")
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    normalized_email = str(payload.email).strip().lower()
+    client_ip = request.client.host if request.client else None
+    rate_limited = is_reset_rate_limited(normalized_email, client_ip)
+    record_reset_request(normalized_email, client_ip)
+    user = get_user_by_email(db, normalized_email)
+
+    if user and not rate_limited:
+        raw_token, _ = issue_reset_token(db, user, client_ip)
+        logger.info("Password reset requested for user_id=%s", user.id)
+        try:
+            send_password_reset_email(user.email, build_reset_url(raw_token))
+        except EmailDeliveryError:
+            logger.exception("Password reset email delivery failed for user_id=%s", user.id)
+    elif user and rate_limited:
+        logger.warning("Password reset request throttled for user_id=%s", user.id)
+
+    return {"message": GENERIC_RESET_MESSAGE}
+
+@router.post("/reset-password")
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    record = get_valid_reset_token(db, payload.token)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_RESET_MESSAGE)
+
+    user = db.get(User, record.user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_RESET_MESSAGE)
+
+    changed_at = datetime.now(timezone.utc).replace(microsecond=0)
+    user.password_hash = hash_password(payload.new_password)
+    user.password_changed_at = changed_at
+    record.used_at = changed_at
+    db.execute(
+        update(PasswordResetToken)
+        .where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.id != record.id,
+            PasswordResetToken.used_at.is_(None),
+        )
+        .values(used_at=changed_at)
+    )
+    db.commit()
+    logger.info("Password reset completed for user_id=%s", user.id)
+    return {"message": "Password reset successful."}
 
 
 @router.get("/me", response_model=UserOut)

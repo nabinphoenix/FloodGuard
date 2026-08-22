@@ -24,7 +24,7 @@ os.environ.setdefault("CORS_ORIGINS", "http://localhost:5173")
 os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
 
 from database import Base  # noqa: E402
-from models import alert, report, sensor, user  # noqa: E402, F401
+from models import alert, password_reset, report, sensor, user  # noqa: E402, F401
 
 
 @pytest.fixture

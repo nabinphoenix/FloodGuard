@@ -327,6 +327,7 @@ def reset_user_password(user_id: int, payload: AdminUserPasswordReset, db: Sessi
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     user.password_hash = hash_password(payload.password)
+    user.password_changed_at = datetime.now(timezone.utc).replace(microsecond=0)
     db.commit()
     db.refresh(user)
     return user
