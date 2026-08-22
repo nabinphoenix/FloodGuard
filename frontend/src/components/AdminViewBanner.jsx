@@ -27,7 +27,7 @@ export default function AdminViewBanner() {
           <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-200"><ShieldCheck size={12} /> Admin</span>
         </div>
         <div className="flex items-center gap-2">
-          <ViewAsSwitcher value={viewAs} />
+          <ViewAsSwitcher value={viewAs} variant="light" />
           <button type="button" onClick={returnToAdmin} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800">Return to Admin</button>
         </div>
       </div>
