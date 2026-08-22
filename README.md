@@ -203,6 +203,40 @@ AWS credentials are supplied through the normal boto3/Elastic Beanstalk
 provider chain. Never commit AWS access keys, session tokens, passwords, JWTs,
 or private S3 settings.
 
+## Private password reset email through SNS
+
+Flood alerts continue to use the shared opt-in `SNS_TOPIC_ARN`. Password-reset
+links never use that shared topic. FloodGuard creates one deterministic private
+SNS standard topic per registered email, using an HMAC digest rather than the
+email address in the topic name, and audits the topic before every publication.
+Publishing is refused if any subscription endpoint does not exactly match the
+registered user or if more than one confirmed subscription exists.
+
+The SNS-only reset flow is:
+
+1. The user submits an existing FloodGuard account email.
+2. If its private SNS subscription is not confirmed, SNS sends an AWS
+   subscription-confirmation email. No reset token is created yet.
+3. The user confirms the subscription and submits forgot password again.
+4. FloodGuard creates a hashed, one-time token and publishes its link only to
+   that user's audited private topic.
+5. The email arrives from `AWS Notifications <no-reply@sns.amazonaws.com>`.
+
+Enabling flood-alert email also starts the separate password-reset subscription
+confirmation. Disabling flood alerts leaves the private reset subscription in
+place. Existing and unknown email addresses receive the same API response.
+
+Elastic Beanstalk configuration uses:
+
+    PASSWORD_RESET_SNS_TOPIC_PREFIX=FloodGuard-Password-Reset-User
+
+The application role needs `sns:CreateTopic`, `sns:Subscribe`,
+`sns:ListSubscriptionsByTopic`, `sns:GetSubscriptionAttributes`, and
+`sns:Publish`. The manually created shared
+`FloodGuard-Password-Reset` topic is suitable for delivery tests only and must
+not receive real reset tokens. Tokens remain SHA-256 hashed in RDS, expire after
+20 minutes, are single use, and invalidate previous sessions after a reset.
+
 ## FloodGuard operational/demo zones
 
 The canonical demo dataset is defined once in

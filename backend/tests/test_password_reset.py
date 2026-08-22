@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import MagicMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -40,16 +41,20 @@ def test_forgot_password_response_is_generic_for_known_and_unknown_accounts(clie
     test_client, _ = client
     user = make_user(db)
     sent = []
+    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: True)
     monkeypatch.setattr(
         auth_router,
         "send_password_reset_email",
-        lambda recipient, url: sent.append((recipient, url)) or "ses-message-id",
+        lambda recipient, url: sent.append((recipient, url)) or "sns-message-id",
     )
 
     known = test_client.post("/api/auth/forgot-password", json={"email": user.email})
     unknown = test_client.post("/api/auth/forgot-password", json={"email": "nobody@example.com"})
 
-    expected = "If an account exists for this email, a password reset link has been sent."
+    expected = (
+        "If an account exists for this email, check your inbox for a reset link or an SNS subscription "
+        "confirmation. After confirming a new subscription, request the reset link again."
+    )
     assert known.status_code == 202
     assert unknown.status_code == 202
     assert known.json() == {"message": expected}
@@ -57,14 +62,32 @@ def test_forgot_password_response_is_generic_for_known_and_unknown_accounts(clie
     assert sent and sent[0][0] == user.email
 
 
+def test_forgot_password_requests_sns_confirmation_before_issuing_a_token(client, db, monkeypatch):
+    test_client, _ = client
+    user = make_user(db, email="pending-reset@example.com")
+    sent = []
+    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: None)
+    monkeypatch.setattr(
+        auth_router,
+        "send_password_reset_email",
+        lambda recipient, url: sent.append((recipient, url)),
+    )
+
+    response = test_client.post("/api/auth/forgot-password", json={"email": user.email})
+
+    assert response.status_code == 202
+    assert sent == []
+    assert db.query(PasswordResetToken).count() == 0
+
 def test_reset_token_is_hashed_single_use_and_invalidates_old_password_and_jwt(client, db, monkeypatch):
     test_client, _ = client
     user = make_user(db)
     sent = []
+    monkeypatch.setattr(auth_router, "ensure_password_reset_subscription", lambda _email: True)
     monkeypatch.setattr(
         auth_router,
         "send_password_reset_email",
-        lambda recipient, url: sent.append(url) or "ses-message-id",
+        lambda recipient, url: sent.append(url) or "sns-message-id",
     )
 
     old_login = test_client.post(
@@ -129,21 +152,105 @@ def test_invalid_and_expired_reset_tokens_are_safe_errors(client, db):
     assert expired.json()["detail"] == invalid.json()["detail"]
 
 
-def test_reset_flow_supports_admin_role_and_ses_is_private(monkeypatch):
-    calls = []
-    monkeypatch.setattr(email_service.settings, "ses_from_email", "no-reply@floodguard.example")
-    monkeypatch.setattr(
-        email_service.ses_client,
-        "send_email",
-        lambda **kwargs: calls.append(kwargs) or {"MessageId": "ses-123"},
+def test_private_sns_topic_requests_confirmation_then_sends_only_to_recipient(monkeypatch):
+    recipient = "citizen@example.com"
+    topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    subscription_arn = f"{topic_arn}:confirmed-subscription"
+    sns = MagicMock()
+    sns.create_topic.return_value = {"TopicArn": topic_arn}
+    sns.list_subscriptions_by_topic.side_effect = [
+        {"Subscriptions": []},
+        {
+            "Subscriptions": [
+                {
+                    "SubscriptionArn": subscription_arn,
+                    "Protocol": "email",
+                    "Endpoint": recipient,
+                    "TopicArn": topic_arn,
+                }
+            ]
+        },
+    ]
+    sns.subscribe.return_value = {"SubscriptionArn": f"{topic_arn}:pending-subscription"}
+    sns.get_subscription_attributes.return_value = {
+        "Attributes": {"PendingConfirmation": "false"}
+    }
+    sns.publish.return_value = {"MessageId": "sns-reset-123"}
+    monkeypatch.setattr(email_service, "sns_client", sns)
+
+    assert email_service.ensure_password_reset_subscription(recipient) is None
+    sns.subscribe.assert_called_once_with(
+        TopicArn=topic_arn,
+        Protocol="email",
+        Endpoint=recipient,
+        ReturnSubscriptionArn=True,
     )
 
     message_id = email_service.send_password_reset_email(
-        "admin@example.com",
+        recipient,
         "https://floodguard.example/reset-password?token=private-token",
     )
 
-    assert message_id == "ses-123"
-    assert calls[0]["Destination"] == {"ToAddresses": ["admin@example.com"]}
-    assert "private-token" in calls[0]["Message"]["Body"]["Text"]["Data"]
-    assert calls[0]["Message"]["Subject"]["Data"] == "Reset your FloodGuard password"
+    assert message_id == "sns-reset-123"
+    topic_name = sns.create_topic.call_args_list[0].kwargs["Name"]
+    assert recipient not in topic_name
+    publish = sns.publish.call_args.kwargs
+    assert publish["TopicArn"] == topic_arn
+    assert publish["Subject"] == "Reset your FloodGuard password"
+    assert "private-token" in publish["Message"]
+
+
+def test_private_sns_topic_does_not_publish_while_confirmation_is_pending(monkeypatch):
+    recipient = "pending-citizen@example.com"
+    topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    subscription_arn = f"{topic_arn}:pending-subscription"
+    sns = MagicMock()
+    sns.create_topic.return_value = {"TopicArn": topic_arn}
+    sns.list_subscriptions_by_topic.return_value = {
+        "Subscriptions": [
+            {
+                "SubscriptionArn": subscription_arn,
+                "Protocol": "email",
+                "Endpoint": recipient,
+                "TopicArn": topic_arn,
+            }
+        ]
+    }
+    sns.get_subscription_attributes.return_value = {
+        "Attributes": {"PendingConfirmation": "true"}
+    }
+    sns.subscribe.return_value = {"SubscriptionArn": subscription_arn}
+    monkeypatch.setattr(email_service, "sns_client", sns)
+
+    with pytest.raises(email_service.EmailSubscriptionPending):
+        email_service.send_password_reset_email(
+            recipient,
+            "https://floodguard.example/reset-password?token=private-token",
+        )
+
+    sns.publish.assert_not_called()
+
+
+def test_private_sns_topic_refuses_any_unexpected_subscriber(monkeypatch):
+    topic_arn = "arn:aws:sns:us-east-1:123456789012:private-reset-topic"
+    sns = MagicMock()
+    sns.create_topic.return_value = {"TopicArn": topic_arn}
+    sns.list_subscriptions_by_topic.return_value = {
+        "Subscriptions": [
+            {
+                "SubscriptionArn": f"{topic_arn}:unexpected",
+                "Protocol": "email",
+                "Endpoint": "someone-else@example.com",
+                "TopicArn": topic_arn,
+            }
+        ]
+    }
+    monkeypatch.setattr(email_service, "sns_client", sns)
+
+    with pytest.raises(email_service.EmailDeliveryError):
+        email_service.send_password_reset_email(
+            "citizen@example.com",
+            "https://floodguard.example/reset-password?token=private-token",
+        )
+
+    sns.publish.assert_not_called()

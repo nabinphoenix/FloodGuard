@@ -15,7 +15,10 @@ from models.password_reset import PasswordResetToken
 from models.user import User
 
 
-GENERIC_RESET_MESSAGE = "If an account exists for this email, a password reset link has been sent."
+GENERIC_RESET_MESSAGE = (
+    "If an account exists for this email, check your inbox for a reset link or an SNS subscription "
+    "confirmation. After confirming a new subscription, request the reset link again."
+)
 INVALID_RESET_MESSAGE = "This password reset link is invalid or has expired."
 
 _rate_limit_lock = threading.Lock()

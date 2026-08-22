@@ -19,7 +19,7 @@ env:
   EB_ENVIRONMENT: FloodGuard-Prod
   EB_SOURCE_BUCKET: ddac-floodguard
   FRONTEND_BASE_URL: https://sunitanepali.com.np
-  SES_FROM_EMAIL: nabinepali012@gmail.com
+  PASSWORD_RESET_SNS_TOPIC_PREFIX: FloodGuard-Password-Reset-User
 
 jobs:
   ci:
@@ -200,7 +200,6 @@ jobs:
     name: Deploy to Elastic Beanstalk
     runs-on: ubuntu-latest
     needs: ci
-
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       github.event_name == 'workflow_dispatch'
@@ -272,7 +271,7 @@ jobs:
             --version-label "${{ steps.version.outputs.version }}" \
             --option-settings \
             "Namespace=aws:elasticbeanstalk:application:environment,OptionName=FRONTEND_BASE_URL,Value=${FRONTEND_BASE_URL}" \
-            "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SES_FROM_EMAIL,Value=${SES_FROM_EMAIL}"
+            "Namespace=aws:elasticbeanstalk:application:environment,OptionName=PASSWORD_RESET_SNS_TOPIC_PREFIX,Value=${PASSWORD_RESET_SNS_TOPIC_PREFIX}"
 
           aws elasticbeanstalk wait environment-updated \
             --environment-names "$EB_ENVIRONMENT"

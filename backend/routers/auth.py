@@ -28,7 +28,11 @@ from schemas.user import (
     UserOut,
     UserUpdate,
 )
-from services.email_service import EmailDeliveryError, send_password_reset_email
+from services.email_service import (
+    EmailDeliveryError,
+    ensure_password_reset_subscription,
+    send_password_reset_email,
+)
 from services.password_reset_service import (
     GENERIC_RESET_MESSAGE,
     INVALID_RESET_MESSAGE,
@@ -223,10 +227,13 @@ def forgot_password(
     user = get_user_by_email(db, normalized_email)
 
     if user and not rate_limited:
-        raw_token, _ = issue_reset_token(db, user, client_ip)
-        logger.info("Password reset requested for user_id=%s", user.id)
         try:
-            send_password_reset_email(user.email, build_reset_url(raw_token))
+            if ensure_password_reset_subscription(user.email):
+                raw_token, _ = issue_reset_token(db, user, client_ip)
+                logger.info("Password reset requested for user_id=%s", user.id)
+                send_password_reset_email(user.email, build_reset_url(raw_token))
+            else:
+                logger.info("Password reset SNS confirmation requested for user_id=%s", user.id)
         except EmailDeliveryError:
             logger.exception("Password reset email delivery failed for user_id=%s", user.id)
     elif user and rate_limited:
@@ -293,6 +300,13 @@ def update_profile(
                 message = "Email subscription is pending confirmation. Check your inbox."
             else:
                 message = "Email alerts remain enabled. Check your inbox if confirmation is still required."
+            try:
+                if ensure_password_reset_subscription(current_user.email):
+                    message = f"{message} Password-reset SNS email is ready."
+                else:
+                    message = f"{message} Confirm the separate password-reset SNS subscription email too."
+            except EmailDeliveryError:
+                logger.exception("Password reset SNS setup failed for user_id=%s", current_user.id)
         else:
             if current_user.sns_subscription_arn:
                 unsubscribe(current_user.sns_subscription_arn)
