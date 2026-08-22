@@ -1,42 +1,17 @@
-import { Activity, BellRing, BookOpen, FileWarning, MapPin, AlertTriangle, FileText, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { BookOpen } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getFloodSummary } from "../../api/history";
 import { getAlertZones, getPublicStats } from "../../api/public";
-import { getCommunityReports } from "../../api/reports";
 import AlertBadge from "../../components/AlertBadge";
 import CloudShader from "../../components/CloudShader";
+import FloodFooter from "../../components/FloodFooter";
+import HomeShowcase from "../../components/HomeShowcase";
 import WaterfallRain from "../../components/WaterfallRain";
-
-const featureCards = [
-  {
-    title: "Report Floods",
-    description: "Submit field reports with photos, location, severity, and context for admin review.",
-    icon: FileWarning,
-  },
-  {
-    title: "Get Alerts",
-    description: "Track zone-level flood status and receive timely warnings from official broadcasts.",
-    icon: BellRing,
-  },
-  {
-    title: "Live Monitoring",
-    description: "Monitor river sensor readings and threshold changes across active stations.",
-    icon: Activity,
-  },
-];
-
-const severityRank = {
-  emergency: 4,
-  warning: 3,
-  watch: 2,
-  safe: 1,
-};
 
 export default function Home() {
   const [zones, setZones] = useState([]);
-  const [reports, setReports] = useState([]);
   const [stats, setStats] = useState(null);
   const [historySummary, setHistorySummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,13 +20,11 @@ export default function Home() {
   useEffect(() => {
     async function loadHomeData() {
       try {
-        const [zoneData, reportData, statsData] = await Promise.all([
+        const [zoneData, statsData] = await Promise.all([
           getAlertZones(),
-          getCommunityReports({ page: 1, limit: 3 }),
           getPublicStats(),
         ]);
         setZones(zoneData);
-        setReports(reportData);
         setStats(statsData);
       } catch (err) {
         setError(err.response?.data?.detail || "Could not load FloodGuard data.");
@@ -72,9 +45,9 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative overflow-hidden text-white pt-20 pb-32">
         <CloudShader
-          cloudColor="#f0fdfa"
-          skyTopColor="#0e7490"
-          skyBottomColor="#0d9488"
+          cloudColor="#eff6ff"
+          skyTopColor="#2563eb"
+          skyBottomColor="#075985"
         />
         <WaterfallRain
           showWaterfall={false}
@@ -130,40 +103,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Strip */}
-      <section className="relative z-20 -mt-16 max-w-7xl mx-auto px-6 mb-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-6 border border-white/50 flex items-center gap-5 transform hover:-translate-y-1 transition-all">
-            <div className="h-14 w-14 rounded-full bg-blue-100 text-brand flex items-center justify-center flex-shrink-0 shadow-sm">
-              <MapPin size={28} />
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-ink-primary">{stats?.total_zones ?? zones.length}</p>
-              <p className="text-sm font-bold text-ink-secondary uppercase tracking-wide">Total Zones</p>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-white to-orange-50 rounded-xl shadow-lg p-6 border border-white/50 flex items-center gap-5 transform hover:-translate-y-1 transition-all">
-            <div className="h-14 w-14 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-              <AlertTriangle size={28} />
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-ink-primary">{stats?.active_alerts ?? 0}</p>
-              <p className="text-sm font-bold text-ink-secondary uppercase tracking-wide">Active Alerts</p>
-            </div>
-          </div>
-          
-          <div className="bg-gradient-to-br from-white to-teal-50 rounded-xl shadow-lg p-6 border border-white/50 flex items-center gap-5 transform hover:-translate-y-1 transition-all">
-            <div className="h-14 w-14 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-              <FileText size={28} />
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-ink-primary">{stats?.total_reports ?? 0}</p>
-              <p className="text-sm font-bold text-ink-secondary uppercase tracking-wide">Reports Today</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeShowcase stats={stats} zones={zones} />
 
       {error && (
         <div className="mx-auto max-w-7xl px-6 mb-10">
@@ -227,51 +167,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* Features Section */}
-      <section className="bg-white py-20 border-t border-ink-border mt-10">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-16 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-ink-primary tracking-tight">Everything you need to stay safe</h2>
-            <p className="mt-4 text-ink-secondary font-medium text-lg">FloodGuard provides a comprehensive suite of tools for community resilience.</p>
-          </div>
-          
-          <div className="grid gap-8 md:grid-cols-3">
-            {featureCards.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <article key={feature.title} className="rounded-2xl border border-ink-border bg-surface-bg p-8 hover:shadow-lg transition-all group">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-gradientEnd text-white shadow-md mb-6 transform group-hover:scale-110 transition-transform">
-                    <Icon size={32} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-ink-primary tracking-tight">{feature.title}</h3>
-                  <p className="mt-4 text-base leading-relaxed text-ink-secondary">{feature.description}</p>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-[#0F172A] text-slate-400 py-12 border-t border-slate-800">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white">
-              <ShieldCheck size={20} strokeWidth={2.5} />
-            </span>
-            <span className="text-xl font-bold text-white tracking-wide">FloodGuard</span>
-          </div>
-          <div className="flex gap-6 text-sm font-medium">
-            <Link to="/" className="hover:text-white transition-colors">Home</Link>
-            <Link to="/alerts" className="hover:text-white transition-colors">Alerts</Link>
-            <Link to="/map" className="hover:text-white transition-colors">Flood Map</Link>
-            <Link to="/reports/community" className="hover:text-white transition-colors">Community</Link>
-          </div>
-          <p className="text-sm">
-            &copy; {new Date().getFullYear()} FloodGuard System.
-          </p>
-        </div>
-      </footer>
+      <FloodFooter />
     </main>
   );
 }

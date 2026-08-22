@@ -1,8 +1,9 @@
-import { ChevronDown, LogOut, Menu, ShieldCheck, UserCircle, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, UserCircle, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import floodGuardLogo from "../FloodGuard.png";
 
 function navClass({ isActive }) {
   return [
@@ -78,9 +79,11 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 bg-gradient-to-r from-brand to-brand-gradientEnd text-white shadow-md">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link to="/" className="group flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm transition-all group-hover:bg-white/30">
-            <ShieldCheck size={24} strokeWidth={2.5} />
-          </span>
+          <img
+            src={floodGuardLogo}
+            alt="FloodGuard logo"
+            className="h-10 w-10 rounded-xl object-contain shadow-sm transition-transform group-hover:scale-105"
+          />
           <span className="text-2xl font-bold tracking-tight">FloodGuard</span>
         </Link>
 

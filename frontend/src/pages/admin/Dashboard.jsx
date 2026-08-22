@@ -86,7 +86,7 @@ export default function Dashboard() {
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            <StatCard label="Total Users" value={dashboard?.total_users ?? 0} icon={Users} colorClass="from-teal-500 to-teal-600" />
+            <StatCard label="Total Users" value={dashboard?.total_users ?? 0} icon={Users} colorClass="from-cyan-500 to-cyan-600" />
             <StatCard label="Total Zones" value={dashboard?.total_zones ?? 0} icon={Map} colorClass="from-blue-500 to-blue-600" />
             <StatCard label="Total Reports" value={dashboard?.total_reports ?? 0} icon={FileText} colorClass="from-purple-500 to-purple-600" />
           </div>

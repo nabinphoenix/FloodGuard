@@ -5,8 +5,14 @@ export default {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#0EA5E9",
-          gradientEnd: "#0D9488",
+          DEFAULT: "#2563EB",
+          gradientEnd: "#06B6D4",
+        },
+        aqua: {
+          DEFAULT: "#06B6D4",
+          soft: "#CFFAFE",
+          pale: "#ECFEFF",
+          deep: "#0E7490",
         },
         flood: {
           safe: "#22C55E",
@@ -15,7 +21,7 @@ export default {
           emergency: "#EF4444",
         },
         surface: {
-          bg: "#F0F9FF",
+          bg: "#F4FAFF",
           card: "#FFFFFF",
         },
         ink: {
