@@ -3,7 +3,6 @@ import {
 
 
   FileText,
-  House,
   LayoutDashboard,
   LogOut,
   Map,
@@ -34,13 +33,11 @@ const linksByRole = {
     { label: "Dashboard", to: "/admin", icon: <LayoutDashboard size={20} />, end: true },
     { label: "Zones", to: "/admin/zones", icon: <Map size={20} /> },
     { label: "Users", to: "/admin/users", icon: <Users size={20} /> },
-    { label: "Home", to: "/", icon: <House size={20} />, end: true },
   ],
   authority: [
     { label: "Dashboard", to: "/authority", icon: <LayoutDashboard size={20} />, end: true },
     { label: "Reports", to: "/authority/reports", icon: <FileText size={20} /> },
     { label: "Create Alert", to: "/authority/create-alert", icon: <AlertTriangle size={20} /> },
-    { label: "Home", to: "/", icon: <House size={20} />, end: true },
   ],
   field_officer: [
     { label: "Dashboard", to: "/sensors", icon: <LayoutDashboard size={20} />, end: true },
@@ -52,7 +49,6 @@ const linksByRole = {
 
     { label: "Thresholds", to: "/sensors/thresholds", icon: <Settings2 size={20} /> },
     { label: "System Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
-    { label: "Home", to: "/", icon: <House size={20} />, end: true },
   ],
 };
 
@@ -172,11 +168,12 @@ export default function AdminLayout({ children, title }) {
             >
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-            <span className="font-bold">{panelTitle}</span>
+            <Link to="/" className="flex items-center gap-2 font-bold" aria-label="FloodGuard home" onClick={() => setMenuOpen(false)}>
+              <ShieldCheck size={24} />
+              <span>FloodGuard</span>
+            </Link>
           </div>
-          <Link to="/" aria-label="FloodGuard home" onClick={() => setMenuOpen(false)}>
-            <ShieldCheck size={24} />
-          </Link>
+          <span className="text-sm font-semibold text-white/80">{panelTitle}</span>
         </div>
 
         {menuOpen && (

@@ -4,6 +4,7 @@ import { Filter, MapPin, RefreshCw } from "lucide-react";
 
 import { getAlertZones } from "../../api/public";
 import AlertBanner from "../../components/AlertBanner";
+import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 
 function formatUpdated(value) {
   if (!value) return "Just now";
@@ -28,6 +29,11 @@ function formatDistrictName(value) {
     .trim()
     .toLocaleLowerCase()
     .replace(/\b\w/g, (character) => character.toLocaleUpperCase());
+}
+
+function mapHrefForZone(zone) {
+  if (!isWithinNepalOperationalBounds(zone.latitude, zone.longitude)) return "";
+  return zone.alert_id ? "/map?alert=" + zone.alert_id : "/map?zone=" + zone.id;
 }
 
 function getLevelColor(level) {
@@ -239,10 +245,17 @@ export default function AlertFeed() {
                   </div>
 
                   <div className="mt-auto flex items-end justify-between gap-3 pt-8">
-                    <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-gray-100 bg-surface-bg px-2.5 py-1.5 text-xs font-medium text-ink-secondary">
-                      <MapPin size={14} className="text-brand/60" aria-hidden="true" />
-                      Map view
-                    </div>
+                    {mapHrefForZone(zone) ? (
+                      <Link to={mapHrefForZone(zone)} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-brand/20 bg-brand/5 px-2.5 py-1.5 text-xs font-bold text-brand transition hover:border-brand/40 hover:bg-brand/10 focus:outline-none focus:ring-2 focus:ring-brand/30" aria-label="View alert on map">
+                        <MapPin size={14} aria-hidden="true" />
+                        View Map
+                      </Link>
+                    ) : (
+                      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-400">
+                        <MapPin size={14} aria-hidden="true" />
+                        Map location unavailable
+                      </span>
+                    )}
                     <p className="text-right text-[11px] font-bold leading-5 text-gray-400">
                       {formatUpdated(zone.updated_at)}
                     </p>

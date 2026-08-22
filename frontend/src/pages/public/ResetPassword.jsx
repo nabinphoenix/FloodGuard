@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { resetPassword } from "../../api/auth";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -48,8 +49,8 @@ export default function ResetPassword() {
         {message && <div className="mt-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm leading-6 text-green-800" role="status">{message} <Link to="/login" className="font-bold underline">Sign in</Link></div>}
         {error && <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div>}
         {!message && <form className="mt-7 space-y-5" onSubmit={handleSubmit}>
-          <div><label htmlFor="new-password" className="block text-sm font-medium text-blue-950">New password</label><input id="new-password" type="password" autoComplete="new-password" required minLength="8" maxLength="128" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200" /></div>
-          <div><label htmlFor="confirm-password" className="block text-sm font-medium text-blue-950">Confirm new password</label><input id="confirm-password" type="password" autoComplete="new-password" required minLength="8" maxLength="128" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200" /></div>
+          <div><label htmlFor="new-password" className="block text-sm font-medium text-blue-950">New password</label><PasswordInput id="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} className="mt-2" /></div>
+          <div><label htmlFor="confirm-password" className="block text-sm font-medium text-blue-950">Confirm new password</label><PasswordInput id="confirm-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" minLength={8} maxLength={128} className="mt-2" /></div>
           <button type="submit" disabled={isSubmitting || !token} className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">{isSubmitting ? "Updating..." : "Update password"}</button>
         </form>}
         <p className="mt-6 text-center text-sm text-slate-600"><Link to="/forgot-password" className="font-semibold text-blue-700 hover:text-blue-900">Request a new reset link</Link></p>

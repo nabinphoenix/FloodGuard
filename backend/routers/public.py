@@ -48,7 +48,26 @@ def get_alerts(db: Session = Depends(get_db)) -> list[dict]:
     zones = db.scalars(
         select(AlertZone).order_by(severity_order.desc(), AlertZone.district.asc())
     ).all()
-    return [alert_zone_to_dict(zone) for zone in zones]
+    latest_alert_ids = {}
+    if zones:
+        latest_alerts = db.scalars(
+            select(FloodAlert)
+            .where(
+                FloodAlert.zone_id.in_([zone.id for zone in zones]),
+                FloodAlert.alert_level != AlertLevel.safe,
+            )
+            .order_by(FloodAlert.triggered_at.desc())
+        ).all()
+        for alert in latest_alerts:
+            latest_alert_ids.setdefault(alert.zone_id, alert.id)
+
+    return [
+        {
+            **alert_zone_to_dict(zone),
+            "alert_id": latest_alert_ids.get(zone.id) if zone.alert_level != AlertLevel.safe else None,
+        }
+        for zone in zones
+    ]
 
 
 @router.get("/alerts/history")

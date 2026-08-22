@@ -1,6 +1,6 @@
-import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import PasswordInput from "../../components/PasswordInput";
 
 import { useAuth } from "../../context/AuthContext";
 import { dashboardPathForRole } from "../../utils/navigation";
@@ -9,7 +9,6 @@ export default function Login() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,12 +51,7 @@ export default function Login() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-blue-950">Password</label>
-            <div className="relative mt-2">
-              <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required value={formData.password} onChange={handleChange} className="w-full rounded-md border border-blue-200 px-4 py-3 pr-12 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200" placeholder="Enter your password" />
-              <button type="button" onClick={() => setShowPassword((current) => !current)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-500 transition hover:text-blue-700" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
+            <PasswordInput id="password" name="password" value={formData.password} onChange={handleChange} autoComplete="current-password" placeholder="Enter your password" className="mt-2" />
           </div>
 
           <div className="-mt-2 text-right">

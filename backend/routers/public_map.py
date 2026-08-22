@@ -83,11 +83,18 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
     alert_rows = db.execute(
         select(FloodAlert, AlertZone)
         .join(AlertZone, AlertZone.id == FloodAlert.zone_id)
-        .where(AlertZone.alert_level != AlertLevel.safe)
+        .where(
+            AlertZone.alert_level != AlertLevel.safe,
+            FloodAlert.alert_level != AlertLevel.safe,
+        )
         .order_by(FloodAlert.triggered_at.desc())
         .limit(100)
     ).all()
+    seen_zone_ids = set()
     for alert, zone in alert_rows:
+        if zone.id in seen_zone_ids:
+            continue
+        seen_zone_ids.add(zone.id)
         if not is_within_nepal_operational_bounds(zone.latitude, zone.longitude):
             continue
         alerts.append(
@@ -95,7 +102,9 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
                 "id": alert.id,
                 "zone_id": zone.id,
                 "district": zone.district,
-                "alert_level": alert.alert_level.value,
+                "province": province_for_district(zone.district),
+                "zone_name": zone.district,
+                "alert_level": zone.alert_level.value,
                 "message": alert.message,
                 "triggered_at": alert.triggered_at,
                 "latitude": zone.latitude,

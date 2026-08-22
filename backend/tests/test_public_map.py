@@ -70,6 +70,47 @@ def test_public_map_returns_public_safe_layers(client, db):
     assert payload["sensors"][0]["is_stale"] is True
     assert payload["zones"][0]["district"] == "Chitwan"
     assert payload["alerts"][0]["district"] == "Chitwan"
+    assert payload["alerts"][0]["province"] == "Bagmati"
+    assert payload["alerts"][0]["zone_name"] == "Chitwan"
+    alert_feed = test_client.get("/api/public/alerts")
+    assert alert_feed.status_code == 200
+    assert next(item for item in alert_feed.json() if item["district"] == "Chitwan")["alert_id"] == payload["alerts"][0]["id"]
     assert payload["reports"][0]["latitude"] == 27.701
     assert "user_id" not in payload["reports"][0]
     assert current_user["value"] is None
+
+def test_public_map_excludes_inactive_and_invalid_alert_locations(client, db):
+    test_client, _ = client
+    inactive_zone = AlertZone(
+        district="Kathmandu",
+        alert_level=AlertLevel.safe,
+        latitude=27.7172,
+        longitude=85.3240,
+    )
+    invalid_zone = AlertZone(
+        district="Kaski",
+        alert_level=AlertLevel.warning,
+        latitude=32.0,
+        longitude=84.0,
+    )
+    db.add_all([inactive_zone, invalid_zone])
+    db.flush()
+    db.add_all(
+        [
+            FloodAlert(
+                zone_id=inactive_zone.id,
+                alert_level=AlertLevel.warning,
+                message="This alert belongs to a safe zone.",
+            ),
+            FloodAlert(
+                zone_id=invalid_zone.id,
+                alert_level=AlertLevel.warning,
+                message="This alert has invalid coordinates.",
+            ),
+        ]
+    )
+    db.commit()
+
+    response = test_client.get("/api/public/map")
+    assert response.status_code == 200
+    assert response.json()["alerts"] == []

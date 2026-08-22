@@ -82,6 +82,7 @@ export default function FloodGuardMap({
   onMarkerDrag,
   focusPosition = null,
   onSelect,
+  selectedAlertId = null,
   showStations = true,
   showZones = true,
   showReports = true,
@@ -112,7 +113,7 @@ export default function FloodGuardMap({
         {showStations ? validStations.map((station) => <SensorMarker key={`station-${station.station_code || station.id}`} station={station} onSelect={onSelect} />) : null}
         {showZones ? <ZoneLayer zones={validZones} onSelect={onSelect} /> : null}
         {showReports ? validReports.map((report) => <ReportMarker key={`report-${report.id}`} report={report} onSelect={onSelect} />) : null}
-        {showAlerts ? validAlerts.map((alert) => <AlertMarker key={`alert-${alert.id}`} alert={alert} onSelect={onSelect} />) : null}
+        {showAlerts ? validAlerts.map((alert) => <AlertMarker key={`alert-${alert.id}`} alert={alert} onSelect={onSelect} isSelected={String(alert.id) === String(selectedAlertId)} />) : null}
         {children}
       </MapContainer>
       {showLegend ? <MapLegend /> : null}

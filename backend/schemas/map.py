@@ -37,6 +37,8 @@ class PublicMapAlert(BaseModel):
     id: int
     zone_id: int
     district: str
+    province: Optional[str] = None
+    zone_name: Optional[str] = None
     alert_level: str
     message: str
     triggered_at: datetime

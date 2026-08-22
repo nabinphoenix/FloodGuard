@@ -110,9 +110,25 @@ export default function FloodMap() {
     if (station) setSelected({ type: "station", item: station });
   }, [mapData.sensors, searchParams]);
 
+  useEffect(() => {
+    const requestedAlert = searchParams.get("alert");
+    const requestedZone = searchParams.get("zone");
+    const alert = requestedAlert && mapData.alerts.find((item) => String(item.id) === requestedAlert);
+    const zone = requestedZone && mapData.zones.find((item) => String(item.id) === requestedZone);
+
+    if (alert) {
+      setLayers((current) => ({ ...current, alerts: true }));
+      setSelected({ type: "alert", item: alert });
+    } else if (zone) {
+      setLayers((current) => ({ ...current, zones: true }));
+      setSelected({ type: "zone", item: zone });
+    }
+  }, [mapData.alerts, mapData.zones, searchParams]);
+
   const focusPosition = selected?.item
     ? operationalCoordinatePair(selected.item.latitude ?? selected.item.lat, selected.item.longitude ?? selected.item.lng)
     : null;
+  const selectedAlertId = selected?.type === "alert" ? selected.item.id : null;
 
   const clearFilters = () => {
     setDistrict("all");
@@ -195,9 +211,10 @@ export default function FloodMap() {
               reports={layers.reports ? filteredReports : []}
               focusPosition={focusPosition}
               onSelect={setSelected}
+              selectedAlertId={selectedAlertId}
               className="h-[620px] lg:h-[680px]"
             />
-            {!loading && !mapData.sensors.length && !mapData.zones.length && !mapData.reports.length ? (
+            {!loading && !mapData.sensors.length && !mapData.zones.length && !mapData.alerts.length && !mapData.reports.length ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">No public map data is available yet.</div>
             ) : null}
           </section>

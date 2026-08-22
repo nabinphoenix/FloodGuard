@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { register } from "../../api/auth";
 import { getPublicGeography } from "../../api/public";
+import PasswordInput from "../../components/PasswordInput";
 import { backendError, validatePhone } from "../../utils/validation";
 
 export default function Register() {
@@ -17,7 +17,6 @@ export default function Register() {
     district: "",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -230,44 +229,7 @@ export default function Register() {
               Password
             </label>
 
-            <div className="relative mt-2">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full rounded-md border border-blue-200 px-4 py-3 pr-12 text-blue-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-                placeholder="At least 8 characters"
-              />
-
-              <button
-                type="button"
-                onClick={() =>
-                  setShowPassword((current) => !current)
-                }
-                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-slate-500 transition hover:text-blue-700"
-                aria-label={
-                  showPassword
-                    ? "Hide password"
-                    : "Show password"
-                }
-                aria-pressed={showPassword}
-                title={
-                  showPassword
-                    ? "Hide password"
-                    : "Show password"
-                }
-              >
-                {showPassword ? (
-                  <EyeOff size={20} />
-                ) : (
-                  <Eye size={20} />
-                )}
-              </button>
-            </div>
+            <PasswordInput id="password" name="password" value={formData.password} onChange={handleChange} autoComplete="new-password" placeholder="At least 8 characters" minLength={8} maxLength={128} className="mt-2" />
 
             {fieldErrors.password && (
               <p className="mt-2 text-sm text-red-600">

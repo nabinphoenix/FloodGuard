@@ -49,7 +49,6 @@ export default function Navbar() {
   }
 
   const links = [
-    { label: "Home", to: "/" },
     { label: "Alerts", to: "/alerts" },
     { label: "Safety", to: "/safety" },
     { label: "Map", to: "/map" },
@@ -57,9 +56,8 @@ export default function Navbar() {
     { label: "Community", to: "/reports/community" },
   ];
 
-  if (user) {
-    links.splice(4, 0, { label: "Report Flood", to: "/reports/submit" });
-  }
+  if (!user) links.unshift({ label: "Home", to: "/" });
+  if (user) links.splice(3, 0, { label: "Report Flood", to: "/reports/submit" });
 
   if (user?.role === "public") links.push({ label: "Dashboard", to: "/dashboard" });
   if (user?.role === "admin") links.push({ label: "Admin Dashboard", to: "/admin" });
