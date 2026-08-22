@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { submitReport } from "../../api/reports";
 import CharacterCounter from "../../components/CharacterCounter";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import LocationPicker from "../../components/map/LocationPicker";
 import { backendError, validateCoordinate } from "../../utils/validation";
 
 const DISTRICTS = [
@@ -23,7 +24,6 @@ export default function SubmitReport() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -64,29 +64,6 @@ export default function SubmitReport() {
     updateField("photo", file);
     setPreviewUrl(file ? URL.createObjectURL(file) : "");
     setError("");
-  }
-
-  function fillCurrentLocation() {
-    setError("");
-
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by this browser.");
-      return;
-    }
-
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        updateField("latitude", position.coords.latitude.toFixed(6));
-        updateField("longitude", position.coords.longitude.toFixed(6));
-        setIsLocating(false);
-      },
-      () => {
-        setError("Could not get your location. Please enter it manually.");
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   }
 
   async function handleSubmit(event) {
@@ -253,14 +230,12 @@ export default function SubmitReport() {
           </div>
 
           <div className="md:col-span-2">
-            <button
-              type="button"
-              onClick={fillCurrentLocation}
-              disabled={isLocating}
-              className="rounded-md border border-blue-300 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isLocating ? "Getting location..." : "Use my current location"}
-            </button>
+            <LocationPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
+              label="Incident location"
+            />
           </div>
 
           <div className="md:col-span-2">

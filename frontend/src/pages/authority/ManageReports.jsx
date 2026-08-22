@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, FileText } from "lucide-react";
 import { getAuthorityReports, approveReport, rejectReport } from "../../api/authority";
 import StatusPill from "../../components/StatusPill";
 import AdminLayout from "../../components/AdminLayout";
+import FloodGuardMap from "../../components/map/FloodGuardMap";
 import CharacterCounter from "../../components/CharacterCounter";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
@@ -25,6 +26,7 @@ export default function ManageReports() {
   const [processingId, setProcessingId] = useState(null);
   const [rejectingReport, setRejectingReport] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
 
   async function loadReports() {
     setIsLoading(true);
@@ -118,6 +120,30 @@ export default function ManageReports() {
       <FeedbackMessage message={error} />
       <FeedbackMessage message={message} type="success" />
 
+      {selectedReport ? (
+        <section className="mb-6 rounded-xl border border-brand/20 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-brand">Report location</p>
+              <h2 className="mt-1 text-lg font-black text-ink-primary">Report #{selectedReport.id} ? {selectedReport.district}</h2>
+            </div>
+            <button type="button" onClick={() => setSelectedReport(null)} className="text-sm font-bold text-ink-secondary hover:text-ink-primary">Close</button>
+          </div>
+          {Number.isFinite(Number(selectedReport.latitude)) && Number.isFinite(Number(selectedReport.longitude)) ? (
+            <FloodGuardMap
+              reports={[selectedReport]}
+              center={[Number(selectedReport.latitude), Number(selectedReport.longitude)]}
+              focusPosition={[Number(selectedReport.latitude), Number(selectedReport.longitude)]}
+              showStations={false}
+              showZones={false}
+              showAlerts={false}
+              className="h-[320px]"
+            />
+          ) : (
+            <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-ink-secondary">This report does not include map coordinates.</p>
+          )}
+        </section>
+      ) : null}
       <section className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-ink-border text-sm">
@@ -165,7 +191,7 @@ export default function ManageReports() {
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{report.submitted_by}</td>
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(report.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex justify-end gap-3">
+                    <div className="flex justify-end gap-3">                      <button type="button" onClick={() => setSelectedReport(report)} disabled={!Number.isFinite(Number(report.latitude)) || !Number.isFinite(Number(report.longitude))} className="rounded-lg border border-brand/30 px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-40">Map</button>
                       <button
                         type="button"
                         onClick={() => handleApprove(report.id)}

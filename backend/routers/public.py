@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport
+from routers.public_map import router as public_map_router
 
 
 router = APIRouter(prefix="/public", tags=["public"])
+router.include_router(public_map_router)
 
 ALERT_SEVERITY_ORDER = {
     AlertLevel.emergency: 4,

@@ -4,6 +4,7 @@ import { Eye, Map, MapPin, Pencil, PlusCircle, Trash2, X } from "lucide-react";
 import { createZone, deleteZone, getZone, getZones, updateZone } from "../../api/admin";
 import AlertBadge from "../../components/AlertBadge";
 import AdminLayout from "../../components/AdminLayout";
+import LocationPicker from "../../components/map/LocationPicker";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validateCoordinate } from "../../utils/validation";
@@ -189,7 +190,14 @@ export default function ManageZones() {
                 </label>
               </div>
             </div>
-            <button type="submit" disabled={isSubmitting} className="mt-8 w-full rounded-lg bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-3 font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Creating Zone..." : "Add Monitored Zone"}</button>
+            <div className="mt-5">
+              <LocationPicker
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
+                label="Zone location"
+              />
+            </div>            <button type="submit" disabled={isSubmitting} className="mt-8 w-full rounded-lg bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-3 font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Creating Zone..." : "Add Monitored Zone"}</button>
           </form>
         </aside>
 
@@ -212,7 +220,7 @@ export default function ManageZones() {
     <span className="mt-1 block text-xs font-normal text-ink-secondary">Valid range: -180 to 180</span>
     {fieldErrors.longitude && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.longitude}</span>}
   </label>
-</div><button disabled={isSubmitting} className="w-full rounded-lg bg-brand px-4 py-3 font-bold text-white disabled:opacity-60">{isSubmitting ? "Saving..." : "Save changes"}</button></form>}</div></div>}
+</div><div className="mt-5"><LocationPicker latitude={formData.latitude} longitude={formData.longitude} onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))} label="Zone location" /></div><button disabled={isSubmitting} className="w-full rounded-lg bg-brand px-4 py-3 font-bold text-white disabled:opacity-60">{isSubmitting ? "Saving..." : "Save changes"}</button></form>}</div></div>}
       <ConfirmDialog
         open={Boolean(confirmation)}
         title="Delete monitored zone?"

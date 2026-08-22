@@ -202,3 +202,29 @@ reading status field:
 AWS credentials are supplied through the normal boto3/Elastic Beanstalk
 provider chain. Never commit AWS access keys, session tokens, passwords, JWTs,
 or private S3 settings.
+
+## Shared interactive maps
+
+The public route `/map` uses the reusable Leaflet components in
+`frontend/src/components/map`. It displays public-safe active zones, active
+alerts, active sensor stations, and approved reports that include coordinates.
+
+The map defaults to OpenStreetMap with required attribution and is centred on
+Nepal. To use MapTiler in a deployment, set `VITE_MAP_PROVIDER=maptiler` and
+provide `VITE_MAPTILER_API_KEY`; no map key is required for the default OSM
+configuration.
+
+The public payload is served by:
+
+    GET /api/public/map
+
+The endpoint does not expose user identity, private report workflow fields,
+sensor-management controls, or secret AWS configuration. Sensor markers keep
+staleness separate from SAFE/WATCH/WARNING/EMERGENCY status. Zones are rendered
+as centre markers because the current AlertZone model stores coordinates but no
+radius or polygon boundary.
+
+The same `LocationPicker` is used by public incident reports, sensor station
+management, and admin zone management. It supports map clicks, draggable
+markers, manual coordinate fields, one-time browser geolocation on explicit
+button press, clear/reset, and broad latitude/longitude validation.

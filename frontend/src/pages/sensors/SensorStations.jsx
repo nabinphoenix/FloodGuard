@@ -11,6 +11,7 @@ import {
 } from "../../api/sensors";
 import { getHistoryGeography } from "../../api/history";
 import AdminLayout from "../../components/AdminLayout";
+import LocationPicker from "../../components/map/LocationPicker";
 import { backendError } from "../../utils/validation";
 
 const emptyForm = {
@@ -161,6 +162,14 @@ function StationForm({ form, setForm, geography, editing, isSaving, error, onSub
         </label>
       </div>
 
+      <div className="mt-6">
+        <LocationPicker
+          latitude={form.latitude}
+          longitude={form.longitude}
+          onChange={({ latitude, longitude }) => setForm((current) => ({ ...current, latitude, longitude }))}
+          label="Station location"
+        />
+      </div>
       <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5">
         <h3 className="font-black text-blue-950">Alert thresholds</h3>
         <p className="mt-1 text-sm text-blue-800">All values are metres (m). They determine SAFE, WATCH, WARNING and EMERGENCY.</p>
