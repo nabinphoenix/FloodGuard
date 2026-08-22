@@ -87,13 +87,19 @@ def get_current_user(
     return user
 
 
+def role_has_access(current_role: UserRole, *allowed_roles: UserRole | str) -> bool:
+    """Allow admins to operate other role-scoped views without changing identity."""
+    roles = {UserRole(role) for role in allowed_roles}
+    return current_role == UserRole.admin or current_role in roles
+
+
 def require_role(required_role: UserRole | str) -> Callable[[User], User]:
     role = UserRole(required_role)
 
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
-        if current_user.role != role:
+        if not role_has_access(current_user.role, role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to access this resource.",
@@ -109,7 +115,7 @@ def require_any_role(*allowed_roles: UserRole | str) -> Callable[[User], User]:
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         if current_user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required.")
-        if current_user.role not in roles:
+        if not role_has_access(current_user.role, *roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to access this resource.",

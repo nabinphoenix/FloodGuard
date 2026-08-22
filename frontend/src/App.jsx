@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import AdminViewBanner from "./components/AdminViewBanner";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Dashboard from "./pages/admin/Dashboard";
@@ -42,6 +43,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface-bg font-sans text-ink-primary">
       <Navbar />
+      <AdminViewBanner />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

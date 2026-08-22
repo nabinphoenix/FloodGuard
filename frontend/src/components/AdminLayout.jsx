@@ -14,10 +14,12 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, Navigate, NavLink, useNavigate } from "react-router-dom";
+import { Link, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "./LoadingSpinner";
+import ViewAsSwitcher from "./ViewAsSwitcher";
+import { VIEW_MODE_LABELS } from "../utils/roles";
 
 function linkClass({ isActive }) {
   return `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
@@ -62,7 +64,8 @@ const titlesByRole = {
 
 export default function AdminLayout({ children, title }) {
   const navigate = useNavigate();
-  const { user, isLoading, signOut } = useAuth();
+  const location = useLocation();
+  const { user, isLoading, signOut, viewAs } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   if (isLoading) {
@@ -73,8 +76,17 @@ export default function AdminLayout({ children, title }) {
     return <Navigate to="/login" replace />;
   }
 
-  const links = linksByRole[user.role] || [];
-  const panelTitle = title || titlesByRole[user.role] || "FloodGuard";
+  const routeView = location.pathname.startsWith("/authority")
+    ? "authority"
+    : location.pathname.startsWith("/sensors")
+      ? "field_officer"
+      : location.pathname.startsWith("/admin")
+        ? "admin"
+        : null;
+  const activeView = user.role === "admin" ? (routeView || viewAs || "admin") : user.role;
+  const activeRole = activeView === "citizen" ? "public" : activeView;
+  const links = linksByRole[activeRole] || linksByRole[user.role] || [];
+  const panelTitle = title || titlesByRole[activeRole] || "FloodGuard";
   const initial = user.name?.charAt(0).toUpperCase();
 
   function handleLogout() {
@@ -110,6 +122,11 @@ export default function AdminLayout({ children, title }) {
           </Link>
           <div className="mt-8 text-sm font-semibold uppercase tracking-wider text-white/70">
             {panelTitle}
+            {user.role === "admin" && activeView !== "admin" && (
+              <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-white/70">
+                Admin preview - {VIEW_MODE_LABELS[activeView]}
+              </div>
+            )}
           </div>
         </div>
 
@@ -118,6 +135,11 @@ export default function AdminLayout({ children, title }) {
         </nav>
 
         <div className="border-t border-white/10 p-4">
+          {user.role === "admin" && (
+            <div className="mb-4 px-2">
+              <ViewAsSwitcher value={activeView} />
+            </div>
+          )}
           <div className="mb-4 flex items-center gap-3 px-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 font-bold text-white">
               {initial}
@@ -163,6 +185,11 @@ export default function AdminLayout({ children, title }) {
               {renderLinks()}
             </nav>
             <div className="mt-3 border-t border-white/20 pt-3">
+              {user.role === "admin" && (
+                <div className="mb-4">
+                  <ViewAsSwitcher value={activeView} />
+                </div>
+              )}
               <p className="truncate text-sm font-semibold">{user.name}</p>
               <p className="truncate text-xs text-white/70">{user.email}</p>
               <button
