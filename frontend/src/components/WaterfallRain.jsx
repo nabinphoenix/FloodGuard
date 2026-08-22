@@ -93,7 +93,7 @@ export default function WaterfallRain({
       Array.from({ length: rainCount }, (_, i) => ({
         id: `rain-${i}`,
         left: rand(0, 100),
-        width: rand(1, 2),
+        width: rand(1.5, 2.5),
         height: rand(40, 90),
         duration: rand(0.4, 0.9),
         delay: rand(-0.9, 0),
