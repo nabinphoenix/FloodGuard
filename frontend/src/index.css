@@ -39,7 +39,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
+  background: #ffffff !important;
   box-shadow: 0 10px 26px rgba(3, 105, 161, 0.18);
 }
 
