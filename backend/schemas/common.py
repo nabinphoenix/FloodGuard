@@ -28,3 +28,4 @@ class NormalizedModel(BaseModel):
     @classmethod
     def lowercase_email(cls, value):
         return None if value is None else str(value).lower()
+        "province",

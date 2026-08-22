@@ -1,26 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { register } from "../../api/auth";
+import { getPublicGeography } from "../../api/public";
 import { backendError, validatePhone } from "../../utils/validation";
-
-const DISTRICTS = [
-  "Kathmandu",
-  "Chitwan",
-  "Kaski",
-  "Lalitpur",
-  "Bhaktapur",
-  "Kavrepalanchok",
-  "Rupandehi",
-  "Morang",
-  "Sunsari",
-  "Parsa",
-  "Jhapa",
-  "Banke",
-  "Makwanpur",
-  "Dang",
-];
 
 export default function Register() {
   const navigate = useNavigate();
@@ -37,6 +21,24 @@ export default function Register() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [geography, setGeography] = useState(null);
+
+  const districts = geography?.provinces?.flatMap((province) => (
+    province.districts?.map((item) => item.name) || []
+  )) || [];
+
+  useEffect(() => {
+    let ignore = false;
+    getPublicGeography()
+      .then((data) => {
+        if (!ignore) setGeography(data);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -292,7 +294,7 @@ export default function Register() {
             >
               <option value="">Select district</option>
 
-              {DISTRICTS.map((district) => (
+              {districts.map((district) => (
                 <option key={district} value={district}>
                   {district}
                 </option>

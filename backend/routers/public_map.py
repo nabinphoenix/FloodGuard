@@ -10,6 +10,7 @@ from models.report import IncidentReport, ReportStatus
 from models.sensor import SensorReading, SensorStation
 from schemas.map import PublicMapResponse
 from services.coordinate_validation import is_within_nepal_operational_bounds
+from services.geography_service import province_for_district
 from services.sensor_ingestion import station_status
 
 
@@ -68,6 +69,8 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
         zones.append(
             {
                 "id": zone.id,
+                "name": zone.district,
+                "province": province_for_district(zone.district),
                 "district": zone.district,
                 "alert_level": zone.alert_level.value,
                 "latitude": zone.latitude,
@@ -116,7 +119,9 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
         reports.append(
             {
                 "id": report.id,
+                "province": report.province,
                 "district": report.district,
+                "zone_id": report.zone_id,
                 "severity": report.severity,
                 "description": report.description,
                 "latitude": report.latitude,

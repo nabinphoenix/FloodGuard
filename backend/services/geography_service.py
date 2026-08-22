@@ -128,3 +128,61 @@ def basin_records(name: str | None = None) -> list[dict[str, Any]]:
         for basin in basins
         if basin["name"].casefold() == name.strip().casefold()
     ]
+
+
+def _find_province(province_name: str | None) -> dict[str, Any] | None:
+    if not province_name:
+        return None
+    return next(
+        (
+            province
+            for province in load_geography()["provinces"]
+            if province["name"].casefold() == province_name.strip().casefold()
+        ),
+        None,
+    )
+
+
+def resolve_province_district(
+    province_name: str | None,
+    district_name: str | None,
+) -> tuple[str, str] | None:
+    """Return canonical names when a district belongs to the province."""
+    province = _find_province(province_name)
+    if province is None or not district_name:
+        return None
+    district = next(
+        (
+            district
+            for district in province["districts"]
+            if district["name"].casefold() == district_name.strip().casefold()
+        ),
+        None,
+    )
+    if district is None:
+        return None
+    return province["name"], district["name"]
+
+
+def province_for_district(district_name: str | None) -> str | None:
+    """Return the unique canonical province for a district, if known."""
+    if not district_name:
+        return None
+    district_key = district_name.strip().casefold()
+    for province in load_geography()["provinces"]:
+        if any(district["name"].casefold() == district_key for district in province["districts"]):
+            return province["name"]
+    return None
+
+
+def public_geography() -> dict[str, Any]:
+    """Return only the province/district hierarchy needed by public forms."""
+    return {
+        "provinces": [
+            {
+                "name": province["name"],
+                "districts": [{"name": district["name"]} for district in province["districts"]],
+            }
+            for province in load_geography()["provinces"]
+        ]
+    }

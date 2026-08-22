@@ -3,10 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from database import get_db
+from models.alert import AlertZone
 from models.report import IncidentReport, ReportStatus
 from models.user import User
 from routers.auth import get_current_user
 from schemas.report import ReportCreate, ReportOut
+from services.geography_service import province_for_district, resolve_province_district
 from services.coordinate_validation import coordinate_validation_error
 from services.s3_service import delete_photo, get_presigned_url, upload_photo
 
@@ -26,7 +28,10 @@ def report_to_out(report: IncidentReport) -> ReportOut:
     return ReportOut(
         id=report.id,
         user_id=report.user_id,
+        province=report.province,
         district=report.district,
+        zone_id=report.zone_id,
+        zone_name=report.zone.district if report.zone else None,
         severity=report.severity,
         description=report.description,
         image_url=image_url,
@@ -34,12 +39,16 @@ def report_to_out(report: IncidentReport) -> ReportOut:
         helpful_count=report.helpful_count,
         created_at=report.created_at,
         user_name=report.user.name if report.user else "Unknown user",
+        latitude=report.latitude,
+        longitude=report.longitude,
     )
 
 
 @router.post("/submit", response_model=ReportOut, status_code=status.HTTP_201_CREATED)
 async def submit_report(
+    province: str = Form(...),
     district: str = Form(...),
+    zone_id: int | None = Form(default=None),
     severity: int = Form(...),
     description: str = Form(...),
     latitude: float | None = Form(default=None),
@@ -49,7 +58,9 @@ async def submit_report(
     db: Session = Depends(get_db),
 ) -> ReportOut:
     report_in = ReportCreate(
+        province=province,
         district=district,
+        zone_id=zone_id,
         severity=severity,
         description=description,
         latitude=latitude,
@@ -60,11 +71,26 @@ async def submit_report(
         report_in.latitude,
         report_in.longitude,
         label="Report location",
-        allow_none=True,
+        allow_none=False,
     )
     if coordinate_error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
 
+    geography = resolve_province_district(report_in.province, report_in.district)
+    if geography is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Selected district does not belong to the selected province.",
+        )
+    canonical_province, canonical_district = geography
+    zone = None
+    if report_in.zone_id is not None:
+        zone = db.get(AlertZone, report_in.zone_id)
+        if zone is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected FloodGuard zone was not found.")
+        zone_province = province_for_district(zone.district)
+        if zone_province is None or zone_province.casefold() != canonical_province.casefold() or zone.district.casefold() != canonical_district.casefold():
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected zone does not belong to this district.")
     image_key = None
     if photo and photo.filename:
         if photo.content_type not in ALLOWED_IMAGE_TYPES:
@@ -84,7 +110,9 @@ async def submit_report(
 
     report = IncidentReport(
         user_id=current_user.id,
-        district=report_in.district.strip(),
+        province=canonical_province,
+        zone_id=report_in.zone_id,
+        district=canonical_district,
         severity=report_in.severity,
         description=report_in.description.strip(),
         image_key=image_key,

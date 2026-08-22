@@ -1,12 +1,23 @@
 {
   "dataset_title": "Nepal flood geography reference",
-  "dataset_scope": "Districts represented in the current flood research dataset",
+  "dataset_scope": "All 7 provinces and 77 current Nepal districts",
   "provinces": [
     {
       "name": "Koshi",
       "districts": [
         {"name": "Jhapa", "ecological_region": "Terai", "rivers": ["Kankai", "Mechi", "Ratuwa"], "river_basins": ["Koshi Basin"]},
         {"name": "Morang", "ecological_region": "Terai", "rivers": ["Budhi Khola", "Singhiya", "Kesaliya"], "river_basins": ["Koshi Basin"]},
+        {"name": "Bhojpur", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Dhankuta", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Ilam", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Khotang", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Okhaldhunga", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Panchthar", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Sankhuwasabha", "ecological_region": "Mountain / Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Solukhumbu", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Taplejung", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Tehrathum", "ecological_region": "Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
+        {"name": "Udayapur", "ecological_region": "Inner Terai / Hill", "rivers": [], "river_basins": ["Koshi Basin"]},
         {"name": "Sunsari", "ecological_region": "Terai", "rivers": ["Koshi", "Budhi Khola"], "river_basins": ["Koshi Basin"]}
       ]
     },
@@ -30,12 +41,30 @@
         {"name": "Makwanpur", "ecological_region": "Hill / Inner Terai", "rivers": ["Rapti", "Kulekhani"], "river_basins": ["Gandaki / Narayani Basin", "Bagmati Basin"]},
         {"name": "Kathmandu", "ecological_region": "Valley", "rivers": ["Bagmati", "Bishnumati", "Manohara"], "river_basins": ["Bagmati Basin"]},
         {"name": "Lalitpur", "ecological_region": "Valley", "rivers": ["Bagmati", "Nakkhu"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Bhaktapur", "ecological_region": "Valley", "rivers": ["Hanumante"], "river_basins": ["Bagmati Basin"]},
+        {"name": "Dhading", "ecological_region": "Hill", "rivers": ["Trishuli"], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Dolakha", "ecological_region": "Mountain / Hill", "rivers": [], "river_basins": ["Tama Koshi Basin"]},
+        {"name": "Kavrepalanchok", "ecological_region": "Hill", "rivers": [], "river_basins": ["Bagmati Basin"]},
+        {"name": "Nuwakot", "ecological_region": "Hill", "rivers": ["Trishuli"], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Ramechhap", "ecological_region": "Hill", "rivers": [], "river_basins": ["Tama Koshi Basin"]},
+        {"name": "Rasuwa", "ecological_region": "Mountain", "rivers": ["Trishuli"], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Sindhupalchok", "ecological_region": "Mountain / Hill", "rivers": ["Bhote Koshi", "Sun Koshi"], "river_basins": ["Koshi Basin"]},
         {"name": "Sindhuli", "ecological_region": "Hill", "rivers": ["Kamala", "Marin"], "river_basins": ["Kamala Basin"]}
       ]
     },
     {
       "name": "Gandaki",
       "districts": [
+        {"name": "Baglung", "ecological_region": "Hill", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Gorkha", "ecological_region": "Hill", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Lamjung", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Manang", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Mustang", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Myagdi", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Nawalpur", "ecological_region": "Terai / Inner Terai", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Parbat", "ecological_region": "Hill", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Syangja", "ecological_region": "Hill", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Tanahun", "ecological_region": "Hill", "rivers": [], "river_basins": ["Gandaki / Narayani Basin"]},
         {
           "name": "Kaski",
           "ecological_region": "Hill / Valley",
@@ -52,12 +81,28 @@
         {"name": "Kapilvastu", "ecological_region": "Terai", "rivers": ["Banganga"], "river_basins": []},
         {"name": "Dang", "ecological_region": "Inner Terai", "rivers": ["Babai", "West Rapti"], "river_basins": ["West Rapti Basin"]},
         {"name": "Banke", "ecological_region": "Terai", "rivers": ["Rapti", "Duduwa"], "river_basins": ["West Rapti Basin"]},
+        {"name": "Arghakhanchi", "ecological_region": "Hill / Inner Terai", "rivers": [], "river_basins": ["West Rapti Basin"]},
+        {"name": "Gulmi", "ecological_region": "Hill", "rivers": [], "river_basins": ["West Rapti Basin"]},
+        {"name": "Nawalparasi West", "ecological_region": "Terai", "rivers": ["Narayani"], "river_basins": ["Gandaki / Narayani Basin"]},
+        {"name": "Palpa", "ecological_region": "Hill", "rivers": [], "river_basins": ["Tinau Basin"]},
+        {"name": "Pyuthan", "ecological_region": "Hill", "rivers": [], "river_basins": ["West Rapti Basin"]},
+        {"name": "Rolpa", "ecological_region": "Hill", "rivers": [], "river_basins": ["West Rapti Basin"]},
+        {"name": "Rukum East", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["West Rapti Basin"]},
         {"name": "Bardiya", "ecological_region": "Terai", "rivers": ["Karnali", "Babai"], "river_basins": ["Karnali Basin"]}
       ]
     },
     {
       "name": "Karnali",
       "districts": [
+        {"name": "Dailekh", "ecological_region": "Hill", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Dolpa", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Humla", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Jajarkot", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Jumla", "ecological_region": "Mountain / Hill", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Kalikot", "ecological_region": "Mountain / Hill", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Mugu", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Rukum West", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Salyan", "ecological_region": "Hill", "rivers": [], "river_basins": ["West Rapti Basin"]},
         {"name": "Surkhet", "ecological_region": "Valley / foothills", "rivers": ["Bheri", "Karnali"], "river_basins": ["Karnali Basin"]}
       ]
     },
@@ -66,13 +111,19 @@
       "districts": [
         {"name": "Kailali", "ecological_region": "Terai", "rivers": ["Mohana", "Karnali"], "river_basins": ["Karnali Basin"]},
         {"name": "Kanchanpur", "ecological_region": "Terai", "rivers": ["Mahakali", "Dodha"], "river_basins": ["Mahakali Basin"]},
+        {"name": "Achham", "ecological_region": "Hill", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Baitadi", "ecological_region": "Hill / Mountain", "rivers": [], "river_basins": ["Mahakali Basin"]},
+        {"name": "Bajhang", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Bajura", "ecological_region": "Mountain", "rivers": [], "river_basins": ["Karnali Basin"]},
+        {"name": "Dadeldhura", "ecological_region": "Hill", "rivers": [], "river_basins": ["Mahakali Basin"]},
+        {"name": "Doti", "ecological_region": "Hill", "rivers": [], "river_basins": ["Karnali Basin"]},
         {"name": "Darchula", "ecological_region": "Mountain", "rivers": ["Mahakali"], "river_basins": ["Mahakali Basin"]}
       ]
     }
   ],
   "historical_boundary_notes": [
     "The supplied research lists historical Nawalparasi as Lumbini/Gandaki. It is retained in basin metadata and is not mapped here to one modern province or district.",
-    "This is not a complete list of all 77 Nepal districts. More districts can be added without changing the API shape."
+    "The province and district hierarchy is complete for the current 7-province, 77-district administrative structure."
   ],
   "basins": [
     {

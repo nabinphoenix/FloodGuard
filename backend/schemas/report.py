@@ -8,7 +8,9 @@ from models.report import ReportStatus
 
 
 class ReportCreate(NormalizedModel):
+    province: str | None = Field(default=None, min_length=2, max_length=100)
     district: str = Field(..., min_length=2, max_length=100)
+    zone_id: int | None = Field(default=None, gt=0)
     severity: int = Field(..., ge=1, le=5)
     description: str = Field(..., min_length=10, max_length=2000)
     latitude: float | None = Field(default=None, ge=-90, le=90)
@@ -18,7 +20,10 @@ class ReportCreate(NormalizedModel):
 class ReportOut(BaseModel):
     id: int
     user_id: int
+    province: str | None = None
     district: str
+    zone_id: int | None = None
+    zone_name: str | None = None
     severity: int
     description: str
     image_url: str | None
@@ -26,6 +31,8 @@ class ReportOut(BaseModel):
     helpful_count: int
     created_at: datetime
     user_name: str
+    latitude: float | None = None
+    longitude: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

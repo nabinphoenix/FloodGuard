@@ -1,12 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { getPublicGeography } from "../../api/public";
 import { getCommunityReports, markHelpful } from "../../api/reports";
-
-const DISTRICTS = [
-  "Chitwan",
-  "Kathmandu",
-  "Kaski",
-];
 
 const PAGE_SIZE = 9;
 
@@ -40,12 +35,29 @@ function SeverityStars({ severity }) {
 
 export default function CommunityFeed() {
   const [reports, setReports] = useState([]);
+  const [geography, setGeography] = useState(null);
   const [district, setDistrict] = useState("");
   const [severity, setSeverity] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const districts = geography?.provinces?.flatMap((province) => (
+    province.districts?.map((item) => item.name) || []
+  )) || [];
+
+  useEffect(() => {
+    let ignore = false;
+    getPublicGeography()
+      .then((data) => {
+        if (!ignore) setGeography(data);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const activeFilters = useMemo(
     () => ({ district, severity }),
@@ -124,7 +136,7 @@ export default function CommunityFeed() {
               className="rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
             >
               <option value="">All districts</option>
-              {DISTRICTS.map((item) => (
+              {districts.map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>

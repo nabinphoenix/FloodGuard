@@ -24,6 +24,8 @@ class PublicMapSensor(BaseModel):
 
 class PublicMapZone(BaseModel):
     id: int
+    name: Optional[str] = None
+    province: Optional[str] = None
     district: str
     alert_level: str
     latitude: float = Field(ge=-90, le=90)
@@ -44,7 +46,9 @@ class PublicMapAlert(BaseModel):
 
 class PublicMapReport(BaseModel):
     id: int
+    province: Optional[str] = None
     district: str
+    zone_id: Optional[int] = None
     severity: int = Field(ge=1, le=5)
     description: str
     latitude: float = Field(ge=-90, le=90)

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 if TYPE_CHECKING:
+    from models.alert import AlertZone
     from models.user import User
 
 
@@ -29,7 +30,13 @@ class IncidentReport(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    province: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     district: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    zone_id: Mapped[int | None] = mapped_column(
+        ForeignKey("alert_zones.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     severity: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     image_key: Mapped[str | None] = mapped_column(String(1024), nullable=True)
@@ -52,3 +59,4 @@ class IncidentReport(Base):
     )
 
     user: Mapped[User] = relationship("User", back_populates="reports")
+    zone: Mapped[AlertZone | None] = relationship("AlertZone")

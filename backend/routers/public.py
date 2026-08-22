@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -6,6 +6,7 @@ from database import get_db
 from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport
 from routers.public_map import router as public_map_router
+from services.geography_service import province_for_district, public_geography, resolve_province_district
 
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -22,6 +23,8 @@ ALERT_SEVERITY_ORDER = {
 def alert_zone_to_dict(zone: AlertZone) -> dict:
     return {
         "id": zone.id,
+        "name": zone.district,
+        "province": province_for_district(zone.district),
         "district": zone.district,
         "alert_level": zone.alert_level.value,
         "latitude": zone.latitude,
@@ -29,6 +32,10 @@ def alert_zone_to_dict(zone: AlertZone) -> dict:
         "updated_at": zone.updated_at,
     }
 
+
+@router.get("/geography")
+def get_public_geography() -> dict:
+    return public_geography()
 
 @router.get("/alerts")
 def get_alerts(db: Session = Depends(get_db)) -> list[dict]:
@@ -84,18 +91,25 @@ def get_alert_by_district(district: str, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/zones")
-def get_zones(db: Session = Depends(get_db)) -> list[dict]:
+def get_zones(
+    province: str | None = Query(default=None),
+    district: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    if province and district and resolve_province_district(province, district) is None:
+        return []
+
+    district_key = district.strip().casefold() if district else None
     zones = db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all()
-    return [
-        {
-            "id": zone.id,
-            "district": zone.district,
-            "alert_level": zone.alert_level.value,
-            "latitude": zone.latitude,
-            "longitude": zone.longitude,
-        }
-        for zone in zones
-    ]
+    matching_zones = []
+    for zone in zones:
+        zone_province = province_for_district(zone.district)
+        if province and (zone_province is None or zone_province.casefold() != province.strip().casefold()):
+            continue
+        if district_key and zone.district.strip().casefold() != district_key:
+            continue
+        matching_zones.append(alert_zone_to_dict(zone))
+    return matching_zones
 
 
 @router.get("/stats")

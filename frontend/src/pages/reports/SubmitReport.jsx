@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { getPublicGeography, getReportZones } from "../../api/public";
 import { submitReport } from "../../api/reports";
 import CharacterCounter from "../../components/CharacterCounter";
 import FeedbackMessage from "../../components/FeedbackMessage";
@@ -7,21 +8,24 @@ import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError, validateCoordinate } from "../../utils/validation";
 
-const DISTRICTS = [
-  "Chitwan",
-  "Kathmandu",
-  "Kaski",
-];
+const EMPTY_FORM = {
+  province: "",
+  district: "",
+  zone_id: "",
+  severity: 3,
+  description: "",
+  latitude: "",
+  longitude: "",
+  photo: null,
+};
 
 export default function SubmitReport() {
-  const [formData, setFormData] = useState({
-    district: "",
-    severity: 3,
-    description: "",
-    latitude: "",
-    longitude: "",
-    photo: null,
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [geography, setGeography] = useState(null);
+  const [isGeographyLoading, setIsGeographyLoading] = useState(true);
+  const [zones, setZones] = useState([]);
+  const [isZonesLoading, setIsZonesLoading] = useState(false);
+  const [zoneError, setZoneError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,16 +33,74 @@ export default function SubmitReport() {
   const [confirmation, setConfirmation] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const selectedProvince = geography?.provinces?.find((item) => item.name === formData.province);
+  const districts = selectedProvince?.districts || [];
+  const selectedZone = zones.find((zone) => String(zone.id) === String(formData.zone_id));
+
   const canSubmit = useMemo(
-    () => formData.district && formData.description.trim().length >= 10 && !isSubmitting,
-    [formData.district, formData.description, isSubmitting]
+    () => (
+      formData.province
+      && formData.district
+      && formData.description.trim().length >= 10
+      && formData.latitude !== ""
+      && formData.longitude !== ""
+      && !isSubmitting
+    ),
+    [formData, isSubmitting],
   );
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+    let ignore = false;
+
+    async function loadGeography() {
+      try {
+        setGeography(await getPublicGeography());
+      } catch (loadError) {
+        if (!ignore) setError(backendError(loadError, "Unable to load Nepal geography."));
+      } finally {
+        if (!ignore) setIsGeographyLoading(false);
       }
+    }
+
+    loadGeography();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    setZones([]);
+    setZoneError("");
+    setFormData((current) => ({ ...current, zone_id: "" }));
+
+    if (!formData.province || !formData.district) {
+      setIsZonesLoading(false);
+      return () => {
+        ignore = true;
+      };
+    }
+
+    setIsZonesLoading(true);
+    getReportZones(formData.province, formData.district)
+      .then((nextZones) => {
+        if (!ignore) setZones(Array.isArray(nextZones) ? nextZones : []);
+      })
+      .catch((loadError) => {
+        if (!ignore) setZoneError(backendError(loadError, "Unable to load FloodGuard zones."));
+      })
+      .finally(() => {
+        if (!ignore) setIsZonesLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [formData.province, formData.district]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
@@ -48,12 +110,26 @@ export default function SubmitReport() {
     setError("");
   }
 
+  function updateProvince(value) {
+    setFormData((current) => ({ ...current, province: value, district: "", zone_id: "" }));
+    setZones([]);
+    setZoneError("");
+    setFieldErrors((current) => ({ ...current, province: "", district: "", zone_id: "" }));
+    setError("");
+  }
+
+  function updateDistrict(value) {
+    setFormData((current) => ({ ...current, district: value, zone_id: "" }));
+    setZones([]);
+    setZoneError("");
+    setFieldErrors((current) => ({ ...current, district: "", zone_id: "" }));
+    setError("");
+  }
+
   function handlePhotoChange(event) {
     const file = event.target.files?.[0] || null;
 
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
 
     if (file && !file.type.startsWith("image/")) {
       setError("Please select a valid image file.");
@@ -64,32 +140,29 @@ export default function SubmitReport() {
 
     updateField("photo", file);
     setPreviewUrl(file ? URL.createObjectURL(file) : "");
-    setError("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setConfirmation(null);
+
     const nextFieldErrors = {};
-    if (!formData.district.trim()) nextFieldErrors.district = "District is required.";
+    if (!formData.province.trim()) nextFieldErrors.province = "Please select a province.";
+    if (!formData.district.trim()) nextFieldErrors.district = "Please select a district.";
     if (formData.description.trim().length < 10) nextFieldErrors.description = "Description must be at least 10 characters.";
     if (formData.description.length > 2000) nextFieldErrors.description = "Description must be 2000 characters or fewer.";
+
     const latitudeError = validateCoordinate(formData.latitude, -90, 90, "Latitude");
     const longitudeError = validateCoordinate(formData.longitude, -180, 180, "Longitude");
     if (latitudeError) nextFieldErrors.latitude = latitudeError;
     if (longitudeError) nextFieldErrors.longitude = longitudeError;
-    const hasLatitude = String(formData.latitude).trim() !== "";
-    const hasLongitude = String(formData.longitude).trim() !== "";
-    if (hasLatitude !== hasLongitude) {
-      nextFieldErrors.latitude = "Provide both latitude and longitude, or leave both empty.";
-      nextFieldErrors.longitude = "Provide both latitude and longitude, or leave both empty.";
-    } else if (hasLatitude && !latitudeError && !longitudeError && !isWithinNepalOperationalBounds(Number(formData.latitude), Number(formData.longitude))) {
-      nextFieldErrors.latitude = "Report location must be within Nepal.";
-      nextFieldErrors.longitude = "Report location must be within Nepal.";
+    if (!latitudeError && !longitudeError && !isWithinNepalOperationalBounds(Number(formData.latitude), Number(formData.longitude))) {
+      nextFieldErrors.latitude = "FloodGuard currently accepts incident locations within Nepal.";
+      nextFieldErrors.longitude = "FloodGuard currently accepts incident locations within Nepal.";
     }
-    setFieldErrors(nextFieldErrors);
 
+    setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0 || !canSubmit) {
       setError("Please correct the highlighted fields before submitting.");
       return;
@@ -106,19 +179,13 @@ export default function SubmitReport() {
       });
 
       setConfirmation(result);
-      setFormData({
-        district: "",
-        severity: 3,
-        description: "",
-        latitude: "",
-        longitude: "",
-        photo: null,
-      });
+      setFormData(EMPTY_FORM);
+      setZones([]);
       setPreviewUrl("");
       setFieldErrors({});
       setUploadProgress(100);
-    } catch (err) {
-      setError(backendError(err, "Could not submit your report. Please try again."));
+    } catch (submitError) {
+      setError(backendError(submitError, "Could not submit your report. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -141,24 +208,68 @@ export default function SubmitReport() {
         />
 
         <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label htmlFor="district" className="block text-sm font-medium text-blue-950">
-              District
-            </label>
-            <select
-              id="district"
-              value={formData.district}
-              onChange={(event) => updateField("district", event.target.value)}
-              required
-              className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-            >
-              <option value="">Select district</option>
-              {DISTRICTS.map((district) => (
-                <option key={district} value={district}>
-                  {district}
-                </option>
-              ))}
-            </select>
+          <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-blue-950">Report location</h2>
+              <p className="mt-1 text-sm text-blue-700">Choose the province and district first, then select an optional FloodGuard zone.</p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3">
+              <label className="block text-sm font-medium text-blue-950">
+                Province *
+                <select
+                  value={formData.province}
+                  onChange={(event) => updateProvince(event.target.value)}
+                  required
+                  disabled={isGeographyLoading}
+                  className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
+                >
+                  <option value="">{isGeographyLoading ? "Loading provinces..." : "Select province"}</option>
+                  {geography?.provinces?.map((province) => (
+                    <option key={province.name} value={province.name}>{province.name}</option>
+                  ))}
+                </select>
+                {fieldErrors.province && <p className="mt-1 text-xs text-red-600">{fieldErrors.province}</p>}
+              </label>
+
+              <label className="block text-sm font-medium text-blue-950">
+                District *
+                <select
+                  value={formData.district}
+                  onChange={(event) => updateDistrict(event.target.value)}
+                  required
+                  disabled={!formData.province || isGeographyLoading}
+                  className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
+                >
+                  <option value="">{formData.province ? "Select district" : "Select province first"}</option>
+                  {districts.map((district) => (
+                    <option key={district.name} value={district.name}>{district.name}</option>
+                  ))}
+                </select>
+                {fieldErrors.district && <p className="mt-1 text-xs text-red-600">{fieldErrors.district}</p>}
+              </label>
+
+              <label className="block text-sm font-medium text-blue-950">
+                Zone
+                <select
+                  value={formData.zone_id}
+                  onChange={(event) => updateField("zone_id", event.target.value)}
+                  disabled={!formData.district || isZonesLoading}
+                  className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {isZonesLoading ? "Loading zones..." : zones.length ? "No zone selected" : "No configured FloodGuard zones in this district"}
+                  </option>
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>{zone.name || zone.district}</option>
+                  ))}
+                </select>
+                {zoneError && <p className="mt-1 text-xs text-red-600">{zoneError}</p>}
+                {!zoneError && formData.district && !isZonesLoading && !zones.length && (
+                  <p className="mt-1 text-xs text-blue-700">You can continue without a zone.</p>
+                )}
+              </label>
+            </div>
           </div>
 
           <div>
@@ -169,17 +280,13 @@ export default function SubmitReport() {
                   key={rating}
                   type="button"
                   onClick={() => updateField("severity", rating)}
-                  className={`text-3xl leading-none transition ${
-                    rating <= formData.severity ? "text-blue-700" : "text-blue-200"
-                  }`}
+                  className={`text-3xl leading-none transition ${rating <= formData.severity ? "text-blue-700" : "text-blue-200"}`}
                   aria-label={`Set severity ${rating}`}
                 >
                   ★
                 </button>
               ))}
-              <span className="ml-auto text-sm font-semibold text-blue-900">
-                {formData.severity}/5
-              </span>
+              <span className="ml-auto text-sm font-semibold text-blue-900">{formData.severity}/5</span>
             </div>
           </div>
 
@@ -201,9 +308,19 @@ export default function SubmitReport() {
             {fieldErrors.description && <p className="mt-1 text-xs text-red-600">{fieldErrors.description}</p>}
           </div>
 
+          <div className="md:col-span-2">
+            <LocationPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              zones={selectedZone ? [selectedZone] : []}
+              onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
+              label="Location *"
+            />
+          </div>
+
           <div>
             <label htmlFor="latitude" className="block text-sm font-medium text-blue-950">
-              Latitude
+              Latitude *
             </label>
             <input
               id="latitude"
@@ -213,16 +330,16 @@ export default function SubmitReport() {
               max="90"
               value={formData.latitude}
               onChange={(event) => updateField("latitude", event.target.value)}
+              required
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="27.671000"
             />
-            <p className="mt-1 text-xs text-blue-700">Valid range: -90 to 90</p>
             {fieldErrors.latitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.latitude}</p>}
           </div>
 
           <div>
             <label htmlFor="longitude" className="block text-sm font-medium text-blue-950">
-              Longitude
+              Longitude *
             </label>
             <input
               id="longitude"
@@ -232,20 +349,11 @@ export default function SubmitReport() {
               max="180"
               value={formData.longitude}
               onChange={(event) => updateField("longitude", event.target.value)}
+              required
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
               placeholder="84.430500"
             />
-            <p className="mt-1 text-xs text-blue-700">Valid range: -180 to 180</p>
             {fieldErrors.longitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.longitude}</p>}
-          </div>
-
-          <div className="md:col-span-2">
-            <LocationPicker
-              latitude={formData.latitude}
-              longitude={formData.longitude}
-              onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
-              label="Incident location"
-            />
           </div>
 
           <div className="md:col-span-2">
@@ -260,21 +368,14 @@ export default function SubmitReport() {
               className="mt-2 block w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-sm text-blue-950 file:mr-4 file:rounded-md file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-800"
             />
             {previewUrl && (
-              <img
-                src={previewUrl}
-                alt="Selected flood report preview"
-                className="mt-4 h-56 w-full rounded-md object-cover"
-              />
+              <img src={previewUrl} alt="Selected flood report preview" className="mt-4 h-56 w-full rounded-md object-cover" />
             )}
           </div>
 
           {isSubmitting && (
             <div className="md:col-span-2">
               <div className="h-3 overflow-hidden rounded-full bg-blue-100">
-                <div
-                  className="h-full rounded-full bg-blue-700 transition-all"
-                  style={{ width: `${uploadProgress}%` }}
-                />
+                <div className="h-full rounded-full bg-blue-700 transition-all" style={{ width: `${uploadProgress}%` }} />
               </div>
               <p className="mt-2 text-sm text-blue-700">Uploading {uploadProgress}%</p>
             </div>

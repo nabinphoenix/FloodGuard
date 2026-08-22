@@ -3,7 +3,12 @@ import api from "./axios";
 export async function submitReport(reportData, onUploadProgress) {
   const formData = new FormData();
 
+  formData.append("province", reportData.province);
   formData.append("district", reportData.district);
+
+  if (reportData.zone_id) {
+    formData.append("zone_id", String(reportData.zone_id));
+  }
   formData.append("severity", String(reportData.severity));
   formData.append("description", reportData.description);
 

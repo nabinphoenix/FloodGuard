@@ -130,7 +130,8 @@ export default function ManageReports() {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-brand">Report location</p>
-              <h2 className="mt-1 text-lg font-black text-ink-primary">Report #{selectedReport.id} ? {selectedReport.district}</h2>
+              <h2 className="mt-1 text-lg font-black text-ink-primary">Report #{selectedReport.id} - {selectedReport.province || "Legacy report"} / {selectedReport.district}</h2>
+              <p className="mt-1 text-xs text-ink-secondary">Zone: {selectedReport.zone_name || "No FloodGuard zone selected"}</p>
             </div>
             <button type="button" onClick={() => setSelectedReport(null)} className="text-sm font-bold text-ink-secondary hover:text-ink-primary">Close</button>
           </div>
@@ -156,7 +157,7 @@ export default function ManageReports() {
               <tr>
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Photo</th>
-                <th className="px-6 py-4">District</th>
+                <th className="px-6 py-4">Location</th>
                 <th className="px-6 py-4">Severity</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Submitted By</th>
@@ -183,7 +184,12 @@ export default function ManageReports() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-medium whitespace-nowrap">{report.district}{!reportHasNepalLocation(report) && <span className="mt-1 block text-xs font-bold text-red-600">Location outside Nepal or unavailable</span>}</td>
+                  <td className="px-6 py-4 font-medium">
+                    <span className="block">{report.province || "Legacy report"}</span>
+                    <span className="block text-ink-secondary">{report.district}</span>
+                    <span className="mt-1 block text-xs text-ink-secondary">Zone: {report.zone_name || "No FloodGuard zone selected"}</span>
+                    {!reportHasNepalLocation(report) && <span className="mt-1 block text-xs font-bold text-red-600">Location outside Nepal or unavailable</span>}
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-1 text-yellow-400 text-lg">
                       {"★".repeat(report.severity)}

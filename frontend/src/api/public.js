@@ -15,6 +15,16 @@ export async function getAlertHistory() {
   return response.data;
 }
 
+export async function getPublicGeography() {
+  const response = await api.get("/public/geography");
+  return response.data;
+}
+
+export async function getReportZones(province, district) {
+  const response = await api.get("/public/zones", { params: { province, district } });
+  return response.data;
+}
+
 export async function getMapZones() {
   const response = await api.get("/public/zones");
   return response.data;
