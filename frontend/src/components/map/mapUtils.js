@@ -1,6 +1,9 @@
 import L from "leaflet";
+import { NEPAL_OPERATIONAL_BOUNDS } from "./mapConfig";
 
 export function coordinatePair(latitude, longitude) {
+  if ([latitude, longitude].some((value) => value === null || value === undefined || (typeof value === "string" && !value.trim()))) return null;
+
   const lat = Number(latitude);
   const lng = Number(longitude);
 
@@ -8,6 +11,20 @@ export function coordinatePair(latitude, longitude) {
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
 
   return [lat, lng];
+}
+
+export function isWithinNepalOperationalBounds(latitude, longitude) {
+  const pair = coordinatePair(latitude, longitude);
+  if (!pair) return false;
+
+  return pair[0] >= NEPAL_OPERATIONAL_BOUNDS.south
+    && pair[0] <= NEPAL_OPERATIONAL_BOUNDS.north
+    && pair[1] >= NEPAL_OPERATIONAL_BOUNDS.west
+    && pair[1] <= NEPAL_OPERATIONAL_BOUNDS.east;
+}
+
+export function operationalCoordinatePair(latitude, longitude) {
+  return isWithinNepalOperationalBounds(latitude, longitude) ? coordinatePair(latitude, longitude) : null;
 }
 
 export function formatMapDate(value) {

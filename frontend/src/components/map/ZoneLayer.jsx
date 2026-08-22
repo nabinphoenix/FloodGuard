@@ -1,19 +1,20 @@
 import { CircleMarker, Popup } from "react-leaflet";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
-import { formatMapDate, normalizeStatus, statusLabel } from "./mapUtils";
+import { formatMapDate, normalizeStatus, operationalCoordinatePair, statusLabel } from "./mapUtils";
 
 export default function ZoneLayer({ zones = [], onSelect }) {
   return zones.map((zone) => {
     const latitude = zone.latitude ?? zone.lat;
     const longitude = zone.longitude ?? zone.lng;
     const status = normalizeStatus(zone.alert_level || zone.status);
-    if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return null;
+    const position = operationalCoordinatePair(latitude, longitude);
+    if (!position) return null;
 
     return (
       <CircleMarker
         key={`zone-${zone.id ?? zone.district}`}
-        center={[Number(latitude), Number(longitude)]}
+        center={position}
         radius={10}
         pathOptions={{ color: MAP_STATUS_COLORS[status], fillColor: MAP_STATUS_COLORS[status], fillOpacity: 0.72, weight: 2 }}
         eventHandlers={{ click: () => onSelect?.({ type: "zone", item: zone }) }}

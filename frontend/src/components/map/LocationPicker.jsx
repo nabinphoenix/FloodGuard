@@ -1,7 +1,7 @@
 import { useState } from "react";
 import FloodGuardMap from "./FloodGuardMap";
 import { DEFAULT_MAP_CENTER } from "./mapConfig";
-import { coordinatePair } from "./mapUtils";
+import { coordinatePair, isWithinNepalOperationalBounds, operationalCoordinatePair } from "./mapUtils";
 
 function formatCoordinate(value) {
   return Number(value).toFixed(6);
@@ -19,9 +19,16 @@ export default function LocationPicker({
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState("");
   const position = coordinatePair(latitude, longitude);
+  const locationOutsideNepal = position && !isWithinNepalOperationalBounds(position[0], position[1]);
+  const mapPosition = locationOutsideNepal ? null : position;
 
   const selectPosition = ({ latitude: nextLatitude, longitude: nextLongitude }) => {
-    onChange?.({ latitude: formatCoordinate(nextLatitude), longitude: formatCoordinate(nextLongitude) });
+    const nextPosition = operationalCoordinatePair(nextLatitude, nextLongitude);
+    if (!nextPosition) {
+      setError("Selected location must be within Nepal.");
+      return;
+    }
+    onChange?.({ latitude: formatCoordinate(nextPosition[0]), longitude: formatCoordinate(nextPosition[1]) });
     setError("");
   };
 
@@ -73,12 +80,12 @@ export default function LocationPicker({
         </div>
       </div>
       <FloodGuardMap
-        center={position || DEFAULT_MAP_CENTER}
-        zoom={position ? 12 : 7}
+        center={mapPosition || DEFAULT_MAP_CENTER}
+        zoom={mapPosition ? 12 : 7}
         className="h-[280px]"
         interactive
-        markerPosition={position}
-        focusPosition={position}
+        markerPosition={mapPosition}
+        focusPosition={mapPosition}
         markerDraggable
         onMapClick={selectPosition}
         onMarkerDrag={selectPosition}
@@ -89,7 +96,7 @@ export default function LocationPicker({
         showLegend={false}
       />
       {position ? <p className="text-xs font-medium text-teal-700">Selected coordinates: {position[0].toFixed(6)}, {position[1].toFixed(6)}</p> : null}
-      {error ? <p role="alert" className="text-xs font-medium text-red-600">{error}</p> : null}
+      {error || locationOutsideNepal ? <p role="alert" className="text-xs font-medium text-red-600">{error || "Saved coordinates are outside Nepal. Select a new location."}</p> : null}
     </div>
   );
 }

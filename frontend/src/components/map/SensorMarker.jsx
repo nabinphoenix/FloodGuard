@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Marker, Popup } from "react-leaflet";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
-import { createMapIcon, formatAge, formatMapDate, normalizeStatus, statusLabel } from "./mapUtils";
+import { createMapIcon, formatAge, formatMapDate, normalizeStatus, operationalCoordinatePair, statusLabel } from "./mapUtils";
 
 export default function SensorMarker({ station, onSelect }) {
   const latitude = station.latitude ?? station.lat;
@@ -12,11 +12,12 @@ export default function SensorMarker({ station, onSelect }) {
   const lastReadingAt = station.last_reading_at ?? station.latest_reading?.timestamp ?? station.latest_reading?.recorded_at;
   const stationCode = station.station_code || station.id;
 
-  if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return null;
+  const position = operationalCoordinatePair(latitude, longitude);
+  if (!position) return null;
 
   return (
     <Marker
-      position={[Number(latitude), Number(longitude)]}
+      position={position}
       icon={createMapIcon({ color: MAP_STATUS_COLORS[status], glyph: "S" })}
       eventHandlers={{ click: () => onSelect?.({ type: "station", item: station }) }}
     >

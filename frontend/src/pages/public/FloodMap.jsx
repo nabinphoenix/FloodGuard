@@ -3,9 +3,13 @@ import { AlertTriangle, Layers3, MapPin, Radio, RefreshCw, ShieldCheck } from "l
 import { useSearchParams } from "react-router-dom";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
 import { getPublicMapOverview } from "../../api/publicMap";
-import { normalizeStatus, statusLabel } from "../../components/map/mapUtils";
+import { isWithinNepalOperationalBounds, normalizeStatus, operationalCoordinatePair, statusLabel } from "../../components/map/mapUtils";
 
 const EMPTY_MAP = { sensors: [], zones: [], alerts: [], reports: [] };
+
+function hasOperationalCoordinates(item) {
+  return isWithinNepalOperationalBounds(item.latitude ?? item.lat, item.longitude ?? item.lng);
+}
 
 function StatusChip({ status }) {
   const normalized = normalizeStatus(status);
@@ -47,10 +51,10 @@ export default function FloodMap() {
     try {
       const next = await getPublicMapOverview();
       setMapData({
-        sensors: Array.isArray(next?.sensors) ? next.sensors : [],
-        zones: Array.isArray(next?.zones) ? next.zones : [],
-        alerts: Array.isArray(next?.alerts) ? next.alerts : [],
-        reports: Array.isArray(next?.reports) ? next.reports : [],
+        sensors: Array.isArray(next?.sensors) ? next.sensors.filter(hasOperationalCoordinates) : [],
+        zones: Array.isArray(next?.zones) ? next.zones.filter(hasOperationalCoordinates) : [],
+        alerts: Array.isArray(next?.alerts) ? next.alerts.filter(hasOperationalCoordinates) : [],
+        reports: Array.isArray(next?.reports) ? next.reports.filter(hasOperationalCoordinates) : [],
       });
       setError("");
     } catch (loadError) {
@@ -107,7 +111,7 @@ export default function FloodMap() {
   }, [mapData.sensors, searchParams]);
 
   const focusPosition = selected?.item
-    ? [selected.item.latitude ?? selected.item.lat, selected.item.longitude ?? selected.item.lng]
+    ? operationalCoordinatePair(selected.item.latitude ?? selected.item.lat, selected.item.longitude ?? selected.item.lng)
     : null;
 
   const clearFilters = () => {

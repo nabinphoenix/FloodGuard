@@ -12,6 +12,7 @@ import {
 import { getHistoryGeography } from "../../api/history";
 import AdminLayout from "../../components/AdminLayout";
 import LocationPicker from "../../components/map/LocationPicker";
+import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError } from "../../utils/validation";
 
 const emptyForm = {
@@ -88,6 +89,7 @@ function validateForm(form) {
   const danger = Number(form.danger_threshold);
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return "Latitude must be between -90 and 90.";
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return "Longitude must be between -180 and 180.";
+  if (!isWithinNepalOperationalBounds(latitude, longitude)) return "Sensor station location must be within Nepal.";
   if (![watch, warning, danger].every(Number.isFinite)) return "Thresholds must be valid numbers.";
   if (watch < 0) return "Watch level must be at least 0 m.";
   if (watch >= warning) return "Watch level must be less than warning level.";
@@ -326,6 +328,7 @@ export default function SensorStations() {
                     <p className="mt-1 text-xs text-slate-500">{station.river_basin}</p>
                   </div>
                   <span className={"rounded-full px-3 py-1 text-xs font-bold uppercase " + (station.is_active ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600")}>{station.is_active ? "active" : "inactive"}</span>
+                  {!isWithinNepalOperationalBounds(station.latitude, station.longitude) && <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase text-red-700">Location outside Nepal</span>}
                 </div>
                 <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
                   <div className="rounded-lg bg-yellow-50 p-3 text-yellow-800">Watch<br /><strong>{station.watch_threshold?.toFixed(2)} m</strong></div>

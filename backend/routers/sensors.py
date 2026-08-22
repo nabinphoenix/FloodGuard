@@ -24,6 +24,7 @@ from models.sensor import SensorReading, SensorStation
 from models.user import UserRole
 from routers.auth import require_any_role
 from services.dynamodb_service import sensor_store_health
+from services.coordinate_validation import coordinate_validation_error
 from services.geography_service import load_geography
 from services.sensor_ingestion import (
     InvalidSensorTimestampError,
@@ -131,6 +132,14 @@ def alert_level_for_reading(water_level: float, station: SensorStation):
 
 
 def _validate_geography(payload: StationPayload) -> None:
+    coordinate_error = coordinate_validation_error(
+        payload.latitude,
+        payload.longitude,
+        label="Sensor station location",
+    )
+    if coordinate_error:
+        raise HTTPException(status_code=422, detail=coordinate_error)
+
     data = load_geography()
     province = next(
         (item for item in data["provinces"]

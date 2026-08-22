@@ -1,16 +1,17 @@
 import { Marker, Popup } from "react-leaflet";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
-import { createMapIcon, formatMapDate, statusLabel } from "./mapUtils";
+import { createMapIcon, formatMapDate, operationalCoordinatePair, statusLabel } from "./mapUtils";
 
 export default function AlertMarker({ alert, onSelect }) {
   const latitude = alert.latitude ?? alert.lat;
   const longitude = alert.longitude ?? alert.lng;
-  if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) return null;
+  const position = operationalCoordinatePair(latitude, longitude);
+  if (!position) return null;
 
   return (
     <Marker
-      position={[Number(latitude), Number(longitude)]}
+      position={position}
       icon={createMapIcon({ color: MAP_STATUS_COLORS.alert, glyph: "!" })}
       eventHandlers={{ click: () => onSelect?.({ type: "alert", item: alert }) }}
     >

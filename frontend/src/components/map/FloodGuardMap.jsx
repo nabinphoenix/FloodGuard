@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import AlertMarker from "./AlertMarker";
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, getMapTileConfig } from "./mapConfig";
+import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, getMapTileConfig, NEPAL_MAP_BOUNDS } from "./mapConfig";
 import MapLegend from "./MapLegend";
 import ReportMarker from "./ReportMarker";
 import SensorMarker from "./SensorMarker";
-import { coordinatePair, createMapIcon } from "./mapUtils";
+import { coordinatePair, createMapIcon, operationalCoordinatePair } from "./mapUtils";
 import ZoneLayer from "./ZoneLayer";
 import "./map.css";
 
@@ -27,13 +27,13 @@ function MapViewport({ points = [], focusPosition }) {
   }, [map]);
 
   useEffect(() => {
-    const focus = focusPosition && coordinatePair(focusPosition[0], focusPosition[1]);
+    const focus = focusPosition && operationalCoordinatePair(focusPosition[0], focusPosition[1]);
     if (focus) {
       map.flyTo(focus, Math.max(map.getZoom(), 12), { duration: 0.35 });
       return;
     }
 
-    const validPoints = points.filter((point) => coordinatePair(point[0], point[1])).map((point) => coordinatePair(point[0], point[1]));
+    const validPoints = points.map((point) => operationalCoordinatePair(point[0], point[1])).filter(Boolean);
     if (validPoints.length > 1) {
       map.fitBounds(L.latLngBounds(validPoints), { padding: [28, 28], maxZoom: 12 });
     } else if (validPoints.length === 1) {
@@ -91,24 +91,28 @@ export default function FloodGuardMap({
 }) {
   const tileConfig = getMapTileConfig();
   const safeCenter = coordinatePair(center?.[0], center?.[1]) || DEFAULT_MAP_CENTER;
+  const validStations = stations.filter((item) => operationalCoordinatePair(item.latitude ?? item.lat, item.longitude ?? item.lng));
+  const validZones = zones.filter((item) => operationalCoordinatePair(item.latitude ?? item.lat, item.longitude ?? item.lng));
+  const validReports = reports.filter((item) => operationalCoordinatePair(item.latitude ?? item.lat, item.longitude ?? item.lng));
+  const validAlerts = alerts.filter((item) => operationalCoordinatePair(item.latitude ?? item.lat, item.longitude ?? item.lng));
   const points = [
-    ...stations.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
-    ...zones.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
-    ...reports.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
-    ...alerts.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
+    ...validStations.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
+    ...validZones.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
+    ...validReports.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
+    ...validAlerts.map((item) => [item.latitude ?? item.lat, item.longitude ?? item.lng]),
   ];
 
   return (
     <div className={`floodguard-map relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm ${className}`}>
-      <MapContainer center={safeCenter} zoom={zoom} scrollWheelZoom className="h-full w-full">
+      <MapContainer center={safeCenter} zoom={zoom} maxBounds={NEPAL_MAP_BOUNDS} maxBoundsViscosity={0.6} scrollWheelZoom className="h-full w-full">
         <TileLayer url={tileConfig.url} attribution={tileConfig.attribution} />
         <MapViewport points={points} focusPosition={focusPosition} />
         {interactive ? <MapClickHandler onMapClick={onMapClick} /> : null}
         <LocationMarker position={markerPosition} draggable={markerDraggable} onDragEnd={onMarkerDrag} />
-        {showStations ? stations.map((station) => <SensorMarker key={`station-${station.station_code || station.id}`} station={station} onSelect={onSelect} />) : null}
-        {showZones ? <ZoneLayer zones={zones} onSelect={onSelect} /> : null}
-        {showReports ? reports.map((report) => <ReportMarker key={`report-${report.id}`} report={report} onSelect={onSelect} />) : null}
-        {showAlerts ? alerts.map((alert) => <AlertMarker key={`alert-${alert.id}`} alert={alert} onSelect={onSelect} />) : null}
+        {showStations ? validStations.map((station) => <SensorMarker key={`station-${station.station_code || station.id}`} station={station} onSelect={onSelect} />) : null}
+        {showZones ? <ZoneLayer zones={validZones} onSelect={onSelect} /> : null}
+        {showReports ? validReports.map((report) => <ReportMarker key={`report-${report.id}`} report={report} onSelect={onSelect} />) : null}
+        {showAlerts ? validAlerts.map((alert) => <AlertMarker key={`alert-${alert.id}`} alert={alert} onSelect={onSelect} />) : null}
         {children}
       </MapContainer>
       {showLegend ? <MapLegend /> : null}

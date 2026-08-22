@@ -7,6 +7,7 @@ from models.report import IncidentReport, ReportStatus
 from models.user import User
 from routers.auth import get_current_user
 from schemas.report import ReportCreate, ReportOut
+from services.coordinate_validation import coordinate_validation_error
 from services.s3_service import delete_photo, get_presigned_url, upload_photo
 
 
@@ -54,6 +55,15 @@ async def submit_report(
         latitude=latitude,
         longitude=longitude,
     )
+
+    coordinate_error = coordinate_validation_error(
+        report_in.latitude,
+        report_in.longitude,
+        label="Report location",
+        allow_none=True,
+    )
+    if coordinate_error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
 
     image_key = None
     if photo and photo.filename:

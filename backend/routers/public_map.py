@@ -9,6 +9,7 @@ from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport, ReportStatus
 from models.sensor import SensorReading, SensorStation
 from schemas.map import PublicMapResponse
+from services.coordinate_validation import is_within_nepal_operational_bounds
 from services.sensor_ingestion import station_status
 
 
@@ -28,6 +29,8 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
         .order_by(SensorStation.district.asc(), SensorStation.name.asc())
     ).all()
     for station in stations:
+        if not is_within_nepal_operational_bounds(station.latitude, station.longitude):
+            continue
         latest = db.scalars(
             select(SensorReading)
             .where(SensorReading.station_id == station.id)
@@ -58,17 +61,20 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
             }
         )
 
-    zones = [
-        {
-            "id": zone.id,
-            "district": zone.district,
-            "alert_level": zone.alert_level.value,
-            "latitude": zone.latitude,
-            "longitude": zone.longitude,
-            "updated_at": zone.updated_at,
-        }
-        for zone in db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all()
-    ]
+    zones = []
+    for zone in db.scalars(select(AlertZone).order_by(AlertZone.district.asc())).all():
+        if not is_within_nepal_operational_bounds(zone.latitude, zone.longitude):
+            continue
+        zones.append(
+            {
+                "id": zone.id,
+                "district": zone.district,
+                "alert_level": zone.alert_level.value,
+                "latitude": zone.latitude,
+                "longitude": zone.longitude,
+                "updated_at": zone.updated_at,
+            }
+        )
 
     alerts = []
     alert_rows = db.execute(
@@ -79,6 +85,8 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
         .limit(100)
     ).all()
     for alert, zone in alert_rows:
+        if not is_within_nepal_operational_bounds(zone.latitude, zone.longitude):
+            continue
         alerts.append(
             {
                 "id": alert.id,
@@ -92,26 +100,29 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
             }
         )
 
-    reports = [
-        {
-            "id": report.id,
-            "district": report.district,
-            "severity": report.severity,
-            "description": report.description,
-            "latitude": report.latitude,
-            "longitude": report.longitude,
-            "created_at": report.created_at,
-        }
-        for report in db.scalars(
-            select(IncidentReport)
-            .where(
-                IncidentReport.status == ReportStatus.approved,
-                IncidentReport.latitude.is_not(None),
-                IncidentReport.longitude.is_not(None),
-            )
-            .order_by(IncidentReport.created_at.desc())
-            .limit(100)
-        ).all()
-    ]
+    reports = []
+    for report in db.scalars(
+        select(IncidentReport)
+        .where(
+            IncidentReport.status == ReportStatus.approved,
+            IncidentReport.latitude.is_not(None),
+            IncidentReport.longitude.is_not(None),
+        )
+        .order_by(IncidentReport.created_at.desc())
+        .limit(100)
+    ).all():
+        if not is_within_nepal_operational_bounds(report.latitude, report.longitude):
+            continue
+        reports.append(
+            {
+                "id": report.id,
+                "district": report.district,
+                "severity": report.severity,
+                "description": report.description,
+                "latitude": report.latitude,
+                "longitude": report.longitude,
+                "created_at": report.created_at,
+            }
+        )
 
     return PublicMapResponse(sensors=sensors, zones=zones, alerts=alerts, reports=reports)

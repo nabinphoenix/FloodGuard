@@ -1,6 +1,18 @@
 export const DEFAULT_MAP_CENTER = [28.3949, 84.124];
 export const DEFAULT_MAP_ZOOM = 7;
 
+export const NEPAL_OPERATIONAL_BOUNDS = Object.freeze({
+  south: 25.5,
+  north: 31.0,
+  west: 79.5,
+  east: 89.0,
+});
+
+export const NEPAL_MAP_BOUNDS = [
+  [NEPAL_OPERATIONAL_BOUNDS.south, NEPAL_OPERATIONAL_BOUNDS.west],
+  [NEPAL_OPERATIONAL_BOUNDS.north, NEPAL_OPERATIONAL_BOUNDS.east],
+];
+
 export const MAP_STATUS_COLORS = {
   safe: "#16a34a",
   watch: "#ca8a04",

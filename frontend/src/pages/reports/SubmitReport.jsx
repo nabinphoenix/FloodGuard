@@ -4,6 +4,7 @@ import { submitReport } from "../../api/reports";
 import CharacterCounter from "../../components/CharacterCounter";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import LocationPicker from "../../components/map/LocationPicker";
+import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError, validateCoordinate } from "../../utils/validation";
 
 const DISTRICTS = [
@@ -78,6 +79,15 @@ export default function SubmitReport() {
     const longitudeError = validateCoordinate(formData.longitude, -180, 180, "Longitude");
     if (latitudeError) nextFieldErrors.latitude = latitudeError;
     if (longitudeError) nextFieldErrors.longitude = longitudeError;
+    const hasLatitude = String(formData.latitude).trim() !== "";
+    const hasLongitude = String(formData.longitude).trim() !== "";
+    if (hasLatitude !== hasLongitude) {
+      nextFieldErrors.latitude = "Provide both latitude and longitude, or leave both empty.";
+      nextFieldErrors.longitude = "Provide both latitude and longitude, or leave both empty.";
+    } else if (hasLatitude && !latitudeError && !longitudeError && !isWithinNepalOperationalBounds(Number(formData.latitude), Number(formData.longitude))) {
+      nextFieldErrors.latitude = "Report location must be within Nepal.";
+      nextFieldErrors.longitude = "Report location must be within Nepal.";
+    }
     setFieldErrors(nextFieldErrors);
 
     if (Object.keys(nextFieldErrors).length > 0 || !canSubmit) {
@@ -204,7 +214,7 @@ export default function SubmitReport() {
               value={formData.latitude}
               onChange={(event) => updateField("latitude", event.target.value)}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="3.139000"
+              placeholder="27.671000"
             />
             <p className="mt-1 text-xs text-blue-700">Valid range: -90 to 90</p>
             {fieldErrors.latitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.latitude}</p>}
@@ -223,7 +233,7 @@ export default function SubmitReport() {
               value={formData.longitude}
               onChange={(event) => updateField("longitude", event.target.value)}
               className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="101.686900"
+              placeholder="84.430500"
             />
             <p className="mt-1 text-xs text-blue-700">Valid range: -180 to 180</p>
             {fieldErrors.longitude && <p className="mt-1 text-xs text-red-600">{fieldErrors.longitude}</p>}

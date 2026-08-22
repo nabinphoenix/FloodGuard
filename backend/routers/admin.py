@@ -19,6 +19,7 @@ from schemas.user import (
     AdminUserUpdate,
     UserOut,
 )
+from services.coordinate_validation import coordinate_validation_error
 from services.sns_service import is_subscription_pending, unsubscribe
 
 
@@ -92,6 +93,14 @@ def get_zone(zone_id: int, db: Session = Depends(get_db)) -> AlertZone:
 
 @router.post("/zones", response_model=AlertZoneOut, status_code=status.HTTP_201_CREATED)
 def create_zone(zone_in: AlertZoneCreate, db: Session = Depends(get_db)) -> AlertZone:
+    coordinate_error = coordinate_validation_error(
+        zone_in.latitude,
+        zone_in.longitude,
+        label="Zone location",
+    )
+    if coordinate_error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
+
     district = zone_in.district.strip()
     existing_zone = db.scalar(
         select(AlertZone).where(func.lower(AlertZone.district) == district.lower())
@@ -130,6 +139,14 @@ def update_zone(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one zone field must be provided.",
         )
+
+    coordinate_error = coordinate_validation_error(
+        update_data.get("latitude", zone.latitude),
+        update_data.get("longitude", zone.longitude),
+        label="Zone location",
+    )
+    if coordinate_error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=coordinate_error)
 
     if "district" in update_data:
         district = update_data["district"].strip()

@@ -6,6 +6,7 @@ import { getAuthorityReports, approveReport, rejectReport } from "../../api/auth
 import StatusPill from "../../components/StatusPill";
 import AdminLayout from "../../components/AdminLayout";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
+import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import CharacterCounter from "../../components/CharacterCounter";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
@@ -15,6 +16,10 @@ const statuses = ["pending", "approved", "rejected"];
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : "-";
+}
+
+function reportHasNepalLocation(report) {
+  return isWithinNepalOperationalBounds(report.latitude, report.longitude);
 }
 
 export default function ManageReports() {
@@ -129,7 +134,7 @@ export default function ManageReports() {
             </div>
             <button type="button" onClick={() => setSelectedReport(null)} className="text-sm font-bold text-ink-secondary hover:text-ink-primary">Close</button>
           </div>
-          {Number.isFinite(Number(selectedReport.latitude)) && Number.isFinite(Number(selectedReport.longitude)) ? (
+          {reportHasNepalLocation(selectedReport) ? (
             <FloodGuardMap
               reports={[selectedReport]}
               center={[Number(selectedReport.latitude), Number(selectedReport.longitude)]}
@@ -140,7 +145,7 @@ export default function ManageReports() {
               className="h-[320px]"
             />
           ) : (
-            <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-ink-secondary">This report does not include map coordinates.</p>
+            <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-ink-secondary">This report has no valid Nepal map coordinates and is not plotted publicly.</p>
           )}
         </section>
       ) : null}
@@ -178,7 +183,7 @@ export default function ManageReports() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 font-medium whitespace-nowrap">{report.district}</td>
+                  <td className="px-6 py-4 font-medium whitespace-nowrap">{report.district}{!reportHasNepalLocation(report) && <span className="mt-1 block text-xs font-bold text-red-600">Location outside Nepal or unavailable</span>}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-1 text-yellow-400 text-lg">
                       {"★".repeat(report.severity)}
@@ -191,7 +196,7 @@ export default function ManageReports() {
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{report.submitted_by}</td>
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(report.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex justify-end gap-3">                      <button type="button" onClick={() => setSelectedReport(report)} disabled={!Number.isFinite(Number(report.latitude)) || !Number.isFinite(Number(report.longitude))} className="rounded-lg border border-brand/30 px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-40">Map</button>
+                    <div className="flex justify-end gap-3">                      <button type="button" onClick={() => setSelectedReport(report)} disabled={!reportHasNepalLocation(report)} className="rounded-lg border border-brand/30 px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-40">Map</button>
                       <button
                         type="button"
                         onClick={() => handleApprove(report.id)}
