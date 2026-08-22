@@ -17,6 +17,7 @@ import History from "./pages/public/History";
 import Login from "./pages/public/Login";
 import Profile from "./pages/public/Profile";
 import Register from "./pages/public/Register";
+import Safety from "./pages/public/Safety";
 import CommunityFeed from "./pages/reports/CommunityFeed";
 import MyReports from "./pages/reports/MyReports";
 import ReportDetail from "./pages/reports/ReportDetail";
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/safety" element={<Safety />} />
         <Route path="/alerts" element={<AlertFeed />} />
         <Route path="/map" element={<FloodMap />} />
         <Route path="/history" element={<History />} />

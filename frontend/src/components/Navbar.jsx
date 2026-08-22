@@ -51,6 +51,7 @@ export default function Navbar() {
   const links = [
     { label: "Home", to: "/" },
     { label: "Alerts", to: "/alerts" },
+    { label: "Safety", to: "/safety" },
     { label: "Map", to: "/map" },
     { label: "Flood History", to: "/history" },
     { label: "Community", to: "/reports/community" },

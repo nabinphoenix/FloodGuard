@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { Filter, MapPin, RefreshCw } from "lucide-react";
 
@@ -106,6 +107,15 @@ export default function AlertFeed() {
           </p>
         </div>
       </div>
+
+        <div className="mt-6 flex flex-col gap-4 rounded-xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Flood safety guide</p>
+            <h2 className="mt-1 text-lg font-black text-blue-950">Know what to do during a flood</h2>
+            <p className="mt-1 text-sm text-blue-900">Prepare early and keep life-safety guidance close at hand.</p>
+          </div>
+          <Link to="/safety" className="inline-flex shrink-0 items-center justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-800">View Flood Safety Guide</Link>
+        </div>
 
       <section className="relative z-10 mx-auto max-w-7xl px-4 pt-8 sm:px-6 sm:pt-10">
         {hasEmergency && (

@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     dynamodb_sensor_table_name: str = Field("", alias="DYNAMODB_SENSOR_TABLE_NAME")
     broadcast_api_url: str = Field(..., alias="BROADCAST_API_URL")
     cors_origins: str = Field(..., alias="CORS_ORIGINS")
+    ses_from_email: str = Field("", alias="SES_FROM_EMAIL")
+    frontend_base_url: str = Field("http://localhost:5173", alias="FRONTEND_BASE_URL")
+    password_reset_token_minutes: int = Field(20, alias="PASSWORD_RESET_TOKEN_MINUTES")
+    password_reset_rate_limit_seconds: int = Field(60, alias="PASSWORD_RESET_RATE_LIMIT_SECONDS")
+
 
     model_config = SettingsConfigDict(
         env_file=".env",

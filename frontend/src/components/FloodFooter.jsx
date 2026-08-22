@@ -51,6 +51,7 @@ export default function FloodFooter() {
           <div>
             <h3>Explore</h3>
             <Link to="/alerts">Alerts <ArrowUpRight size={13} /></Link>
+            <Link to="/safety">Flood safety <ArrowUpRight size={13} /></Link>
             <Link to="/map">Flood map <ArrowUpRight size={13} /></Link>
             <Link to="/history">Flood history <ArrowUpRight size={13} /></Link>
           </div>

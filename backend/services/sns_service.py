@@ -7,6 +7,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException, status
 
 from config import settings
+from services.alert_message_service import build_flood_alert_message
 
 
 logger = logging.getLogger(__name__)
@@ -96,21 +97,18 @@ def broadcast_alert(
 ) -> str:
     """Publish an official FloodGuard authority alert to the configured SNS topic."""
 
-    subject = f"FloodGuard {level.upper()} Alert - {district}"
-
-    body = (
-        "FloodGuard Early Warning Alert\n\n"
-        f"District: {district}\n"
-        f"Alert level: {level.upper()}\n\n"
-        f"{message}\n\n"
-        "Please follow local authority instructions and stay safe."
+    formatted = build_flood_alert_message(
+        severity=level,
+        zone={"district": district},
+        alert_source="Official FloodGuard Alert",
+        optional_authority_message=message,
     )
 
     try:
         response = sns_client.publish(
             TopicArn=settings.sns_topic_arn,
-            Subject=subject[:100],
-            Message=body,
+            Subject=formatted.subject,
+            Message=formatted.plain_text_body,
             MessageAttributes={
                 "district": {
                     "DataType": "String",
@@ -164,6 +162,7 @@ def publish_sensor_transition(
     watch_threshold: float | None,
     warning_threshold: float,
     danger_threshold: float,
+    recorded_at=None,
 ) -> dict[str, str | bool]:
     """Publish one automated sensor transition through the existing SNS topic.
 
@@ -181,45 +180,29 @@ def publish_sensor_transition(
             "reason": "no_severity_transition",
         }
 
-    location = f"{river_name or station_name}, {district}"
-    if status == "safe":
-        subject = f"FloodGuard Sensor SAFE Update - {location}"
-        body = (
-            "FloodGuard Automated Sensor Alert\n\n"
-            f"Station: {station_name}\n"
-            f"Province: {province or 'Not configured'}\n"
-            f"District: {district}\n"
-            f"River: {river_name or 'Not configured'}\n\n"
-            f"Current water level: {water_level:.2f} m\n"
-            "Status: SAFE\n"
-            f"Watch threshold: {watch_threshold:.2f} m\n"
-            f"Warning threshold: {warning_threshold:.2f} m\n"
-            f"Emergency threshold: {danger_threshold:.2f} m\n\n"
-            "Water level has returned below the configured Watch threshold.\n"
-            "This is an automated sensor-generated notification."
-        )
-    else:
-        subject = f"FloodGuard Sensor {status.upper()} Alert - {location}"
-        body = (
-            "FloodGuard Automated Sensor Alert\n\n"
-            f"Station: {station_name}\n"
-            f"Province: {province or 'Not configured'}\n"
-            f"District: {district}\n"
-            f"River: {river_name or 'Not configured'}\n\n"
-            f"Current water level: {water_level:.2f} m\n"
-            f"Status: {status.upper()}\n"
-            f"Watch threshold: {watch_threshold:.2f} m\n"
-            f"Warning threshold: {warning_threshold:.2f} m\n"
-            f"Emergency threshold: {danger_threshold:.2f} m\n\n"
-            "This is an automated sensor-generated notification.\n"
-            "Please monitor official FloodGuard alerts and follow local authority instructions."
-        )
+    formatted = build_flood_alert_message(
+        severity=status,
+        station={
+            "name": station_name,
+            "province": province,
+            "district": district,
+            "river_name": river_name,
+        },
+        water_level=water_level,
+        thresholds={
+            "watch": watch_threshold,
+            "warning": warning_threshold,
+            "danger": danger_threshold,
+        },
+        alert_source="Automated Sensor Alert",
+        timestamp=recorded_at,
+    )
 
     try:
         response = sns_client.publish(
             TopicArn=settings.sns_topic_arn,
-            Subject=subject[:100],
-            Message=body,
+            Subject=formatted.subject,
+            Message=formatted.plain_text_body,
             MessageAttributes={
                 "alert_type": {
                     "DataType": "String",

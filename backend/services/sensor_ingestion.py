@@ -143,6 +143,7 @@ def process_sensor_reading(
             watch_threshold=effective_watch_threshold(station),
             warning_threshold=station.warning_threshold,
             danger_threshold=station.danger_threshold,
+            recorded_at=db_reading.recorded_at,
         )
     except Exception as exc:
         logger.error("Sensor SNS notification failed after reading save for %s: %s", station.id, exc)
