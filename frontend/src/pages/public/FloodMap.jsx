@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Layers3, MapPin, Radio, RefreshCw, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
-import Navbar from "../../components/Navbar";
 import { getPublicMapOverview } from "../../api/publicMap";
 import { normalizeStatus, statusLabel } from "../../components/map/mapUtils";
 
@@ -120,7 +119,6 @@ export default function FloodMap() {
 
   return (
     <div className="min-h-screen bg-surface">
-      <Navbar />
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         <div className="mb-7 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
