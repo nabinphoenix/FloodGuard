@@ -39,13 +39,20 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(14, 116, 144, 0.08);
+  background: #ffffff;
   box-shadow: 0 10px 26px rgba(3, 105, 161, 0.18);
 }
 
 .hero-liquid-button__label {
   position: relative;
   z-index: 2;
+  color: #075985;
+  transition: color 240ms ease;
+}
+
+.hero-liquid-button:hover .hero-liquid-button__label,
+.hero-liquid-button:focus-visible .hero-liquid-button__label {
+  color: #ffffff;
 }
 
 .hero-liquid-button__liquid {

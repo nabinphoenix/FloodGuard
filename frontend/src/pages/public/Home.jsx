@@ -86,7 +86,7 @@ export default function Home() {
             </Link>
             <Link
               to="/reports/submit"
-              className="hero-liquid-button rounded-full border-2 border-white/80 px-8 py-4 text-center font-bold text-white transition-all"
+              className="hero-liquid-button rounded-full border-2 border-white/80 px-8 py-4 text-center font-bold text-brand transition-all"
             >
               <span className="hero-liquid-button__label">Report Flood</span>
               <span className="hero-liquid-button__liquid" aria-hidden="true" />
