@@ -48,12 +48,12 @@ def report_to_out(report: IncidentReport) -> ReportOut:
 async def submit_report(
     province: str = Form(...),
     district: str = Form(...),
-    zone_id: int | None = Form(default=None),
+    zone_id: int = Form(...),
     severity: int = Form(...),
     description: str = Form(...),
-    latitude: float | None = Form(default=None),
-    longitude: float | None = Form(default=None),
-    photo: UploadFile | None = File(default=None),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    photo: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ReportOut:
@@ -92,21 +92,22 @@ async def submit_report(
         if zone_province is None or zone_province.casefold() != canonical_province.casefold() or zone.district.casefold() != canonical_district.casefold():
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected zone does not belong to this district.")
     image_key = None
-    if photo and photo.filename:
-        if photo.content_type not in ALLOWED_IMAGE_TYPES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Photo must be a JPEG, PNG, or WebP image.",
-            )
+    if not photo.filename:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Photo is required.")
+    if photo.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Photo must be a JPEG, PNG, or WebP image.",
+        )
 
-        file_bytes = await photo.read()
-        if len(file_bytes) > MAX_PHOTO_SIZE_BYTES:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail="Photo must be 5 MB or smaller.",
-            )
+    file_bytes = await photo.read()
+    if len(file_bytes) > MAX_PHOTO_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Photo must be 5 MB or smaller.",
+        )
 
-        image_key = upload_photo(file_bytes, photo.content_type, photo.filename)
+    image_key = upload_photo(file_bytes, photo.content_type, photo.filename)
 
     report = IncidentReport(
         user_id=current_user.id,

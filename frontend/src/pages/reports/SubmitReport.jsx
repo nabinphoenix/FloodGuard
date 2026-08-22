@@ -12,7 +12,7 @@ const EMPTY_FORM = {
   province: "",
   district: "",
   zone_id: "",
-  severity: 3,
+  severity: "",
   description: "",
   latitude: "",
   longitude: "",
@@ -41,9 +41,12 @@ export default function SubmitReport() {
     () => (
       formData.province
       && formData.district
+      && formData.zone_id
+      && Boolean(formData.severity)
       && formData.description.trim().length >= 10
       && formData.latitude !== ""
       && formData.longitude !== ""
+      && formData.photo
       && !isSubmitting
     ),
     [formData, isSubmitting],
@@ -150,8 +153,11 @@ export default function SubmitReport() {
     const nextFieldErrors = {};
     if (!formData.province.trim()) nextFieldErrors.province = "Please select a province.";
     if (!formData.district.trim()) nextFieldErrors.district = "Please select a district.";
+    if (!formData.zone_id) nextFieldErrors.zone_id = "Please select a FloodGuard zone.";
+    if (!formData.severity) nextFieldErrors.severity = "Please select a severity rating.";
     if (formData.description.trim().length < 10) nextFieldErrors.description = "Description must be at least 10 characters.";
     if (formData.description.length > 2000) nextFieldErrors.description = "Description must be 2000 characters or fewer.";
+    if (!formData.photo) nextFieldErrors.photo = "Please attach a photo of the reported conditions.";
 
     const latitudeError = validateCoordinate(formData.latitude, -90, 90, "Latitude");
     const longitudeError = validateCoordinate(formData.longitude, -180, 180, "Longitude");
@@ -211,7 +217,7 @@ export default function SubmitReport() {
           <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
             <div className="mb-5">
               <h2 className="text-lg font-bold text-blue-950">Report location</h2>
-              <p className="mt-1 text-sm text-blue-700">Choose the province and district first, then select an optional FloodGuard zone.</p>
+              <p className="mt-1 text-sm text-blue-700">Choose the province, district, and FloodGuard zone for this report.</p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-3">
@@ -250,30 +256,32 @@ export default function SubmitReport() {
               </label>
 
               <label className="block text-sm font-medium text-blue-950">
-                Zone
+                Zone *
                 <select
                   value={formData.zone_id}
                   onChange={(event) => updateField("zone_id", event.target.value)}
                   disabled={!formData.district || isZonesLoading}
+                  required
                   className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
                 >
                   <option value="">
-                    {isZonesLoading ? "Loading zones..." : zones.length ? "No zone selected" : "No configured FloodGuard zones in this district"}
+                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No configured FloodGuard zones"}
                   </option>
                   {zones.map((zone) => (
                     <option key={zone.id} value={zone.id}>{zone.name || zone.district}</option>
                   ))}
                 </select>
+                {fieldErrors.zone_id && <p className="mt-1 text-xs text-red-600">{fieldErrors.zone_id}</p>}
                 {zoneError && <p className="mt-1 text-xs text-red-600">{zoneError}</p>}
                 {!zoneError && formData.district && !isZonesLoading && !zones.length && (
-                  <p className="mt-1 text-xs text-blue-700">You can continue without a zone.</p>
+                  <p className="mt-1 text-xs text-red-600">A configured FloodGuard zone is required before submitting.</p>
                 )}
               </label>
             </div>
           </div>
 
           <div>
-            <span className="block text-sm font-medium text-blue-950">Severity</span>
+            <span className="block text-sm font-medium text-blue-950">Severity *</span>
             <div className="mt-2 flex h-[50px] items-center gap-2 rounded-md border border-blue-200 px-4">
               {[1, 2, 3, 4, 5].map((rating) => (
                 <button
@@ -286,8 +294,9 @@ export default function SubmitReport() {
                   ★
                 </button>
               ))}
-              <span className="ml-auto text-sm font-semibold text-blue-900">{formData.severity}/5</span>
+              <span className="ml-auto text-sm font-semibold text-blue-900">{formData.severity || 0}/5</span>
             </div>
+            {fieldErrors.severity && <p className="mt-1 text-xs text-red-600">{fieldErrors.severity}</p>}
           </div>
 
           <div className="md:col-span-2">
@@ -358,15 +367,17 @@ export default function SubmitReport() {
 
           <div className="md:col-span-2">
             <label htmlFor="photo" className="block text-sm font-medium text-blue-950">
-              Photo
+              Photo *
             </label>
             <input
               id="photo"
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={handlePhotoChange}
+              required
               className="mt-2 block w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-sm text-blue-950 file:mr-4 file:rounded-md file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-800"
             />
+            {fieldErrors.photo && <p className="mt-1 text-xs text-red-600">{fieldErrors.photo}</p>}
             {previewUrl && (
               <img src={previewUrl} alt="Selected flood report preview" className="mt-4 h-56 w-full rounded-md object-cover" />
             )}

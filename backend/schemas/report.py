@@ -8,13 +8,13 @@ from models.report import ReportStatus
 
 
 class ReportCreate(NormalizedModel):
-    province: str | None = Field(default=None, min_length=2, max_length=100)
+    province: str = Field(..., min_length=2, max_length=100)
     district: str = Field(..., min_length=2, max_length=100)
-    zone_id: int | None = Field(default=None, gt=0)
+    zone_id: int = Field(..., gt=0)
     severity: int = Field(..., ge=1, le=5)
     description: str = Field(..., min_length=10, max_length=2000)
-    latitude: float | None = Field(default=None, ge=-90, le=90)
-    longitude: float | None = Field(default=None, ge=-180, le=180)
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 
 class ReportOut(BaseModel):

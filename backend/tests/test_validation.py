@@ -19,6 +19,19 @@ def valid_user(**overrides):
     return payload
 
 
+def valid_report(**overrides):
+    payload = {
+        "province": "Bagmati",
+        "district": "Chitwan",
+        "zone_id": 1,
+        "severity": 1,
+        "description": "A valid report description.",
+        "latitude": 27.67,
+        "longitude": 84.43,
+    }
+    payload.update(overrides)
+    return payload
+
 def test_phone_exactly_ten_digits_is_accepted_and_normalized():
     user = UserCreate(**valid_user(phone="9812345678"))
     assert user.phone == "9812345678"
@@ -47,7 +60,7 @@ def test_invalid_phone_formats_are_rejected(phone):
 def test_coordinate_boundaries_are_accepted():
     assert AlertZoneCreate(district="North", latitude=-90, longitude=-180).latitude == -90
     assert AlertZoneUpdate(latitude=90, longitude=180).longitude == 180
-    assert ReportCreate(district="North", severity=1, description="A valid report description.", latitude=-90, longitude=180).latitude == -90
+    assert ReportCreate(**valid_report(latitude=-90, longitude=180)).latitude == -90
 
 
 @pytest.mark.parametrize("latitude", [-91, 91])
@@ -55,7 +68,7 @@ def test_latitude_outside_range_is_rejected(latitude):
     with pytest.raises(ValidationError):
         AlertZoneCreate(district="North", latitude=latitude, longitude=0)
     with pytest.raises(ValidationError):
-        ReportCreate(district="North", severity=1, description="A valid report description.", latitude=latitude)
+        ReportCreate(**valid_report(latitude=latitude))
 
 
 @pytest.mark.parametrize("longitude", [-181, 181])
@@ -63,7 +76,7 @@ def test_longitude_outside_range_is_rejected(longitude):
     with pytest.raises(ValidationError):
         AlertZoneCreate(district="North", latitude=0, longitude=longitude)
     with pytest.raises(ValidationError):
-        ReportCreate(district="North", severity=1, description="A valid report description.", longitude=longitude)
+        ReportCreate(**valid_report(longitude=longitude))
 
 
 def test_non_numeric_coordinate_is_rejected():
@@ -73,10 +86,19 @@ def test_non_numeric_coordinate_is_rejected():
 
 def test_narrative_limits_and_whitespace_required_fields_are_enforced():
     with pytest.raises(ValidationError):
-        ReportCreate(district="North", severity=1, description="x" * 2001)
+        ReportCreate(**valid_report(description="x" * 2001))
     with pytest.raises(ValidationError):
         BroadcastRequest(zone_id=1, alert_level="warning", message="x" * 2001)
     with pytest.raises(ValidationError):
         RejectReportRequest(reason="   ")
     with pytest.raises(ValidationError):
-        ReportCreate(district="   ", severity=1, description="A valid report description.")
+        ReportCreate(**valid_report(district="   "))
+
+
+@pytest.mark.parametrize("field", ["province", "district", "zone_id", "severity", "description", "latitude", "longitude"])
+def test_report_fields_are_required(field):
+    payload = valid_report()
+    payload.pop(field)
+
+    with pytest.raises(ValidationError):
+        ReportCreate(**payload)
