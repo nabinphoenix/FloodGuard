@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,3 +60,27 @@ class IncidentReport(Base):
 
     user: Mapped[User] = relationship("User", back_populates="reports")
     zone: Mapped[AlertZone | None] = relationship("AlertZone")
+    helpful_votes: Mapped[list[ReportHelpfulVote]] = relationship(
+        "ReportHelpfulVote",
+        back_populates="report",
+        cascade="all, delete-orphan",
+    )
+
+
+class ReportHelpfulVote(Base):
+    __tablename__ = "report_helpful_votes"
+    __table_args__ = (
+        UniqueConstraint("report_id", "user_id", name="uq_report_helpful_votes_report_user"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("incident_reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    report: Mapped[IncidentReport] = relationship("IncidentReport", back_populates="helpful_votes")
+    user: Mapped[User] = relationship("User", back_populates="helpful_votes")

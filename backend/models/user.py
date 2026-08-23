@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 if TYPE_CHECKING:
-    from models.report import IncidentReport
+    from models.report import IncidentReport, ReportHelpfulVote
     from models.alert import FloodAlert
     from models.password_reset import PasswordResetToken
 
@@ -66,6 +66,11 @@ class User(Base):
     )
     reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
         "PasswordResetToken",
+        cascade="all, delete-orphan",
+    )
+    helpful_votes: Mapped[list[ReportHelpfulVote]] = relationship(
+        "ReportHelpfulVote",
+        back_populates="user",
         cascade="all, delete-orphan",
     )
 

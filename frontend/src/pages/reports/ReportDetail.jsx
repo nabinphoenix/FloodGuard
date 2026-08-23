@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getReport, markHelpful } from "../../api/reports";
+import { getReport, toggleHelpful } from "../../api/reports";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function ReportDetail() {
@@ -30,9 +30,9 @@ export default function ReportDetail() {
     setError("");
 
     try {
-      setReport(await markHelpful(report.id));
+      setReport(await toggleHelpful(report.id));
     } catch (err) {
-      setError(err.response?.data?.detail || "Please sign in to mark this report helpful.");
+      setError(err.response?.data?.detail || "Please sign in to update helpful feedback.");
     } finally {
       setIsMarking(false);
     }

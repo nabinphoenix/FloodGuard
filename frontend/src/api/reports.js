@@ -55,7 +55,7 @@ export async function getReport(reportId) {
   return response.data;
 }
 
-export async function markHelpful(reportId) {
+export async function toggleHelpful(reportId) {
   const response = await api.post(`/reports/${reportId}/helpful`);
   return response.data;
 }

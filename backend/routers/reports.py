@@ -1,29 +1,61 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from config import settings
 from database import get_db
 from models.alert import AlertZone
-from models.report import IncidentReport, ReportStatus
+from models.report import IncidentReport, ReportHelpfulVote, ReportStatus
 from models.user import User, UserRole
-from routers.auth import get_current_user, require_exact_role
+from routers.auth import ALGORITHM, get_current_user, require_exact_role
 from schemas.report import ReportCreate, ReportOut
 from services.geography_service import province_for_district, resolve_province_district
 from services.coordinate_validation import coordinate_validation_error
-from services.s3_service import delete_photo, get_presigned_url, upload_photo
-
+from services.s3_service import get_presigned_url, upload_photo
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024
 
 
-def report_to_out(report: IncidentReport) -> ReportOut:
+def get_optional_current_user(
+    token: str | None = Depends(optional_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        return db.get(User, int(user_id))
+    except (JWTError, ValueError):
+        return None
+
+
+def report_to_out(
+    report: IncidentReport,
+    current_user: User | None = None,
+    db: Session | None = None,
+) -> ReportOut:
     image_url = None
     if report.image_key:
         image_url = get_presigned_url(report.image_key)
+
+    helpful_by_me = False
+    if current_user is not None and db is not None:
+        helpful_by_me = db.scalar(
+            select(ReportHelpfulVote).where(
+                ReportHelpfulVote.report_id == report.id,
+                ReportHelpfulVote.user_id == current_user.id,
+            )
+        ) is not None
 
     return ReportOut(
         id=report.id,
@@ -37,6 +69,7 @@ def report_to_out(report: IncidentReport) -> ReportOut:
         image_url=image_url,
         status=report.status,
         helpful_count=report.helpful_count,
+        helpful_by_me=helpful_by_me,
         created_at=report.created_at,
         user_name=report.user.name if report.user else "Unknown user",
         latitude=report.latitude,
@@ -129,7 +162,7 @@ async def submit_report(
     db.refresh(report)
 
     report.user = current_user
-    return report_to_out(report)
+    return report_to_out(report, current_user, db)
 
 
 @router.get("/community", response_model=list[ReportOut])
@@ -138,6 +171,7 @@ def get_community_reports(
     limit: int = Query(default=9, ge=1, le=30),
     district: str | None = Query(default=None),
     severity: int | None = Query(default=None, ge=1, le=5),
+    current_user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ) -> list[ReportOut]:
     query = (
@@ -157,7 +191,7 @@ def get_community_reports(
         .limit(limit)
     ).all()
 
-    return [report_to_out(report) for report in reports]
+    return [report_to_out(report, current_user, db) for report in reports]
 
 
 @router.get("/my-reports", response_model=list[ReportOut])
@@ -172,11 +206,15 @@ def get_my_reports(
         .order_by(IncidentReport.created_at.desc())
     ).all()
 
-    return [report_to_out(report) for report in reports]
+    return [report_to_out(report, current_user, db) for report in reports]
 
 
 @router.get("/{report_id}", response_model=ReportOut)
-def get_report_detail(report_id: int, db: Session = Depends(get_db)) -> ReportOut:
+def get_report_detail(
+    report_id: int,
+    current_user: User | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+) -> ReportOut:
     report = db.scalar(
         select(IncidentReport)
         .options(joinedload(IncidentReport.user))
@@ -189,11 +227,11 @@ def get_report_detail(report_id: int, db: Session = Depends(get_db)) -> ReportOu
             detail="Report not found.",
         )
 
-    return report_to_out(report)
+    return report_to_out(report, current_user, db)
 
 
 @router.post("/{report_id}/helpful", response_model=ReportOut)
-def mark_report_helpful(
+def toggle_report_helpful(
     report_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -210,8 +248,20 @@ def mark_report_helpful(
             detail="Report not found.",
         )
 
-    report.helpful_count += 1
+    existing_vote = db.scalar(
+        select(ReportHelpfulVote).where(
+            ReportHelpfulVote.report_id == report.id,
+            ReportHelpfulVote.user_id == current_user.id,
+        )
+    )
+    if existing_vote:
+        db.delete(existing_vote)
+        report.helpful_count = max(0, report.helpful_count - 1)
+    else:
+        db.add(ReportHelpfulVote(report_id=report.id, user_id=current_user.id))
+        report.helpful_count += 1
+
     db.add(report)
     db.commit()
     db.refresh(report)
-    return report_to_out(report)
+    return report_to_out(report, current_user, db)

@@ -29,6 +29,7 @@ class ReportOut(BaseModel):
     image_url: str | None
     status: ReportStatus
     helpful_count: int
+    helpful_by_me: bool = False
     created_at: datetime
     user_name: str
     latitude: float | None = None

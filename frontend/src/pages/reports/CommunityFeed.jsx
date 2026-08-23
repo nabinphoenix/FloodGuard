@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getPublicGeography } from "../../api/public";
-import { getCommunityReports, markHelpful } from "../../api/reports";
+import { getCommunityReports, toggleHelpful } from "../../api/reports";
 
 const PAGE_SIZE = 9;
 
@@ -42,6 +42,7 @@ export default function CommunityFeed() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [helpfulWorkingId, setHelpfulWorkingId] = useState(null);
 
   const districts = geography?.provinces?.flatMap((province) => (
     province.districts?.map((item) => item.name) || []
@@ -108,13 +109,18 @@ export default function CommunityFeed() {
   }, [page, district, severity]);
 
   async function handleHelpful(reportId) {
+    setHelpfulWorkingId(reportId);
+    setError("");
+
     try {
-      const updated = await markHelpful(reportId);
+      const updated = await toggleHelpful(reportId);
       setReports((current) =>
         current.map((report) => (report.id === reportId ? updated : report))
       );
     } catch (err) {
-      setError(err.response?.data?.detail || "Please sign in to mark a report helpful.");
+      setError(err.response?.data?.detail || "Please sign in to update helpful feedback.");
+    } finally {
+      setHelpfulWorkingId(null);
     }
   }
 
@@ -208,9 +214,16 @@ export default function CommunityFeed() {
                     <button
                       type="button"
                       onClick={() => handleHelpful(report.id)}
-                      className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+                      disabled={helpfulWorkingId === report.id}
+                      aria-pressed={report.helpful_by_me}
+                      className={
+                        "rounded-md px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 " +
+                        (report.helpful_by_me
+                          ? "border border-blue-700 bg-white text-blue-800 hover:bg-blue-50"
+                          : "bg-blue-700 text-white hover:bg-blue-800")
+                      }
                     >
-                      Helpful
+                      {helpfulWorkingId === report.id ? "Updating..." : report.helpful_by_me ? "Unmark helpful" : "Helpful"}
                     </button>
                   </div>
                 </div>
