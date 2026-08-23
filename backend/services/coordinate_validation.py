@@ -56,6 +56,33 @@ def is_within_nepal_operational_bounds(latitude: Any, longitude: Any) -> bool:
     return bounds.south <= lat <= bounds.north and bounds.west <= lng <= bounds.east
 
 
+def normalized_operational_coordinate_pair(
+    latitude: Any,
+    longitude: Any,
+) -> tuple[float, float] | None:
+    """Return an operational ``(latitude, longitude)`` pair when possible.
+
+    A few historical station records were entered in longitude/latitude order.
+    Keep rejecting genuinely invalid locations, but transparently correct that
+    unambiguous legacy ordering when the swapped pair falls inside Nepal's
+    operational envelope.  This lets dashboards and maps render old records
+    safely while preserving the raw values for an explicit data repair.
+    """
+
+    if not is_valid_coordinate(latitude, longitude):
+        return None
+
+    lat = float(latitude)
+    lng = float(longitude)
+    if is_within_nepal_operational_bounds(lat, lng):
+        return lat, lng
+
+    if is_within_nepal_operational_bounds(lng, lat):
+        return lng, lat
+
+    return None
+
+
 def coordinate_validation_error(
     latitude: Any,
     longitude: Any,

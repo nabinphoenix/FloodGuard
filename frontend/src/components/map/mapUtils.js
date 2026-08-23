@@ -26,8 +26,21 @@ export function isWithinNepalOperationalBounds(latitude, longitude) {
     && pair[1] <= NEPAL_OPERATIONAL_BOUNDS.east;
 }
 
+export function normalizedOperationalCoordinatePair(latitude, longitude) {
+  const pair = coordinatePair(latitude, longitude);
+  if (!pair) return null;
+  if (isWithinNepalOperationalBounds(pair[0], pair[1])) return pair;
+
+  // Some legacy stations were saved as longitude, latitude. Correct only the
+  // unambiguous case where swapping the values places the point in Nepal.
+  const swappedPair = coordinatePair(pair[1], pair[0]);
+  return swappedPair && isWithinNepalOperationalBounds(swappedPair[0], swappedPair[1])
+    ? swappedPair
+    : null;
+}
+
 export function operationalCoordinatePair(latitude, longitude) {
-  return isWithinNepalOperationalBounds(latitude, longitude) ? coordinatePair(latitude, longitude) : null;
+  return normalizedOperationalCoordinatePair(latitude, longitude);
 }
 
 export function formatMapDate(value) {

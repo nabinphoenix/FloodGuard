@@ -9,7 +9,10 @@ from models.alert import AlertLevel, AlertZone, FloodAlert
 from models.report import IncidentReport, ReportStatus
 from models.sensor import SensorReading, SensorStation
 from schemas.map import PublicMapResponse
-from services.coordinate_validation import is_within_nepal_operational_bounds
+from services.coordinate_validation import (
+    is_within_nepal_operational_bounds,
+    normalized_operational_coordinate_pair,
+)
 from services.geography_service import province_for_district
 from services.sensor_ingestion import station_status
 
@@ -30,8 +33,10 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
         .order_by(SensorStation.district.asc(), SensorStation.name.asc())
     ).all()
     for station in stations:
-        if not is_within_nepal_operational_bounds(station.latitude, station.longitude):
+        coordinates = normalized_operational_coordinate_pair(station.latitude, station.longitude)
+        if coordinates is None:
             continue
+        latitude, longitude = coordinates
         latest = db.scalars(
             select(SensorReading)
             .where(SensorReading.station_id == station.id)
@@ -50,8 +55,8 @@ def get_public_map(db: Session = Depends(get_db)) -> PublicMapResponse:
                 "district": station.district,
                 "river_basin": station.river_basin,
                 "river_name": station.river_name,
-                "latitude": station.latitude,
-                "longitude": station.longitude,
+                "latitude": latitude,
+                "longitude": longitude,
                 "latest_water_level": latest.water_level if latest else None,
                 "status": latest.status if latest and latest.status else station_status(station, latest.water_level if latest else None),
                 "last_reading_at": recorded_at,

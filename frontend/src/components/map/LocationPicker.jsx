@@ -1,7 +1,7 @@
 import { useState } from "react";
 import FloodGuardMap from "./FloodGuardMap";
 import { DEFAULT_MAP_CENTER } from "./mapConfig";
-import { coordinatePair, isWithinNepalOperationalBounds, operationalCoordinatePair } from "./mapUtils";
+import { coordinatePair, normalizedOperationalCoordinatePair, operationalCoordinatePair } from "./mapUtils";
 
 function formatCoordinate(value) {
   return Number(value).toFixed(6);
@@ -32,8 +32,9 @@ export default function LocationPicker({
 }) {
   const [isLocating, setIsLocating] = useState(false);
   const [error, setError] = useState("");
-  const position = coordinatePair(latitude, longitude);
-  const locationOutsideNepal = position && !isWithinNepalOperationalBounds(position[0], position[1]);
+  const rawPosition = coordinatePair(latitude, longitude);
+  const position = normalizedOperationalCoordinatePair(latitude, longitude) || rawPosition;
+  const locationOutsideNepal = rawPosition && !normalizedOperationalCoordinatePair(latitude, longitude);
   const mapPosition = locationOutsideNepal ? null : position;
 
   const selectPosition = ({ latitude: nextLatitude, longitude: nextLongitude }) => {

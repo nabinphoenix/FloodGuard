@@ -26,7 +26,10 @@ from models.sensor import SensorReading, SensorStation
 from models.user import User, UserRole
 from routers.auth import require_any_role
 from services.dynamodb_service import sensor_store_health
-from services.coordinate_validation import coordinate_validation_error
+from services.coordinate_validation import (
+    coordinate_validation_error,
+    normalized_operational_coordinate_pair,
+)
 from services.geography_service import load_geography
 from services.sensor_ingestion import (
     InvalidSensorTimestampError,
@@ -257,6 +260,8 @@ def station_to_dict(station: SensorStation, latest: dict | None = None) -> dict:
         if latest
         else _station_status(station, water_level)
     )
+    coordinates = normalized_operational_coordinate_pair(station.latitude, station.longitude)
+    latitude, longitude = coordinates or (station.latitude, station.longitude)
     return {
         "id": station.id,
         "name": station.name,
@@ -266,8 +271,8 @@ def station_to_dict(station: SensorStation, latest: dict | None = None) -> dict:
         "district": station.district,
         "river_basin": station.river_basin,
         "river_name": station.river_name,
-        "latitude": station.latitude,
-        "longitude": station.longitude,
+        "latitude": latitude,
+        "longitude": longitude,
         "watch_threshold": effective_watch_threshold(station),
         "warning_threshold": station.warning_threshold,
         "danger_threshold": station.danger_threshold,
