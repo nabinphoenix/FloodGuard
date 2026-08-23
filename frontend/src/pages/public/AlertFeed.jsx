@@ -4,7 +4,10 @@ import { Filter, MapPin, RefreshCw } from "lucide-react";
 
 import { getAlertZones } from "../../api/public";
 import AlertBanner from "../../components/AlertBanner";
+import AdminPagination from "../../components/AdminPagination";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
+
+const PAGE_SIZE = 6;
 
 function formatUpdated(value) {
   if (!value) return "Just now";
@@ -59,6 +62,7 @@ export default function AlertFeed() {
   const [error, setError] = useState("");
   const [lastRefresh, setLastRefresh] = useState(null);
   const [spinRefresh, setSpinRefresh] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function loadAlerts() {
     setSpinRefresh(true);
@@ -100,6 +104,20 @@ export default function AlertFeed() {
 
     return result;
   }, [zones, districtFilter, levelFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [districtFilter, levelFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredZones.length / PAGE_SIZE));
+  const paginatedZones = useMemo(
+    () => filteredZones.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filteredZones, currentPage]
+  );
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const hasEmergency = zones.some((zone) => zone.alert_level === "emergency");
 
@@ -215,7 +233,7 @@ export default function AlertFeed() {
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredZones.map((zone) => (
+            {paginatedZones.map((zone) => (
               <article
                 key={zone.id}
                 className={
@@ -272,6 +290,18 @@ export default function AlertFeed() {
                 <p className="mt-2 text-ink-secondary">Try adjusting your district or severity filters.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {!isLoading && filteredZones.length > 0 && (
+          <div className="mt-8 overflow-hidden rounded-xl border border-ink-border bg-white shadow-sm">
+            <AdminPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredZones.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </section>
