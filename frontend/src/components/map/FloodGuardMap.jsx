@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { MapPin } from "lucide-react";
 import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import AlertMarker from "./AlertMarker";
