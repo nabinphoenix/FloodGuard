@@ -167,6 +167,10 @@ instructions are in `deploy/sensor_simulator/README.md`.
 
 Sensor dashboards show the last reading time and identify telemetry older than
 five minutes as stale; staleness does not change the backend flood status.
+All user-facing FloodGuard timestamps render in Kathmandu time (NPT,
+UTC+05:45). Persisted telemetry and machine-to-machine event timestamps remain
+UTC instants so ordering, freshness, and security expiry calculations stay
+correct.
 
 
 This repository currently has no DynamoDB sensor-table client or configured

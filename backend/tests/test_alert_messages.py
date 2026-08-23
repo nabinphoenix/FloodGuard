@@ -31,6 +31,7 @@ def test_alert_message_builder_has_actionable_level_specific_content(severity):
     assert "Province: Bagmati" in formatted.plain_text_body
     assert "District: Chitwan" in formatted.plain_text_body
     assert "FloodGuard Support Contacts" in formatted.plain_text_body
+    assert "2026-08-22 12:15 NPT" in formatted.plain_text_body
     assert "Nabin Nepali" in formatted.plain_text_body
     assert "https://" in formatted.plain_text_body or "http://" in formatted.plain_text_body
     assert len(formatted.subject) <= 100

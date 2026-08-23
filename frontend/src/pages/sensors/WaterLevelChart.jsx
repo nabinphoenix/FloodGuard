@@ -17,6 +17,7 @@ import { getStationHistory, getStations } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
 import { freshnessClass, freshnessLabel } from "../../utils/sensorMonitoring";
+import { formatKathmanduDateTime } from "../../utils/time";
 
 const HISTORY_REFRESH_INTERVAL_MS = 10_000;
 
@@ -145,7 +146,7 @@ export default function WaterLevelChart() {
   }
 
   const chartData = useMemo(() => {
-    const labels = history.map((reading) => new Date(reading.timestamp).toLocaleString([], {
+    const labels = history.map((reading) => formatKathmanduDateTime(reading.timestamp, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -223,7 +224,7 @@ export default function WaterLevelChart() {
             <div className="mt-6 overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-sm">
               <table className="min-w-[650px] w-full text-left text-sm">
                 <thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-4 py-3">Timestamp</th><th className="px-4 py-3">Water level</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Freshness</th></tr></thead>
-                <tbody className="divide-y divide-blue-50">{[...history].reverse().map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{new Date(reading.timestamp).toLocaleString()}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(reading.freshness)}`}>{freshnessLabel(reading.freshness)}</span></td></tr>)}</tbody>
+                <tbody className="divide-y divide-blue-50">{[...history].reverse().map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{formatKathmanduDateTime(reading.timestamp)}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(reading.freshness)}`}>{freshnessLabel(reading.freshness)}</span></td></tr>)}</tbody>
               </table>
             </div>
           </>

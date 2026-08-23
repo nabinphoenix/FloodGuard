@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Mapping
 
 from config import settings
 from services.geography_service import province_for_district
 from services.support_contacts import format_support_contacts
+from services.timezone_service import to_kathmandu
 
 
 @dataclass(frozen=True)
@@ -33,10 +34,7 @@ def _clean(value: Any) -> str | None:
 def _format_timestamp(value: datetime | None) -> str | None:
     if value is None:
         return None
-    timestamp = value
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
-    return timestamp.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return to_kathmandu(value).strftime("%Y-%m-%d %H:%M NPT")
 
 
 def _format_threshold(value: Any) -> str | None:

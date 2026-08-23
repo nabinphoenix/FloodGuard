@@ -21,6 +21,7 @@ import {
   readerControlState,
   readerSessionTiming,
 } from "../../utils/sensorReaderSession";
+import { formatKathmanduTime } from "../../utils/time";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -203,7 +204,7 @@ export default function SensorReader() {
   }
 
   const chartData = useMemo(() => {
-    const labels = readings.map((reading) => new Date(reading.timestamp).toLocaleTimeString([], {
+    const labels = readings.map((reading) => formatKathmanduTime(reading.timestamp, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -300,7 +301,7 @@ export default function SensorReader() {
           <article className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h2 className="text-xl font-black text-blue-950">Station thresholds</h2><p className="mt-1 text-sm text-slate-600">Classification is calculated by the backend.</p><div className="mt-5 space-y-3 text-sm"><div className="rounded-lg bg-green-50 p-3 text-green-900"><strong>SAFE</strong><br />Below {Number(selectedStation.watch_threshold).toFixed(2)} m</div><div className="rounded-lg bg-yellow-50 p-3 text-yellow-900"><strong>WATCH</strong><br />At or above {Number(selectedStation.watch_threshold).toFixed(2)} m</div><div className="rounded-lg bg-orange-50 p-3 text-orange-900"><strong>WARNING</strong><br />At or above {Number(selectedStation.warning_threshold).toFixed(2)} m</div><div className="rounded-lg bg-red-50 p-3 text-red-900"><strong>EMERGENCY</strong><br />At or above {Number(selectedStation.danger_threshold).toFixed(2)} m</div></div></article>
         </section>}
 
-        <article className="mt-6 overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-sm"><div className="border-b border-blue-100 px-6 py-5"><h2 className="text-xl font-black text-blue-950">Recent readings</h2></div><table className="min-w-[620px] w-full text-left text-sm"><thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-5 py-3">Time</th><th className="px-5 py-3">Level</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Change</th></tr></thead><tbody className="divide-y divide-blue-50">{recentRows.length === 0 ? <tr><td colSpan="4" className="px-5 py-5 text-slate-600">Start a session to generate readings for the selected station.</td></tr> : recentRows.map((reading) => <tr key={reading.id || reading.timestamp}><td className="px-5 py-3 text-slate-600">{new Date(reading.timestamp).toLocaleTimeString()}</td><td className="px-5 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-5 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${statusClass(reading.status)}`}>{statusLabel(reading.status)}</span></td><td className={`px-5 py-3 font-bold ${reading.change > 0 ? "text-emerald-700" : reading.change < 0 ? "text-rose-700" : "text-slate-500"}`}>{reading.change == null ? "--" : `${reading.change >= 0 ? "+" : ""}${reading.change.toFixed(2)} m`}</td></tr>)}</tbody></table></article>
+        <article className="mt-6 overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-sm"><div className="border-b border-blue-100 px-6 py-5"><h2 className="text-xl font-black text-blue-950">Recent readings</h2></div><table className="min-w-[620px] w-full text-left text-sm"><thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-5 py-3">Time</th><th className="px-5 py-3">Level</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Change</th></tr></thead><tbody className="divide-y divide-blue-50">{recentRows.length === 0 ? <tr><td colSpan="4" className="px-5 py-5 text-slate-600">Start a session to generate readings for the selected station.</td></tr> : recentRows.map((reading) => <tr key={reading.id || reading.timestamp}><td className="px-5 py-3 text-slate-600">{formatKathmanduTime(reading.timestamp)}</td><td className="px-5 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-5 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${statusClass(reading.status)}`}>{statusLabel(reading.status)}</span></td><td className={`px-5 py-3 font-bold ${reading.change > 0 ? "text-emerald-700" : reading.change < 0 ? "text-rose-700" : "text-slate-500"}`}>{reading.change == null ? "--" : `${reading.change >= 0 ? "+" : ""}${reading.change.toFixed(2)} m`}</td></tr>)}</tbody></table></article>
       </section>
     </AdminLayout>
   );

@@ -6,6 +6,7 @@ import { getLiveReadings } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
 import { formatReadingAge, freshnessClass, freshnessLabel, trendLabel } from "../../utils/sensorMonitoring";
+import { formatKathmanduDateTime, formatKathmanduTime } from "../../utils/time";
 
 export const LIVE_REFRESH_INTERVAL_MS = 10_000;
 
@@ -89,7 +90,7 @@ export default function LiveWaterLevels() {
           <div>
             <h1 className="text-3xl font-black tracking-tight text-ink-primary">Live Water Levels</h1>
             <p className="mt-2 text-ink-secondary">Current RDS telemetry from active stations. Flood status and reading freshness are shown separately.</p>
-            {lastUpdated && <p className="mt-1 text-xs text-ink-secondary">Last updated: {lastUpdated.toLocaleTimeString()}</p>}
+            {lastUpdated && <p className="mt-1 text-xs text-ink-secondary">Last updated: {formatKathmanduTime(lastUpdated)}</p>}
           </div>
           <button type="button" onClick={() => load(true)} disabled={isRefreshing} className="flex items-center justify-center gap-2 rounded-lg border border-ink-border bg-white px-4 py-3 font-semibold shadow-sm hover:border-brand hover:text-brand disabled:opacity-60"><RefreshCw size={17} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Refreshing..." : "Refresh"}</button>
         </div>
@@ -127,7 +128,7 @@ export default function LiveWaterLevels() {
                   <div className="mt-7 flex items-end gap-2"><span className="text-5xl font-black tracking-tight text-blue-950">{reading ? Number(reading.water_level).toFixed(2) : "--"}</span><span className="pb-1 text-xl font-bold text-slate-500">m</span></div>
                   <div className="mt-4 flex flex-wrap gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${freshnessClass(station.freshness)}`}>{freshnessLabel(station.freshness)}</span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">Trend: {trendLabel(station.trend)}</span></div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-3"><Threshold label="Watch" value={station.watch_threshold} color="bg-yellow-50 text-yellow-900" /><Threshold label="Warning" value={station.warning_threshold} color="bg-orange-50 text-orange-900" /><Threshold label="Emergency" value={station.danger_threshold} color="bg-red-50 text-red-900" /></div>
-                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{reading ? `Last reading ${formatReadingAge(reading.timestamp)} · ${new Date(reading.timestamp).toLocaleString()}` : "Station configured. Waiting for its first sensor reading."}</p>
+                  <p className="mt-5 border-t border-slate-100 pt-4 text-xs text-slate-500">{reading ? `Last reading ${formatReadingAge(reading.timestamp)} · ${formatKathmanduDateTime(reading.timestamp)}` : "Station configured. Waiting for its first sensor reading."}</p>
                 </article>
               );
             })}

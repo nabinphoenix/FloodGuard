@@ -10,6 +10,7 @@ import FloodFooter from "../../components/FloodFooter";
 import HomeShowcase from "../../components/HomeShowcase";
 import WaterfallRain from "../../components/WaterfallRain";
 import { useAuth } from "../../context/AuthContext";
+import { formatKathmanduTime } from "../../utils/time";
 
 export default function Home() {
   const [zones, setZones] = useState([]);
@@ -136,7 +137,7 @@ export default function Home() {
                   <AlertBadge level={zone.alert_level} />
                 </div>
                 <div className="text-xs text-ink-secondary font-medium">
-                  Updated: {zone.updated_at ? new Date(zone.updated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Recently'}
+                  Updated: {zone.updated_at ? formatKathmanduTime(zone.updated_at, { hour: "2-digit", minute: "2-digit" }) : "Recently"}
                 </div>
               </div>
             ))}

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { getReport, toggleHelpful } from "../../api/reports";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { formatKathmanduDateTime } from "../../utils/time";
 
 export default function ReportDetail() {
   const { reportId } = useParams();
@@ -57,7 +58,7 @@ export default function ReportDetail() {
                 <div>
                   <h1 className="text-3xl font-bold text-slate-950">{report.district}</h1>
                   <p className="mt-2 text-sm text-slate-500">
-                    Reported by {report.user_name || "Community member"} on {new Date(report.created_at).toLocaleString()}
+                    Reported by {report.user_name || "Community member"} on {formatKathmanduDateTime(report.created_at)}
                   </p>
                 </div>
                 <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800">Severity {report.severity} / 5</span>

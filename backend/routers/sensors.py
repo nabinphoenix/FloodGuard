@@ -39,6 +39,7 @@ from services.sensor_ingestion import (
 )
 from services.sensor_monitoring import reading_freshness, water_level_trend
 from services.sqs_service import send_sensor_reading, sqs_client
+from services.timezone_service import kathmandu_isoformat
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sensors", tags=["sensors"])
@@ -243,7 +244,7 @@ def reading_to_dict(reading: SensorReading, station: SensorStation | None = None
         "station_code": reading.station_id,
         "water_level": reading.water_level,
         "status": status_value or "no_data",
-        "timestamp": reading.recorded_at.isoformat(),
+        "timestamp": kathmandu_isoformat(reading.recorded_at),
         "district": station.district if station else None,
         "freshness": reading_freshness(reading.recorded_at),
     }
@@ -745,7 +746,7 @@ def get_sensor_health(db: Session = Depends(get_db)) -> dict:
             .limit(1)
         ).first()
         if latest_reading is not None:
-            last_sensor_reading_time = latest_reading.recorded_at.isoformat()
+            last_sensor_reading_time = kathmandu_isoformat(latest_reading.recorded_at)
     except Exception as exc:
         logger.error("RDS sensor health check failed: %s", exc)
         db_status = "unhealthy"

@@ -5,6 +5,7 @@ import { getAuthorityDashboard } from "../../api/authority";
 import SeverityBadge from "../../components/SeverityBadge";
 import AdminLayout from "../../components/AdminLayout";
 import { FileText, AlertTriangle, Activity, Users } from "lucide-react";
+import { formatKathmanduDateTime } from "../../utils/time";
 
 function StatCard({ label, value, icon: Icon, colorClass }) {
   return (
@@ -24,7 +25,7 @@ function StatCard({ label, value, icon: Icon, colorClass }) {
 
 function formatDate(value) {
   if (!value) return "-";
-  return new Date(value).toLocaleString();
+  return formatKathmanduDateTime(value);
 }
 
 export default function Dashboard() {

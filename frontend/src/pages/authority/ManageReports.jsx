@@ -11,11 +11,12 @@ import CharacterCounter from "../../components/CharacterCounter";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError } from "../../utils/validation";
+import { formatKathmanduDate } from "../../utils/time";
 
 const statuses = ["pending", "approved", "rejected"];
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : "-";
+  return value ? formatKathmanduDate(value) : "-";
 }
 
 function reportHasNepalLocation(report) {

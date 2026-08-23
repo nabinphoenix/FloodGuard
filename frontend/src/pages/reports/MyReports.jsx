@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { deleteReport, getMyReports } from "../../api/reports";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { formatKathmanduDateTime } from "../../utils/time";
 
 const statusStyles = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -83,7 +84,7 @@ export default function MyReports() {
                       {report.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500">{new Date(report.created_at).toLocaleString()}</p>
+                  <p className="mt-2 text-sm text-slate-500">{formatKathmanduDateTime(report.created_at)}</p>
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{report.description}</p>
                   <p className="mt-3 text-sm font-semibold text-blue-800">Severity {report.severity} / 5</p>
                 </div>

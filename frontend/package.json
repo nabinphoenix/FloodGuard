@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/utils/sensorReaderSession.test.js",
+    "test": "node --test src/utils/sensorReaderSession.test.js src/utils/time.test.js",
     "lint": "eslint ."
   },
   "dependencies": {

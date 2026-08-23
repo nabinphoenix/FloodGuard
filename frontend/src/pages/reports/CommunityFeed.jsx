@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 
 import { getPublicGeography } from "../../api/public";
 import { getCommunityReports, toggleHelpful } from "../../api/reports";
+import { formatKathmanduDate } from "../../utils/time";
 
 const PAGE_SIZE = 9;
 
@@ -16,7 +17,7 @@ function timeAgo(dateString) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(dateString).toLocaleDateString();
+  return formatKathmanduDate(dateString);
 }
 
 function SeverityStars({ severity }) {

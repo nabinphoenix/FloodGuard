@@ -2,6 +2,7 @@ import L from "leaflet";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NEPAL_OPERATIONAL_BOUNDS } from "./mapConfig";
+import { formatKathmanduDateTime } from "../../utils/time";
 
 export function coordinatePair(latitude, longitude) {
   if ([latitude, longitude].some((value) => value === null || value === undefined || (typeof value === "string" && !value.trim()))) return null;
@@ -31,9 +32,7 @@ export function operationalCoordinatePair(latitude, longitude) {
 
 export function formatMapDate(value) {
   if (!value) return "No reading yet";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown time";
-  return date.toLocaleString();
+  return formatKathmanduDateTime(value);
 }
 
 export function formatAge(value) {

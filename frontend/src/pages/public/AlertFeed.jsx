@@ -6,20 +6,18 @@ import { getAlertZones } from "../../api/public";
 import AlertBanner from "../../components/AlertBanner";
 import AdminPagination from "../../components/AdminPagination";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
+import { formatKathmanduDate, formatKathmanduTime } from "../../utils/time";
 
 const PAGE_SIZE = 6;
 
 function formatUpdated(value) {
   if (!value) return "Just now";
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recently";
-
-  const dateLabel = date.toLocaleDateString([], {
+  const dateLabel = formatKathmanduDate(value, {
     month: "short",
     day: "numeric",
   });
-  const timeLabel = date.toLocaleTimeString([], {
+  const timeLabel = formatKathmanduTime(value, {
     hour: "numeric",
     minute: "2-digit",
   });
@@ -199,12 +197,7 @@ export default function AlertFeed() {
           <div className="flex w-full shrink-0 items-center justify-between gap-4 lg:w-auto lg:justify-end">
             <span className="whitespace-nowrap text-xs font-semibold text-ink-secondary">
               Updated:{" "}
-              {lastRefresh
-                ? lastRefresh.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "--"}
+              {lastRefresh ? formatKathmanduTime(lastRefresh, { hour: "2-digit", minute: "2-digit" }) : "--"}
             </span>
             <button
               type="button"

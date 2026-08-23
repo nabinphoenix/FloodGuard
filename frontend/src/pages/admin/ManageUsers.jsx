@@ -25,6 +25,7 @@ import AdminPagination from "../../components/AdminPagination";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validatePhone } from "../../utils/validation";
+import { formatKathmanduDate } from "../../utils/time";
 
 const roles = ["public", "field_officer", "authority", "admin"];
 const ITEMS_PER_PAGE = 5;
@@ -40,7 +41,7 @@ const emptyUser = {
 
 function formatDate(value) {
   if (!value) return "-";
-  return new Date(value).toLocaleDateString();
+  return formatKathmanduDate(value);
 }
 
 function roleLabel(role) {
