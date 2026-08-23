@@ -8,7 +8,6 @@ import {
   Map,
   Menu,
   Settings2,
-  ShieldCheck,
   Users,
   X,
 } from "lucide-react";
@@ -49,7 +48,6 @@ const linksByRole = {
 
 
     { label: "Thresholds", to: "/sensors/thresholds", icon: <Settings2 size={20} /> },
-    { label: "System Health", to: "/sensors/health", icon: <ShieldCheck size={20} /> },
   ],
 };
 

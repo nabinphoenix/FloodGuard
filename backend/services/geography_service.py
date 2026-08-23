@@ -188,12 +188,19 @@ def resolve_district(district_name: str | None) -> tuple[str, str] | None:
 
 
 def public_geography() -> dict[str, Any]:
-    """Return only the province/district hierarchy needed by public forms."""
+    """Return the canonical province and district hierarchy used by all forms."""
     return {
         "provinces": [
             {
                 "name": province["name"],
-                "districts": [{"name": district["name"]} for district in province["districts"]],
+                "districts": [
+                    {
+                        "name": district["name"],
+                        "river_basins": district.get("river_basins", []),
+                        "rivers": district.get("rivers", []),
+                    }
+                    for district in province["districts"]
+                ],
             }
             for province in load_geography()["provinces"]
         ]

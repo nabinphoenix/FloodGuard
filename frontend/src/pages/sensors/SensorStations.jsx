@@ -9,7 +9,7 @@ import {
   updateStation,
   updateStationStatus,
 } from "../../api/sensors";
-import { getHistoryGeography } from "../../api/history";
+import { getPublicGeography } from "../../api/public";
 import AdminLayout from "../../components/AdminLayout";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
@@ -109,7 +109,7 @@ function SelectField({ label, value, onChange, options, required = true, disable
   );
 }
 
-function StationForm({ form, setForm, geography, editing, isSaving, error, onSubmit, onCancel }) {
+function StationForm({ form, setForm, geography, isGeographyLoading, editing, isSaving, error, onSubmit, onCancel }) {
   const provinces = geography?.provinces?.map((item) => item.name) || [];
   const selectedProvince = geography?.provinces?.find((item) => item.name === form.province);
   const districts = selectedProvince?.districts?.map((item) => item.name) || [];
@@ -149,8 +149,8 @@ function StationForm({ form, setForm, geography, editing, isSaving, error, onSub
           <input required maxLength={150} value={form.name} onChange={(event) => change("name", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-3 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" placeholder="Narayani River Station" />
         </label>
 
-        <SelectField label="Province" value={form.province} onChange={(value) => change("province", value)} options={provinces} />
-        <SelectField label="District" value={form.district} onChange={(value) => change("district", value)} options={districts} disabled={!form.province} />
+        <SelectField label="Province" value={form.province} onChange={(value) => change("province", value)} options={provinces} disabled={isGeographyLoading} />
+        <SelectField label="District" value={form.district} onChange={(value) => change("district", value)} options={districts} disabled={isGeographyLoading || !form.province} />
         <SelectField label="River Basin" value={form.river_basin} onChange={(value) => change("river_basin", value)} options={basins} disabled={!form.district} />
         <SelectField label="River" value={form.river_name} onChange={(value) => change("river_name", value)} options={rivers} disabled={!form.district} />
 
@@ -210,7 +210,7 @@ export default function SensorStations() {
 
   async function load() {
     try {
-      const [stationData, geographyData] = await Promise.all([getStations(), getHistoryGeography()]);
+      const [stationData, geographyData] = await Promise.all([getStations(), getPublicGeography()]);
       setStations(stationData);
       setGeography(geographyData);
       setError("");
@@ -306,7 +306,7 @@ export default function SensorStations() {
 
         {message && <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{message}</div>}
 
-        {showForm && <div className="mb-8"><StationForm form={form} setForm={setForm} geography={geography} editing={editing} isSaving={isSaving} error={error} onSubmit={handleSubmit} onCancel={closeForm} /></div>}
+        {showForm && <div className="mb-8"><StationForm form={form} setForm={setForm} geography={geography} isGeographyLoading={!geography} editing={editing} isSaving={isSaving} error={error} onSubmit={handleSubmit} onCancel={closeForm} /></div>}
 
         {isLoading ? (
           <div className="rounded-xl border border-blue-100 bg-white p-12 text-center text-slate-600">Loading sensor stations...</div>

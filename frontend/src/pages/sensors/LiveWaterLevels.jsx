@@ -2,6 +2,7 @@ import { Activity, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { getLiveReadings } from "../../api/sensors";
+import { getPublicGeography } from "../../api/public";
 import AdminLayout from "../../components/AdminLayout";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
 
@@ -31,6 +32,7 @@ function statusLabel(status) {
 
 export default function LiveWaterLevels() {
   const [stations, setStations] = useState([]);
+  const [geography, setGeography] = useState(null);
   const [filters, setFilters] = useState({ province: "", district: "", river_basin: "", river: "", station: "" });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -57,6 +59,22 @@ export default function LiveWaterLevels() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+
+    getPublicGeography()
+      .then((data) => {
+        if (!ignore) setGeography(data);
+      })
+      .catch(() => {
+        // The station-derived options remain available if geography cannot load.
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   function changeFilter(field, value) {
     const resets = {
       province: { district: "", river_basin: "", river: "", station: "" },
@@ -81,7 +99,7 @@ export default function LiveWaterLevels() {
           <button type="button" onClick={() => load(true)} disabled={isRefreshing} className="flex items-center justify-center gap-2 rounded-lg border border-ink-border bg-white px-4 py-3 font-semibold shadow-sm hover:border-brand hover:text-brand disabled:opacity-60"><RefreshCw size={17} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Refreshing..." : "Refresh"}</button>
         </div>
 
-        <SensorFilters stations={stations} filters={filters} onChange={changeFilter} />
+        <SensorFilters stations={stations} filters={filters} onChange={changeFilter} geography={geography} />
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 
         {isLoading ? (
