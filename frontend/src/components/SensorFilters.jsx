@@ -6,7 +6,7 @@ export function filterStations(stations, filters) {
     if (filters.district && station.district !== filters.district) return false;
     if (filters.river_basin && station.river_basin !== filters.river_basin) return false;
     if (filters.river && station.river_name !== filters.river) return false;
-    if (filters.station && station.id !== filters.station) return false;
+    if (filters.station && String(station.id) !== String(filters.station)) return false;
     return true;
   });
 }

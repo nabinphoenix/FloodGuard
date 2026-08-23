@@ -10,11 +10,15 @@ import {
 import { Activity } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
+import { useSearchParams } from "react-router-dom";
 
 import { getPublicGeography } from "../../api/public";
 import { getStationHistory, getStations } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
+import { freshnessClass, freshnessLabel } from "../../utils/sensorMonitoring";
+
+const HISTORY_REFRESH_INTERVAL_MS = 10_000;
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -35,9 +39,10 @@ function statusLabel(status) {
 }
 
 export default function WaterLevelChart() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [stations, setStations] = useState([]);
   const [geography, setGeography] = useState(null);
-  const [selectedStationId, setSelectedStationId] = useState("");
+  const [selectedStationId, setSelectedStationId] = useState(() => searchParams.get("station") || "");
   const [filters, setFilters] = useState({ province: "", district: "", river_basin: "", river: "", station: "" });
   const [history, setHistory] = useState([]);
   const [error, setError] = useState("");
@@ -62,6 +67,20 @@ export default function WaterLevelChart() {
     }
     loadStations();
   }, []);
+
+  useEffect(() => {
+    const stationId = searchParams.get("station");
+    const station = stations.find((item) => String(item.id) === String(stationId));
+    if (!station) return;
+    setSelectedStationId(station.id);
+    setFilters({
+      province: station.province || "",
+      district: station.district || "",
+      river_basin: station.river_basin || "",
+      river: station.river_name || "",
+      station: station.id,
+    });
+  }, [searchParams, stations]);
 
   useEffect(() => {
     let ignore = false;
@@ -102,7 +121,7 @@ export default function WaterLevelChart() {
       }
     }
     loadHistory();
-    const timer = window.setInterval(loadHistory, 60000);
+    const timer = window.setInterval(loadHistory, HISTORY_REFRESH_INTERVAL_MS);
     return () => {
       ignore = true;
       window.clearInterval(timer);
@@ -119,7 +138,10 @@ export default function WaterLevelChart() {
     const next = { ...filters, [field]: value, ...(resets[field] || {}) };
     setFilters(next);
     if (field !== "station") setSelectedStationId("");
-    if (field === "station") setSelectedStationId(value);
+    if (field === "station") {
+      setSelectedStationId(value);
+      setSearchParams(value ? { station: value } : {});
+    }
   }
 
   const chartData = useMemo(() => {
@@ -187,7 +209,7 @@ export default function WaterLevelChart() {
         ) : history.length === 0 ? (
           <div className="rounded-xl border border-dashed border-blue-200 bg-white p-12 text-center shadow-sm">
             <h2 className="text-xl font-black text-blue-950">No sensor readings are available for this station yet.</h2>
-            <p className="mt-2 text-slate-600">Run the simulator or send an authenticated station reading through the API.</p>
+            <p className="mt-2 text-slate-600">The deployed cloud sensor pipeline has not recorded telemetry for this station yet.</p>
           </div>
         ) : (
           <>
@@ -200,8 +222,8 @@ export default function WaterLevelChart() {
             </div>
             <div className="mt-6 overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-sm">
               <table className="min-w-[650px] w-full text-left text-sm">
-                <thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-4 py-3">Timestamp</th><th className="px-4 py-3">Water level</th><th className="px-4 py-3">Status</th></tr></thead>
-                <tbody className="divide-y divide-blue-50">{[...history].reverse().map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{new Date(reading.timestamp).toLocaleString()}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td></tr>)}</tbody>
+                <thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-4 py-3">Timestamp</th><th className="px-4 py-3">Water level</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Freshness</th></tr></thead>
+                <tbody className="divide-y divide-blue-50">{[...history].reverse().map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{new Date(reading.timestamp).toLocaleString()}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(reading.freshness)}`}>{freshnessLabel(reading.freshness)}</span></td></tr>)}</tbody>
               </table>
             </div>
           </>

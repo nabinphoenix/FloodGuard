@@ -43,9 +43,6 @@ def test_field_officer_station_crud_and_safe_delete(client, db, monkeypatch):
     test_client, current_user = client
     current_user["value"] = field_officer(db)
     monkeypatch.setattr(sensors_router, "send_sensor_reading", lambda payload: None)
-    monkeypatch.setattr(sensors_router, "publish_sensor_transition", lambda **kwargs: {
-        "attempted": False, "published": False, "status": "not_sent",
-    })
 
     created = test_client.post("/api/sensors/stations", json=station_payload())
     assert created.status_code == 200
@@ -140,16 +137,14 @@ def test_sensor_transition_notification_rules(monkeypatch):
     assert len(calls) == 4
 
 
-def test_sensor_reading_survives_unexpected_sns_failure(client, db, monkeypatch):
+def test_sensor_reading_survives_sqs_failure(client, db, monkeypatch):
     test_client, current_user = client
     current_user["value"] = field_officer(db)
     test_client.post("/api/sensors/stations", json=station_payload("FAIL001"))
-    monkeypatch.setattr(sensors_router, "send_sensor_reading", lambda payload: None)
+    def fail(payload):
+        raise RuntimeError("SQS unavailable")
 
-    def fail(**kwargs):
-        raise RuntimeError("SNS unavailable")
-
-    monkeypatch.setattr(sensors_router, "publish_sensor_transition", fail)
+    monkeypatch.setattr(sensors_router, "send_sensor_reading", fail)
     response = test_client.post(
         "/api/sensors/reading",
         json={
@@ -161,6 +156,8 @@ def test_sensor_reading_survives_unexpected_sns_failure(client, db, monkeypatch)
 
     assert response.status_code == 200
     assert response.json()["notification"]["published"] is False
+    assert response.json()["notification"]["status"] == "failed"
+    assert response.json()["queue"]["queued"] is False
     assert db.query(SensorReading).count() == 1
     assert db.query(SensorReading).first().status == "warning"
 

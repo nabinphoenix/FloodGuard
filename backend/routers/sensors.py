@@ -35,7 +35,7 @@ from services.sensor_ingestion import (
     process_sensor_reading,
     station_status as _station_status,
 )
-from services.sns_service import publish_sensor_transition
+from services.sensor_monitoring import reading_freshness, water_level_trend
 from services.sqs_service import send_sensor_reading, sqs_client
 
 logger = logging.getLogger(__name__)
@@ -174,27 +174,43 @@ def _validate_geography(payload: StationPayload) -> None:
 def _latest_per_station(db: Session, station_ids: list[str]) -> dict[str, dict]:
     if not station_ids:
         return {}
-    subquery = (
-        select(
-            SensorReading.station_id,
-            func.max(SensorReading.recorded_at).label("max_recorded_at"),
-        )
+
+    reading_rank = func.row_number().over(
+        partition_by=SensorReading.station_id,
+        order_by=(SensorReading.recorded_at.desc(), SensorReading.id.desc()),
+    ).label("reading_rank")
+    ranked_readings = (
+        select(SensorReading.id.label("reading_id"), reading_rank)
         .where(SensorReading.station_id.in_(station_ids))
-        .group_by(SensorReading.station_id)
         .subquery()
     )
     rows = db.scalars(
-        select(SensorReading).join(
-            subquery,
-            (SensorReading.station_id == subquery.c.station_id)
-            & (SensorReading.recorded_at == subquery.c.max_recorded_at),
-        )
+        select(SensorReading)
+        .join(ranked_readings, SensorReading.id == ranked_readings.c.reading_id)
+        .where(ranked_readings.c.reading_rank <= 2)
+        .order_by(SensorReading.station_id.asc(), SensorReading.recorded_at.desc(), SensorReading.id.desc())
     ).all()
-    result: dict[str, dict] = {}
+    stations = {
+        station.id: station
+        for station in db.scalars(select(SensorStation).where(SensorStation.id.in_(station_ids))).all()
+    }
+    readings_by_station: dict[str, list[SensorReading]] = {}
     for row in rows:
-        station = db.get(SensorStation, row.station_id)
-        if station is not None:
-            result[row.station_id] = reading_to_dict(row, station)
+        readings_by_station.setdefault(row.station_id, []).append(row)
+
+    result: dict[str, dict] = {}
+    for station_id, readings in readings_by_station.items():
+        station = stations.get(station_id)
+        if station is None:
+            continue
+        latest = reading_to_dict(readings[0], station)
+        previous = reading_to_dict(readings[1], station) if len(readings) > 1 else None
+        latest["previous_reading"] = previous
+        latest["trend"] = water_level_trend(
+            latest["water_level"],
+            previous["water_level"] if previous else None,
+        )
+        result[station_id] = latest
     return result
 
 
@@ -210,6 +226,7 @@ def reading_to_dict(reading: SensorReading, station: SensorStation | None = None
         "status": status_value or "no_data",
         "timestamp": reading.recorded_at.isoformat(),
         "district": station.district if station else None,
+        "freshness": reading_freshness(reading.recorded_at),
     }
 
 
@@ -238,6 +255,9 @@ def station_to_dict(station: SensorStation, latest: dict | None = None) -> dict:
         "active": station.is_active,
         "created_at": station.created_at,
         "latest_reading": latest,
+        "previous_reading": latest.get("previous_reading") if latest else None,
+        "trend": latest.get("trend", "unavailable") if latest else "unavailable",
+        "freshness": latest.get("freshness", "no_reading") if latest else "no_reading",
         "status": status_level,
     }
 
@@ -307,7 +327,6 @@ def _process_sensor_reading(
             water_level,
             timestamp=timestamp,
             source=source,
-            notification_publisher=publish_sensor_transition,
             queue_sender=send_sensor_reading,
         )
     except SensorStationNotFoundError as exc:
@@ -342,6 +361,8 @@ def _dashboard_payload(db: Session) -> dict:
                 "district": item["district"],
                 "river_name": item["river_name"],
                 "status": item["status"],
+                "freshness": item["freshness"],
+                "trend": item["trend"],
                 **(item["latest_reading"] or {}),
             }
             for item in active_stations
@@ -355,6 +376,7 @@ def _dashboard_payload(db: Session) -> dict:
             "total_stations": len(stations),
             "active_stations": len(active_stations),
             "stations_no_data": sum(item["status"] == "no_data" for item in active_stations),
+            "stale_stations": sum(item["freshness"] == "stale" for item in active_stations),
             "safe_stations": counts["safe"],
             "watch_stations": counts["watch"],
             "warning_stations": counts["warning"],
@@ -546,7 +568,10 @@ def receive_device_sensor_reading(
         source="simulator-aws",
     )
 
-@router.get("/live")
+@router.get(
+    "/live",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
 def get_live_readings(db: Session = Depends(get_db)) -> list[dict]:
     stations = db.scalars(
         select(SensorStation)

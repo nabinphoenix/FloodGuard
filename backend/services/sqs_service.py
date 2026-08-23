@@ -45,7 +45,7 @@ def _send_message(queue_url: str, payload: dict[str, Any]) -> str:
 def send_sensor_reading(reading_dict: dict[str, Any]) -> str:
     payload = {
         "event_type": "sensor_reading",
-        "event_version": 1,
+        "event_version": 2,
         "reading": reading_dict,
     }
     return _send_message(settings.sqs_sensor_queue_url, payload)

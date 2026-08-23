@@ -14,6 +14,7 @@ import AdminLayout from "../../components/AdminLayout";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError } from "../../utils/validation";
+import { formatReadingAge, freshnessClass, freshnessLabel, trendLabel } from "../../utils/sensorMonitoring";
 
 const emptyForm = {
   station_code: "",
@@ -47,6 +48,16 @@ function formFromStation(station) {
 
 function statusLabel(value) {
   return value === "no_data" ? "NO DATA" : String(value || "unknown").toUpperCase();
+}
+
+function statusClass(value) {
+  return {
+    safe: "bg-green-100 text-green-800",
+    watch: "bg-yellow-100 text-yellow-800",
+    warning: "bg-orange-100 text-orange-800",
+    emergency: "bg-red-100 text-red-800",
+    no_data: "bg-slate-100 text-slate-700",
+  }[value] || "bg-slate-100 text-slate-700";
 }
 
 function stationPayload(form) {
@@ -223,6 +234,14 @@ export default function SensorStations() {
 
   useEffect(() => { load(); }, []);
 
+  const latestTelemetryStation = useMemo(() => (
+    stations
+      .filter((station) => station.latest_reading)
+      .sort((left, right) => (
+        Date.parse(right.latest_reading.timestamp) - Date.parse(left.latest_reading.timestamp)
+      ))[0] || null
+  ), [stations]);
+
   function openCreate() {
     setForm(emptyForm);
     setEditing(null);
@@ -335,11 +354,15 @@ export default function SensorStations() {
                   <div className="rounded-lg bg-orange-50 p-3 text-orange-800">Warning<br /><strong>{station.warning_threshold?.toFixed(2)} m</strong></div>
                   <div className="rounded-lg bg-red-50 p-3 text-red-800">Emergency<br /><strong>{station.danger_threshold?.toFixed(2)} m</strong></div>
                 </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-slate-50 p-3 text-sm"><p className="text-xs font-bold uppercase text-slate-500">Latest level</p><p className="mt-1 font-black text-blue-950">{station.latest_reading ? `${Number(station.latest_reading.water_level).toFixed(2)} m` : "--"}</p><p className="mt-1 text-xs text-slate-500">{station.latest_reading ? formatReadingAge(station.latest_reading.timestamp) : "No reading yet"}</p></div>
+                  <div className="rounded-lg bg-slate-50 p-3 text-sm"><p className="text-xs font-bold uppercase text-slate-500">Monitoring state</p><div className="mt-1 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-1 text-xs font-bold ${statusClass(station.status)}`}>{statusLabel(station.status)}</span><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(station.freshness)}`}>{freshnessLabel(station.freshness)}</span></div><p className="mt-2 text-xs text-slate-500">Trend: {trendLabel(station.trend)}</p></div>
+                </div>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <button type="button" onClick={() => openEdit(station)} className="flex items-center gap-1.5 rounded-lg border border-ink-border px-3 py-2 text-sm font-semibold hover:border-brand hover:text-brand"><Edit3 size={15} /> Edit</button>
                   <button type="button" onClick={() => toggleStation(station)} className="flex items-center gap-1.5 rounded-lg border border-ink-border px-3 py-2 text-sm font-semibold hover:border-brand hover:text-brand"><Power size={15} /> {station.is_active ? "Deactivate" : "Activate"}</button>
                   <button type="button" onClick={() => removeStation(station)} className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"><Trash2 size={15} /> Delete</button>
-                  <Link to="/sensors/history" className="ml-auto flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"><Check size={15} /> View history</Link>
+                  <Link to={`/sensors/history?station=${encodeURIComponent(station.id)}`} className="ml-auto flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"><Check size={15} /> View live history</Link>
                 </div>
               </article>
             ))}
@@ -347,8 +370,17 @@ export default function SensorStations() {
         )}
 
         <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900">
-          <h2 className="font-black">Sensor Demo</h2>
-          <p className="mt-2">Create a station, configure its thresholds, then run the included <code className="font-mono font-bold">scripts/simulate_water_level.py</code> utility. The utility authenticates as a Field Officer and submits real API readings; credentials are never stored in this page.</p><p className="mt-2">Automated cloud demo telemetry may be enabled for this environment at a one-minute interval. Its server-side <code className="font-mono font-bold">SIMULATOR_ENABLED</code> setting controls whether scheduled readings are sent.</p>
+          <h2 className="font-black">Automatic Sensor Monitoring</h2>
+          <p className="mt-2">Recent sensor readings are received through the FloodGuard cloud sensor pipeline. Use the live and history views to monitor stored readings.</p>
+          {latestTelemetryStation ? (
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold">
+              <span>Telemetry: Active</span>
+              <span>Last reading: {formatReadingAge(latestTelemetryStation.latest_reading.timestamp)}</span>
+              <span className={`rounded-full px-2 py-1 ${freshnessClass(latestTelemetryStation.freshness)}`}>Freshness: {freshnessLabel(latestTelemetryStation.freshness)}</span>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs font-semibold">Telemetry: Waiting for the first sensor reading.</p>
+          )}
         </div>
       </section>
     </AdminLayout>

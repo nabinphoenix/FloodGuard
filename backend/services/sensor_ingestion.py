@@ -92,14 +92,30 @@ def process_sensor_reading(
     *,
     timestamp: str | None = None,
     source: str = "manual",
-    notification_publisher,
     queue_sender,
 ) -> SensorIngestionResult:
-    """Persist one reading and run the existing notification integrations.
+    """Persist one reading, then send its canonical event through SQS.
 
-    The reading is committed before SNS/SQS delivery is attempted. Callers
-    supply the integrations so the manual and device routes share this exact
-    business flow while remaining straightforward to test.
+    Automated transition notifications are intentionally handled only by the
+    SQS consumer. This avoids publishing the same transition directly from the
+    API and again from FloodGuard-Auto-Sensor-Alert.
+
+    Canonical ``sensor_reading`` event payload (event version 2)::
+
+        {
+            "station_id": "STN001",
+            "station_code": "STN001",
+            "station_name": "Narayani River Station",
+            "water_level": 3.6,
+            "current_status": "warning",
+            "previous_status": "watch",
+            "recorded_at": "2026-08-23T12:00:00+00:00",
+            ...station context and thresholds...
+        }
+
+    The RDS commit deliberately happens before queue delivery. Callers supply
+    the queue sender so manual and device routes share this flow and tests can
+    assert the persisted event contract.
     """
     station = db.get(SensorStation, station_code)
     if station is None:
@@ -131,46 +147,23 @@ def process_sensor_reading(
     db.commit()
     db.refresh(db_reading)
 
-    try:
-        notification = notification_publisher(
-            station_name=station.name,
-            province=station.province,
-            district=station.district,
-            river_name=station.river_name,
-            water_level=db_reading.water_level,
-            status=current_status,
-            previous_status=previous_status,
-            watch_threshold=effective_watch_threshold(station),
-            warning_threshold=station.warning_threshold,
-            danger_threshold=station.danger_threshold,
-            recorded_at=db_reading.recorded_at,
-        )
-    except Exception as exc:
-        logger.error("Sensor SNS notification failed after reading save for %s: %s", station.id, exc)
-        notification = {
-            "attempted": True,
-            "published": False,
-            "status": "failed",
-            "error": "SNS notification failed; the sensor reading was saved.",
-        }
-
     queue_status: dict[str, str | bool] = {"queued": False, "status": "failed"}
     try:
         queue_sender(
             {
                 "station_id": station.id,
                 "station_code": station.id,
-                "name": station.name,
+                "station_name": station.name,
                 "province": station.province,
                 "district": station.district,
                 "river_basin": station.river_basin,
                 "river_name": station.river_name,
                 "water_level": db_reading.water_level,
-                "status": current_status,
+                "current_status": current_status,
                 "watch_threshold": effective_watch_threshold(station),
                 "warning_threshold": station.warning_threshold,
                 "danger_threshold": station.danger_threshold,
-                "timestamp": db_reading.recorded_at.isoformat(),
+                "recorded_at": db_reading.recorded_at.isoformat(),
                 "previous_status": previous_status,
                 "source": source,
             }
@@ -183,6 +176,17 @@ def process_sensor_reading(
             "status": "failed",
             "error": "SQS dispatch failed; the sensor reading was saved.",
         }
+
+    notification = {
+        "attempted": queue_status["queued"],
+        "published": False,
+        "status": "queued" if queue_status["queued"] else "failed",
+        "detail": (
+            "Transition notification will be evaluated by FloodGuard-Auto-Sensor-Alert."
+            if queue_status["queued"]
+            else "SQS dispatch failed; no automatic transition notification was queued."
+        ),
+    }
 
     logger.info(
         "Processed sensor reading for station %s from source %s as %s",

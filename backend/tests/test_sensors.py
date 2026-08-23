@@ -63,13 +63,14 @@ def test_sensor_classification_boundaries():
 def test_live_station_without_reading_is_no_data(client, db):
     test_client, current_user = client
     make_station(db)
+    current_user["value"] = make_user(db, "Live Officer", "live@example.com", UserRole.field_officer)
 
     response = test_client.get("/api/sensors/live")
 
     assert response.status_code == 200
     assert response.json()[0]["status"] == "no_data"
     assert response.json()[0]["latest_reading"] is None
-    assert current_user["value"] is None
+    assert current_user["value"].role == UserRole.field_officer
 
 
 def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
@@ -81,6 +82,7 @@ def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
 
     current_user["value"] = authority
     assert test_client.get("/api/sensors/stations").status_code == 403
+    assert test_client.get("/api/sensors/live").status_code == 403
     assert test_client.post("/api/sensors/reading", json={"station_id": station.id, "water_level": 2.0}).status_code == 403
     assert test_client.put(
         f"/api/sensors/stations/{station.id}/thresholds",
@@ -91,6 +93,7 @@ def test_sensor_roles_and_threshold_workflow(client, db, monkeypatch):
     current_user["value"] = field_officer
 
     assert test_client.get("/api/sensors/stations").status_code == 200
+    assert test_client.get("/api/sensors/live").status_code == 200
     reading_response = test_client.post(
         "/api/sensors/reading",
         json={
