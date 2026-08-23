@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Link, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
+import floodGuardLogo from "../FloodGuard.png";
 import LoadingSpinner from "./LoadingSpinner";
 import ViewAsSwitcher from "./ViewAsSwitcher";
 import { VIEW_MODE_LABELS } from "../utils/roles";
@@ -111,9 +112,11 @@ export default function AdminLayout({ children, title }) {
       <aside className="hidden w-64 flex-shrink-0 flex-col bg-gradient-to-b from-brand to-brand-gradientEnd text-white shadow-xl md:flex">
         <div className="p-6">
           <Link to="/" className="group flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white transition-all group-hover:bg-white/30">
-              <ShieldCheck size={24} strokeWidth={2.5} />
-            </span>
+            <img
+              src={floodGuardLogo}
+              alt="FloodGuard logo"
+              className="h-10 w-10 rounded-xl object-contain shadow-sm transition-transform group-hover:scale-105"
+            />
             <span className="text-xl font-bold tracking-tight">FloodGuard</span>
           </Link>
           <div className="mt-8 text-sm font-semibold uppercase tracking-wider text-white/70">
@@ -169,7 +172,7 @@ export default function AdminLayout({ children, title }) {
               {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             <Link to="/" className="flex items-center gap-2 font-bold" aria-label="FloodGuard home" onClick={() => setMenuOpen(false)}>
-              <ShieldCheck size={24} />
+              <img src={floodGuardLogo} alt="FloodGuard logo" className="h-8 w-8 rounded-lg object-contain shadow-sm" />
               <span>FloodGuard</span>
             </Link>
           </div>
