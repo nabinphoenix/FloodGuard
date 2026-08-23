@@ -224,7 +224,7 @@ export default function ManageReports() {
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{report.submitted_by}</td>
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(report.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex justify-end gap-2">                      <Button variant="outline" onClick={() => setSelectedReport(report)} disabled={!reportHasNepalLocation(report)} className="min-h-9 px-3 py-1.5">View map</Button>
+                    <div className="flex items-center justify-end gap-2">                      <Button variant="outline" onClick={() => setSelectedReport(report)} disabled={!reportHasNepalLocation(report)} className="min-h-9 px-3 py-1.5">View map</Button>
                       {isPending ? <Button
                         onClick={() => handleApprove(report.id)}
                         isLoading={isProcessing}
