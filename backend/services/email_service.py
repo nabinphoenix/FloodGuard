@@ -149,6 +149,25 @@ def get_confirmed_password_reset_subscription(topic_arn: str | None, recipient_e
     return topic_arn, subscription_arn
 
 
+def disable_password_reset_subscription(
+    topic_arn: str | None,
+    recipient_email: str,
+) -> str | None:
+    """Disable the current user's private recovery subscription.
+
+    Pending email subscriptions cannot be removed by ARN. Returning the pending
+    marker lets the caller persist the user's disabled intent and reconcile the
+    topic again later, at which point a newly confirmed subscription is removed.
+    """
+    recovery_status, subscription_arn = get_password_reset_subscription_status(topic_arn, recipient_email)
+    if recovery_status == PASSWORD_RECOVERY_CONFIRMED:
+        unsubscribe_password_reset_subscription(subscription_arn)
+        return None
+    if recovery_status == PASSWORD_RECOVERY_PENDING:
+        return PENDING_SUBSCRIPTION_ARN
+    return None
+
+
 def unsubscribe_password_reset_subscription(subscription_arn: str | None) -> None:
     if not subscription_arn or subscription_arn == PENDING_SUBSCRIPTION_ARN:
         return

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -75,4 +76,16 @@ class ResetPasswordRequest(BaseModel):
 
 class ProfileUpdateResponse(BaseModel):
     user: UserOut
+    message: str | None = None
+
+
+class NotificationSubscriptionStatus(BaseModel):
+    enabled: bool
+    status: Literal["disabled", "pending", "confirmed"]
+    label: str
+
+
+class NotificationStatusResponse(BaseModel):
+    flood_alerts: NotificationSubscriptionStatus
+    password_recovery: NotificationSubscriptionStatus
     message: str | None = None

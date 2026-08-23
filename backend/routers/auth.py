@@ -16,10 +16,21 @@ from config import settings
 from models.password_reset import PasswordResetToken
 from database import get_db
 from models.user import User, UserRole
-from services.sns_service import is_subscription_pending, subscribe_email, unsubscribe
+from services.sns_service import (
+    SUBSCRIPTION_CONFIRMED,
+    SUBSCRIPTION_DISABLED,
+    SUBSCRIPTION_PENDING,
+    disable_flood_alert_subscription,
+    enable_flood_alert_subscription,
+    get_flood_alert_subscription_status,
+    is_subscription_pending,
+    subscribe_email,
+    unsubscribe,
+)
 from schemas.common import NormalizedModel
 from schemas.user import (
     ForgotPasswordRequest,
+    NotificationStatusResponse,
     ProfileUpdateResponse,
     ResetPasswordRequest,
     Token,
@@ -33,6 +44,7 @@ from services.email_service import (
     PASSWORD_RECOVERY_CONFIRMED,
     PASSWORD_RECOVERY_DISABLED,
     PASSWORD_RECOVERY_PENDING,
+    disable_password_reset_subscription,
     enable_password_reset_subscription,
     get_confirmed_password_reset_subscription,
     get_password_reset_subscription_status,
@@ -302,9 +314,182 @@ def reset_password(
     return {"message": "Password reset successful."}
 
 
+NOTIFICATION_STATUS_LABELS = {
+    SUBSCRIPTION_DISABLED: "Disabled",
+    SUBSCRIPTION_PENDING: "Pending confirmation",
+    SUBSCRIPTION_CONFIRMED: "Confirmed & Active",
+}
+
+
+def _notification_status(status_value: str) -> dict[str, str | bool]:
+    return {
+        "enabled": status_value != SUBSCRIPTION_DISABLED,
+        "status": status_value,
+        "label": NOTIFICATION_STATUS_LABELS[status_value],
+    }
+
+
+def _reconcile_notification_statuses(current_user: User) -> tuple[str, str]:
+    """Synchronize desired user settings with the actual scoped SNS topics.
+
+    Stored booleans represent user intent only. The returned status always comes
+    from SNS for an enabled subscription. A disabled pending subscription keeps
+    a private marker so a later confirmation is automatically unsubscribed.
+    """
+    flood_status = SUBSCRIPTION_DISABLED
+    if current_user.email_alerts:
+        actual_status, subscription_arn = get_flood_alert_subscription_status(current_user.email)
+        if actual_status == SUBSCRIPTION_DISABLED:
+            current_user.email_alerts = False
+            current_user.sns_subscription_arn = None
+        else:
+            current_user.sns_subscription_arn = subscription_arn
+            flood_status = actual_status
+    elif current_user.sns_subscription_arn:
+        current_user.sns_subscription_arn = disable_flood_alert_subscription(current_user.email)
+
+    recovery_status = SUBSCRIPTION_DISABLED
+    if current_user.password_recovery_enabled:
+        try:
+            actual_status, subscription_arn = get_password_reset_subscription_status(
+                current_user.password_recovery_topic_arn,
+                current_user.email,
+            )
+        except EmailDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Password recovery subscription status could not be checked.",
+            ) from exc
+
+        if actual_status == PASSWORD_RECOVERY_DISABLED:
+            current_user.password_recovery_enabled = False
+            current_user.password_recovery_subscription_arn = None
+        else:
+            current_user.password_recovery_subscription_arn = subscription_arn
+            recovery_status = actual_status
+    elif current_user.password_recovery_subscription_arn and current_user.password_recovery_topic_arn:
+        try:
+            current_user.password_recovery_subscription_arn = disable_password_reset_subscription(
+                current_user.password_recovery_topic_arn,
+                current_user.email,
+            )
+        except EmailDeliveryError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Password recovery subscription status could not be checked.",
+            ) from exc
+
+    return flood_status, recovery_status
+
+
+def _notification_response(
+    current_user: User,
+    db: Session,
+    message: str | None = None,
+) -> NotificationStatusResponse:
+    flood_status, recovery_status = _reconcile_notification_statuses(current_user)
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return NotificationStatusResponse(
+        flood_alerts=_notification_status(flood_status),
+        password_recovery=_notification_status(recovery_status),
+        message=message,
+    )
+
+
 @router.get("/me", response_model=UserOut)
 def read_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.get("/notification-status", response_model=NotificationStatusResponse)
+def get_notification_status(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> NotificationStatusResponse:
+    """Return the authenticated citizen's real, reconciled SNS states."""
+    return _notification_response(current_user, db)
+
+
+@router.post("/flood-alerts/enable", response_model=NotificationStatusResponse)
+def enable_flood_alerts(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> NotificationStatusResponse:
+    try:
+        subscription_status, subscription_arn = enable_flood_alert_subscription(current_user.email)
+    except HTTPException:
+        raise
+
+    current_user.email_alerts = True
+    current_user.sns_subscription_arn = subscription_arn
+    return _notification_response(
+        current_user,
+        db,
+        "Email notifications are active."
+        if subscription_status == SUBSCRIPTION_CONFIRMED
+        else "Confirmation email sent. Please check your inbox and confirm the SNS subscription.",
+    )
+
+
+@router.post("/flood-alerts/disable", response_model=NotificationStatusResponse)
+def disable_flood_alerts(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> NotificationStatusResponse:
+    try:
+        current_user.sns_subscription_arn = disable_flood_alert_subscription(current_user.email)
+    except HTTPException:
+        raise
+
+    current_user.email_alerts = False
+    return _notification_response(current_user, db, "Email notifications are disabled.")
+
+
+@router.post("/password-recovery/enable", response_model=NotificationStatusResponse)
+def enable_password_recovery(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> NotificationStatusResponse:
+    try:
+        topic_arn, subscription_arn, subscription_status = enable_password_reset_subscription(current_user.email)
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Password recovery subscription could not be enabled.",
+        ) from exc
+
+    current_user.password_recovery_enabled = True
+    current_user.password_recovery_topic_arn = topic_arn
+    current_user.password_recovery_subscription_arn = subscription_arn
+    return _notification_response(
+        current_user,
+        db,
+        "Email notifications are active."
+        if subscription_status == PASSWORD_RECOVERY_CONFIRMED
+        else "Confirmation email sent. Please check your inbox and confirm the SNS subscription.",
+    )
+
+
+@router.post("/password-recovery/disable", response_model=NotificationStatusResponse)
+def disable_password_recovery(
+    current_user: User = Depends(require_exact_role(UserRole.public)),
+    db: Session = Depends(get_db),
+) -> NotificationStatusResponse:
+    try:
+        current_user.password_recovery_subscription_arn = disable_password_reset_subscription(
+            current_user.password_recovery_topic_arn,
+            current_user.email,
+        )
+    except EmailDeliveryError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Password recovery subscription could not be disabled.",
+        ) from exc
+
+    current_user.password_recovery_enabled = False
+    return _notification_response(current_user, db, "Email notifications are disabled.")
 
 
 @router.put("/profile", response_model=ProfileUpdateResponse)

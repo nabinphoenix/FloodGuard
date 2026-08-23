@@ -41,6 +41,31 @@ export async function checkPasswordRecoveryStatus() {
   return response.data;
 }
 
+export async function getNotificationStatus() {
+  const response = await api.get("/auth/notification-status");
+  return response.data;
+}
+
+export async function enableFloodAlerts() {
+  const response = await api.post("/auth/flood-alerts/enable");
+  return response.data;
+}
+
+export async function disableFloodAlerts() {
+  const response = await api.post("/auth/flood-alerts/disable");
+  return response.data;
+}
+
+export async function enablePasswordRecovery() {
+  const response = await api.post("/auth/password-recovery/enable");
+  return response.data;
+}
+
+export async function disablePasswordRecovery() {
+  const response = await api.post("/auth/password-recovery/disable");
+  return response.data;
+}
+
 export async function forgotPassword(email) {
   const response = await api.post("/auth/forgot-password", { email });
   return response.data;

@@ -18,6 +18,9 @@ sns_client = boto3.client(
 )
 
 PENDING_CONFIRMATION_ARN = "PendingConfirmation"
+SUBSCRIPTION_DISABLED = "disabled"
+SUBSCRIPTION_PENDING = "pending"
+SUBSCRIPTION_CONFIRMED = "confirmed"
 SENSOR_SEVERITY = {
     "no_data": -1,
     "safe": 0,
@@ -40,8 +43,109 @@ def is_subscription_pending(subscription_arn: str | None) -> bool:
 
 def subscription_status(subscription_arn: str | None, email_alerts: bool) -> str:
     if not email_alerts or not subscription_arn:
-        return "disabled"
-    return "pending"
+        return SUBSCRIPTION_DISABLED
+    return SUBSCRIPTION_PENDING
+
+
+def _normalized_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def _list_topic_subscriptions(topic_arn: str) -> list[dict]:
+    """Return every subscription for a topic, including paginated results."""
+    subscriptions: list[dict] = []
+    next_token: str | None = None
+    while True:
+        request = {"TopicArn": topic_arn}
+        if next_token:
+            request["NextToken"] = next_token
+        response = sns_client.list_subscriptions_by_topic(**request)
+        subscriptions.extend(response.get("Subscriptions", []))
+        next_token = response.get("NextToken")
+        if not next_token:
+            return subscriptions
+
+
+def _matching_email_subscriptions(topic_arn: str, email: str) -> list[dict]:
+    """Find only email subscriptions belonging to the authenticated address."""
+    normalized_email = _normalized_email(email)
+    return [
+        subscription
+        for subscription in _list_topic_subscriptions(topic_arn)
+        if str(subscription.get("Protocol", "")).lower() == "email"
+        and _normalized_email(str(subscription.get("Endpoint", ""))) == normalized_email
+    ]
+
+
+def _subscription_state(subscriptions: list[dict]) -> tuple[str, str | None]:
+    """Derive SNS state from the actual topic listing, never a stored ARN."""
+    confirmed = [
+        str(subscription.get("SubscriptionArn"))
+        for subscription in subscriptions
+        if str(subscription.get("SubscriptionArn", "")).startswith("arn:aws:sns:")
+    ]
+    if confirmed:
+        return SUBSCRIPTION_CONFIRMED, confirmed[0]
+    if any(
+        str(subscription.get("SubscriptionArn", "")) == PENDING_CONFIRMATION_ARN
+        for subscription in subscriptions
+    ):
+        return SUBSCRIPTION_PENDING, PENDING_CONFIRMATION_ARN
+    return SUBSCRIPTION_DISABLED, None
+
+
+def get_flood_alert_subscription_status(email: str) -> tuple[str, str | None]:
+    """Look up this email's real SNS state on FloodGuard-Alerts."""
+    try:
+        return _subscription_state(_matching_email_subscriptions(settings.sns_topic_arn, email))
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("SNS flood-alert subscription status check failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Flood alert subscription status could not be checked.",
+        ) from exc
+
+
+def enable_flood_alert_subscription(email: str) -> tuple[str, str]:
+    """Create at most one subscription request for this email address."""
+    current_status, subscription_arn = get_flood_alert_subscription_status(email)
+    if current_status != SUBSCRIPTION_DISABLED:
+        return current_status, subscription_arn or PENDING_CONFIRMATION_ARN
+
+    # SNS confirmation is asynchronous. A Subscribe response does not prove
+    # the recipient has confirmed, so always report a newly requested one as
+    # pending until a later topic listing proves otherwise.
+    subscribe_email(_normalized_email(email))
+    return SUBSCRIPTION_PENDING, PENDING_CONFIRMATION_ARN
+
+
+def disable_flood_alert_subscription(email: str) -> str | None:
+    """Disable this email only, retaining a pending marker for later cleanup."""
+    try:
+        subscriptions = _matching_email_subscriptions(settings.sns_topic_arn, email)
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("SNS flood-alert subscription status check failed")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Flood alert subscription status could not be checked.",
+        ) from exc
+
+    confirmed_arns = [
+        str(subscription.get("SubscriptionArn"))
+        for subscription in subscriptions
+        if str(subscription.get("SubscriptionArn", "")).startswith("arn:aws:sns:")
+    ]
+    if confirmed_arns:
+        # Every ARN here was matched to the current authenticated user's exact
+        # email. Removing all of them also cleans up historic duplicates.
+        for subscription_arn in confirmed_arns:
+            unsubscribe(subscription_arn)
+        return None
+    if any(str(subscription.get("SubscriptionArn", "")) == PENDING_CONFIRMATION_ARN for subscription in subscriptions):
+        # SNS cannot unsubscribe PendingConfirmation ARNs. Persist this marker
+        # so status reconciliation can remove it if it is confirmed later.
+        return PENDING_CONFIRMATION_ARN
+    return None
 
 
 def subscribe_email(email: str) -> str:
