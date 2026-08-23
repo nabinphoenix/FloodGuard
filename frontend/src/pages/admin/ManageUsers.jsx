@@ -27,7 +27,7 @@ import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validatePhone } from "../../utils/validation";
 
 const roles = ["public", "field_officer", "authority", "admin"];
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 5;
 
 const emptyUser = {
   name: "",

@@ -12,7 +12,7 @@ import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validateCoordinate } from "../../utils/validation";
 
 const levels = ["safe", "watch", "warning", "emergency"];
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 5;
 const emptyZone = { name: "", district: "", is_active: true, alert_level: "safe", latitude: "", longitude: "" };
 
 function validateZoneForm(formData) {
