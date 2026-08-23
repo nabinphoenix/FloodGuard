@@ -1,4 +1,5 @@
 import { Marker, Popup } from "react-leaflet";
+import { FileWarning } from "lucide-react";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
 import { createMapIcon, formatMapDate, operationalCoordinatePair } from "./mapUtils";
@@ -12,7 +13,7 @@ export default function ReportMarker({ report, onSelect }) {
   return (
     <Marker
       position={position}
-      icon={createMapIcon({ color: MAP_STATUS_COLORS.report, glyph: "R" })}
+      icon={createMapIcon({ color: MAP_STATUS_COLORS.report, icon: FileWarning })}
       eventHandlers={{ click: () => onSelect?.({ type: "report", item: report }) }}
     >
       <Popup>

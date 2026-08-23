@@ -1,4 +1,6 @@
 import L from "leaflet";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { NEPAL_OPERATIONAL_BOUNDS } from "./mapConfig";
 
 export function coordinatePair(latitude, longitude) {
@@ -58,10 +60,14 @@ export function statusLabel(value) {
   return normalizeStatus(value).replace("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function createMapIcon({ color = "#2563eb", glyph = "•" } = {}) {
+export function createMapIcon({ color = "#2563eb", icon: Icon = null } = {}) {
+  const iconMarkup = Icon
+    ? renderToStaticMarkup(createElement(Icon, { size: 16, strokeWidth: 2.5, 'aria-hidden': true }))
+    : "";
+
   return L.divIcon({
     className: "floodguard-map-icon-wrapper",
-    html: `<span class="floodguard-map-icon" style="--marker-color:${color}">${glyph}</span>`,
+    html: `<span class="floodguard-map-icon" style="--marker-color:${color}">${iconMarkup}</span>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -16],

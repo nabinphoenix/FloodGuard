@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, XCircle, FileText } from "lucide-react";
+import { CheckCircle, XCircle, FileText, Star } from "lucide-react";
 
 import { getAuthorityReports, approveReport, rejectReport } from "../../api/authority";
 import StatusPill from "../../components/StatusPill";
@@ -191,9 +191,17 @@ export default function ManageReports() {
                     {!reportHasNepalLocation(report) && <span className="mt-1 block text-xs font-bold text-red-600">Location outside Nepal or unavailable</span>}
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-1 text-yellow-400 text-lg">
-                      {"★".repeat(report.severity)}
-                      <span className="text-gray-200">{"★".repeat(5 - report.severity)}</span>
+                    <div className="flex gap-1" aria-label={`Severity ${report.severity} out of 5`}>
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <Star
+                          key={rating}
+                          size={16}
+                          strokeWidth={2.25}
+                          fill={rating <= report.severity ? "currentColor" : "none"}
+                          className={rating <= report.severity ? "text-yellow-400" : "text-gray-200"}
+                          aria-hidden="true"
+                        />
+                      ))}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

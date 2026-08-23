@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Star } from "lucide-react";
 
 import { getPublicGeography, getReportZones } from "../../api/public";
 import { submitReport } from "../../api/reports";
@@ -286,10 +287,16 @@ export default function SubmitReport() {
                   key={rating}
                   type="button"
                   onClick={() => updateField("severity", rating)}
-                  className={`text-3xl leading-none transition ${rating <= formData.severity ? "text-blue-700" : "text-blue-200"}`}
+                  className={`transition ${rating <= formData.severity ? "text-blue-700" : "text-blue-200"}`}
                   aria-label={`Set severity ${rating}`}
+                  aria-pressed={rating === Number(formData.severity)}
                 >
-                  ★
+                  <Star
+                    size={28}
+                    strokeWidth={2.25}
+                    fill={rating <= formData.severity ? "currentColor" : "none"}
+                    aria-hidden="true"
+                  />
                 </button>
               ))}
               <span className="ml-auto text-sm font-semibold text-blue-900">{formData.severity || 0}/5</span>

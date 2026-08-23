@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Marker, Popup } from "react-leaflet";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
@@ -17,7 +18,7 @@ export default function AlertMarker({ alert, onSelect, isSelected = false }) {
   return (
     <Marker
       ref={markerRef} position={position}
-      icon={createMapIcon({ color: MAP_STATUS_COLORS[normalizeStatus(alert.alert_level)], glyph: "!" })}
+      icon={createMapIcon({ color: MAP_STATUS_COLORS[normalizeStatus(alert.alert_level)], icon: AlertTriangle })}
       eventHandlers={{ click: () => onSelect?.({ type: "alert", item: alert }) }}
     >
       <Popup>

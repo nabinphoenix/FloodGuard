@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, AlertTriangle } from "lucide-react";
+import { CheckCircle, AlertTriangle, ChevronDown, Mail } from "lucide-react";
 
 import { broadcastAlert, getAuthorityZones } from "../../api/authority";
 import AdminLayout from "../../components/AdminLayout";
@@ -111,7 +111,7 @@ export default function CreateAlert() {
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-ink-secondary">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <ChevronDown size={16} aria-hidden="true" />
             </div>
           </div>
 
@@ -172,7 +172,7 @@ export default function CreateAlert() {
 
         <aside className="h-fit rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm sticky top-6">
           <h2 className="font-bold text-ink-primary flex items-center gap-2">
-            <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            <Mail size={20} className="text-brand" aria-hidden="true" />
             SNS Email Preview
           </h2>
           <p className="mt-1 text-xs text-ink-secondary mb-4">This is how the alert will appear to registered users.</p>

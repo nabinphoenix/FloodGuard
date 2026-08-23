@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Star } from "lucide-react";
 
 import { getPublicGeography } from "../../api/public";
 import { getCommunityReports, toggleHelpful } from "../../api/reports";
@@ -22,12 +23,14 @@ function SeverityStars({ severity }) {
   return (
     <div className="flex items-center gap-1" aria-label={`Severity ${severity} out of 5`}>
       {[1, 2, 3, 4, 5].map((rating) => (
-        <span
+        <Star
           key={rating}
+          size={16}
+          strokeWidth={2.25}
           className={rating <= severity ? "text-blue-700" : "text-blue-200"}
-        >
-          ★
-        </span>
+          fill={rating <= severity ? "currentColor" : "none"}
+          aria-hidden="true"
+        />
       ))}
     </div>
   );

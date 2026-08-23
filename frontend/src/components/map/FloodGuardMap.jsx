@@ -51,7 +51,7 @@ function LocationMarker({ position, draggable, onDragEnd }) {
     <Marker
       position={position}
       draggable={draggable}
-      icon={createMapIcon({ color: "#0f766e", glyph: "•" })}
+      icon={createMapIcon({ color: "#0f766e", icon: MapPin })}
       eventHandlers={
         draggable
           ? {

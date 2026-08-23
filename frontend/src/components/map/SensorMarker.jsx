@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Activity } from "lucide-react";
 import { Marker, Popup } from "react-leaflet";
 import MapPopup from "./MapPopup";
 import { MAP_STATUS_COLORS } from "./mapConfig";
@@ -18,7 +19,7 @@ export default function SensorMarker({ station, onSelect }) {
   return (
     <Marker
       position={position}
-      icon={createMapIcon({ color: MAP_STATUS_COLORS[status], glyph: "S" })}
+      icon={createMapIcon({ color: MAP_STATUS_COLORS[status], icon: Activity })}
       eventHandlers={{ click: () => onSelect?.({ type: "station", item: station }) }}
     >
       <Popup>
