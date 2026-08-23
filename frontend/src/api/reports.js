@@ -1,6 +1,6 @@
 import api from "./axios";
 
-export async function submitReport(reportData, onUploadProgress) {
+function buildReportFormData(reportData, includePhoto = true) {
   const formData = new FormData();
 
   formData.append("province", reportData.province);
@@ -20,9 +20,15 @@ export async function submitReport(reportData, onUploadProgress) {
     formData.append("longitude", String(reportData.longitude));
   }
 
-  if (reportData.photo) {
+  if (includePhoto && reportData.photo) {
     formData.append("photo", reportData.photo);
   }
+
+  return formData;
+}
+
+export async function submitReport(reportData, onUploadProgress) {
+  const formData = buildReportFormData(reportData);
 
   const response = await api.post("/reports/submit", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -30,6 +36,21 @@ export async function submitReport(reportData, onUploadProgress) {
   });
 
   return response.data;
+}
+
+export async function updateReport(reportId, reportData, onUploadProgress) {
+  const formData = buildReportFormData(reportData, true);
+
+  const response = await api.put(`/reports/${reportId}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress,
+  });
+
+  return response.data;
+}
+
+export async function deleteReport(reportId) {
+  await api.delete(`/reports/${reportId}`);
 }
 
 export async function getCommunityReports({ page = 1, limit = 9, district = "", severity = "" } = {}) {

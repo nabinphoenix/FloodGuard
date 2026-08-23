@@ -61,6 +61,7 @@ export default function App() {
         <Route path="/reports/:reportId" element={<ReportDetail />} />
         <Route path="/reports/submit" element={<ProtectedRoute exactRole="public"><SubmitReport /></ProtectedRoute>} />
         <Route path="/reports/my" element={<ProtectedRoute exactRole="public"><MyReports /></ProtectedRoute>} />
+        <Route path="/reports/:reportId/edit" element={<ProtectedRoute exactRole="public"><SubmitReport /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute role="public"><PublicDashboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute exactRole="public"><Profile /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute role="admin"><Dashboard /></ProtectedRoute>} />

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { getMyReports } from "../../api/reports";
+import { deleteReport, getMyReports } from "../../api/reports";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
 const statusStyles = {
@@ -14,6 +15,8 @@ export default function MyReports() {
   const [reports, setReports] = useState([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function loadReports() {
@@ -28,6 +31,22 @@ export default function MyReports() {
 
     loadReports();
   }, []);
+
+  async function handleDelete() {
+    if (!reportToDelete) return;
+
+    setIsDeleting(true);
+    setError("");
+    try {
+      await deleteReport(reportToDelete.id);
+      setReports((current) => current.filter((report) => report.id !== reportToDelete.id));
+      setReportToDelete(null);
+    } catch (deleteError) {
+      setError(deleteError.response?.data?.detail || "Could not delete your report.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-blue-50 px-4 py-10">
@@ -68,14 +87,36 @@ export default function MyReports() {
                   <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-700">{report.description}</p>
                   <p className="mt-3 text-sm font-semibold text-blue-800">Severity {report.severity} / 5</p>
                 </div>
-                <Link to={`/reports/${report.id}`} className="self-start rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">
-                  Details
-                </Link>
+                <div className="flex flex-col gap-2 self-start">
+                  <Link to={`/reports/${report.id}`} className="rounded-md border border-blue-200 px-4 py-2 text-center text-sm font-semibold text-blue-800 hover:bg-blue-50">
+                    Details
+                  </Link>
+                  <Link to={`/reports/${report.id}/edit`} className="rounded-md bg-blue-700 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-800">
+                    Edit
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setReportToDelete(report)}
+                    className="rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
+      <ConfirmDialog
+        open={Boolean(reportToDelete)}
+        title="Delete this flood report?"
+        description="This permanently removes the report from your account and the community feed."
+        confirmLabel="Delete report"
+        onConfirm={handleDelete}
+        onCancel={() => setReportToDelete(null)}
+        isConfirming={isDeleting}
+        danger
+      />
     </main>
   );
 }

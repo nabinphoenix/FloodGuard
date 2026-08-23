@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import { Star } from "lucide-react";
 
 import { getPublicGeography, getReportZones } from "../../api/public";
-import { submitReport } from "../../api/reports";
+import { getMyReports, submitReport, updateReport } from "../../api/reports";
 import CharacterCounter from "../../components/CharacterCounter";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import LoadingSpinner from "../../components/LoadingSpinner";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError, validateCoordinate } from "../../utils/validation";
@@ -21,6 +23,12 @@ const EMPTY_FORM = {
 };
 
 export default function SubmitReport() {
+  const { reportId } = useParams();
+  const isEditMode = Boolean(reportId);
+  const preserveZoneRef = useRef(false);
+  const [isReportLoading, setIsReportLoading] = useState(isEditMode);
+  const [existingImageUrl, setExistingImageUrl] = useState("");
+
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [geography, setGeography] = useState(null);
   const [isGeographyLoading, setIsGeographyLoading] = useState(true);
@@ -47,10 +55,10 @@ export default function SubmitReport() {
       && formData.description.trim().length >= 10
       && formData.latitude !== ""
       && formData.longitude !== ""
-      && formData.photo
+      && (isEditMode ? Boolean(existingImageUrl || formData.photo) : Boolean(formData.photo))
       && !isSubmitting
     ),
-    [formData, isSubmitting],
+    [existingImageUrl, formData, isEditMode, isSubmitting],
   );
 
   useEffect(() => {
@@ -71,12 +79,49 @@ export default function SubmitReport() {
       ignore = true;
     };
   }, []);
+  useEffect(() => {
+    if (!isEditMode) return;
+    let ignore = false;
 
+    async function loadReport() {
+      try {
+        const reports = await getMyReports();
+        const report = reports.find((item) => String(item.id) === String(reportId));
+        if (!report) throw new Error("Report not found.");
+        if (ignore) return;
+
+        preserveZoneRef.current = true;
+        setFormData({
+          province: report.province || "",
+          district: report.district || "",
+          zone_id: report.zone_id ? String(report.zone_id) : "",
+          severity: report.severity ? String(report.severity) : "",
+          description: report.description || "",
+          latitude: report.latitude ?? "",
+          longitude: report.longitude ?? "",
+          photo: null,
+        });
+        setExistingImageUrl(report.image_url || "");
+      } catch (loadError) {
+        if (!ignore) setError(backendError(loadError, "Could not load your report for editing."));
+      } finally {
+        if (!ignore) setIsReportLoading(false);
+      }
+    }
+
+    loadReport();
+    return () => {
+      ignore = true;
+    };
+
+  }, [isEditMode, reportId]);
   useEffect(() => {
     let ignore = false;
+    const preserveZone = preserveZoneRef.current;
+    preserveZoneRef.current = false;
     setZones([]);
     setZoneError("");
-    setFormData((current) => ({ ...current, zone_id: "" }));
+    if (!preserveZone) setFormData((current) => ({ ...current, zone_id: "" }));
 
     if (!formData.province) {
       setIsZonesLoading(false);
@@ -156,7 +201,7 @@ export default function SubmitReport() {
     if (!formData.severity) nextFieldErrors.severity = "Please select a severity rating.";
     if (formData.description.trim().length < 10) nextFieldErrors.description = "Description must be at least 10 characters.";
     if (formData.description.length > 2000) nextFieldErrors.description = "Description must be 2000 characters or fewer.";
-    if (!formData.photo) nextFieldErrors.photo = "Please attach a photo of the reported conditions.";
+    if (!isEditMode && !formData.photo) nextFieldErrors.photo = "Please attach a photo of the reported conditions.";
 
     const latitudeError = validateCoordinate(formData.latitude, -90, 90, "Latitude");
     const longitudeError = validateCoordinate(formData.longitude, -180, 180, "Longitude");
@@ -177,16 +222,25 @@ export default function SubmitReport() {
     setUploadProgress(0);
 
     try {
-      const result = await submitReport(formData, (progressEvent) => {
+      const onUploadProgress = (progressEvent) => {
         if (progressEvent.total) {
           setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
         }
-      });
+      };
+      const result = isEditMode
+        ? await updateReport(reportId, formData, onUploadProgress)
+        : await submitReport(formData, onUploadProgress);
 
       setConfirmation(result);
-      setFormData(EMPTY_FORM);
-      setZones([]);
-      setPreviewUrl("");
+      if (isEditMode) {
+        setExistingImageUrl(result.image_url || existingImageUrl);
+        setFormData((current) => ({ ...current, photo: null }));
+        setPreviewUrl("");
+      } else {
+        setFormData(EMPTY_FORM);
+        setZones([]);
+        setPreviewUrl("");
+      }
       setFieldErrors({});
       setUploadProgress(100);
     } catch (submitError) {
@@ -196,19 +250,20 @@ export default function SubmitReport() {
     }
   }
 
+  if (isReportLoading) return <LoadingSpinner message="Loading your report..." />;
   return (
     <main className="min-h-screen bg-blue-50 px-4 py-10">
       <section className="mx-auto max-w-4xl rounded-lg border border-blue-100 bg-white p-6 shadow-xl shadow-blue-100 md:p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-950">Submit Incident Report</h1>
+          <h1 className="text-3xl font-bold text-blue-950">{isEditMode ? "Edit Flood Report" : "Submit Incident Report"}</h1>
           <p className="mt-2 text-sm text-blue-700">
-            Share flood conditions from your area for review by FloodGuard administrators.
+            {isEditMode ? "Update the details below. Your edited report will be reviewed again by FloodGuard administrators." : "Share flood conditions from your area for review by FloodGuard administrators."}
           </p>
         </div>
 
         <FeedbackMessage message={error} />
         <FeedbackMessage
-          message={confirmation ? "Report submitted successfully. Your report ID is #" + confirmation.id + "." : ""}
+          message={confirmation ? (isEditMode ? "Report updated successfully. It is pending review again." : "Report submitted successfully. Your report ID is #" + confirmation.id + ".") : ""}
           type="success"
         />
 
@@ -372,16 +427,19 @@ export default function SubmitReport() {
 
           <div className="md:col-span-2">
             <label htmlFor="photo" className="block text-sm font-medium text-blue-950">
-              Photo *
+              {isEditMode ? "Photo (leave blank to keep current)" : "Photo *"}
             </label>
             <input
               id="photo"
               type="file"
               accept="image/png,image/jpeg,image/webp"
               onChange={handlePhotoChange}
-              required
+              required={!isEditMode}
               className="mt-2 block w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-sm text-blue-950 file:mr-4 file:rounded-md file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-800"
             />
+            {isEditMode && existingImageUrl && !previewUrl && (
+              <img src={existingImageUrl} alt="Current flood report" className="mt-4 h-56 w-full rounded-md object-cover" />
+            )}
             {fieldErrors.photo && <p className="mt-1 text-xs text-red-600">{fieldErrors.photo}</p>}
             {previewUrl && (
               <img src={previewUrl} alt="Selected flood report preview" className="mt-4 h-56 w-full rounded-md object-cover" />
@@ -403,7 +461,7 @@ export default function SubmitReport() {
               disabled={!canSubmit}
               className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
             >
-              {isSubmitting ? "Submitting report..." : "Submit report"}
+              {isSubmitting ? (isEditMode ? "Updating report..." : "Submitting report...") : (isEditMode ? "Update report" : "Submit report")}
             </button>
           </div>
         </form>
