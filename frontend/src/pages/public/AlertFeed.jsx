@@ -132,7 +132,7 @@ export default function AlertFeed() {
         </div>
       </div>
 
-        <div className="mt-6 flex flex-col gap-4 rounded-xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-[10%] mt-6 flex flex-col gap-4 rounded-xl border border-blue-100 bg-blue-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">Flood safety guide</p>
             <h2 className="mt-1 text-lg font-black text-blue-950">Know what to do during a flood</h2>
