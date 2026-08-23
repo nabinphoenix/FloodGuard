@@ -122,7 +122,7 @@ export default function AdminLayout({ children, title }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-surface-bg font-sans text-ink-primary">
+    <div className="flex min-h-screen min-w-0 bg-surface-bg font-sans text-ink-primary">
       <aside className="hidden w-64 flex-shrink-0 flex-col bg-gradient-to-b from-brand to-brand-gradientEnd text-white shadow-xl md:flex">
         <div className="p-6">
           <Link to="/" className="group flex items-center gap-2">
@@ -173,7 +173,7 @@ export default function AdminLayout({ children, title }) {
         </div>
       </aside>
 
-      <main className="flex min-h-screen flex-1 flex-col overflow-hidden md:h-screen">
+      <main className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden md:h-screen">
         <div className="flex flex-shrink-0 items-center justify-between bg-gradient-to-r from-brand to-brand-gradientEnd p-4 text-white shadow-md md:hidden">
           <div className="flex items-center gap-3">
             <button
@@ -224,8 +224,8 @@ export default function AdminLayout({ children, title }) {
           </div>
         )}
 
-        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
-          <div className="mx-auto max-w-7xl">{children}</div>
+        <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 md:p-8">
+          <div className="mx-auto w-full min-w-0 max-w-7xl">{children}</div>
         </div>
       </main>
     </div>
