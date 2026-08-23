@@ -1,6 +1,8 @@
 import {
   AlertTriangle,
 
+  Activity,
+
 
   FileText,
   LayoutDashboard,
@@ -42,6 +44,7 @@ const linksByRole = {
   field_officer: [
     { label: "Dashboard", to: "/sensors", icon: <LayoutDashboard size={20} />, end: true },
 
+    { label: "Sensor Reader", to: "/sensors/reader", icon: <Activity size={20} /> },
     { label: "Sensor Stations", to: "/sensors/stations", icon: <Settings2 size={20} /> },
     { label: "Live Water Levels", to: "/sensors/live", icon: <FileText size={20} /> },
     { label: "Water Level History", to: "/sensors/history", icon: <FileText size={20} /> },

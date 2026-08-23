@@ -86,11 +86,11 @@ remain `Official FloodGuard Early Warning Alert`.
 
 4. Set thresholds, for example Watch 2.50 m, Warning 3.50 m, Emergency
    4.50 m.
-5. Open Field Officer -> Dashboard -> Sensor Simulation Control, then select
-   **Start Simulation**. The protected backend enables the existing
-   `FloodGuard-Sensor-Simulator-Every-Minute` EventBridge rule; no AWS
-   credential is sent to the browser.
-6. Watch `/sensors`, `/sensors/live`, `/sensors/history`,
+5. Open Field Officer -> Sensor Reader, choose the station, duration,
+   interval, and pattern, then select **Start Reading**. Each reading uses the
+   protected backend and the existing RDS -> SQS pipeline; no AWS credential
+   or device token is sent to the browser.
+6. Watch `/sensors`, `/sensors/reader`, `/sensors/live`, `/sensors/history`,
    `/sensors/thresholds`, and `/sensors/health`.
 
 ## Local developer simulator option
@@ -119,32 +119,34 @@ SNS sends only on meaningful backend transitions:
 SNS failures are logged and returned as notification metadata while the
 telemetry remains saved. Official Authority alert publishing is unchanged.
 
-## AWS Automated Sensor Simulator
+## Interactive Sensor Reader
+
+The Field Officer Sensor Reader is the website demonstration tool. The browser
+starts a bounded temporary session and invokes the backend once per selected
+interval:
+
+    Interactive Sensor Reader browser timer
+        |
+        v
+    POST /api/sensors/simulator/generate-reading
+        |
+        v
+    Canonical sensor ingestion service
+
+Each request generates one value from the selected station's own thresholds.
+The rising, falling, and mixed patterns are bounded to produce a realistic
+demonstration of SAFE, WATCH, WARNING, and EMERGENCY status changes.
+
+The Sensor Reader endpoint is JWT-protected for Field Officers and admins and
+shares the same RDS persistence, backend classification, and SQS dispatch as
+other sensor readings. No AWS key or device token is exposed to the frontend.
+
+## Optional AWS Automated Sensor Simulator
 
 The local `scripts/simulate_water_level.py` utility remains available for
-quick manual tests. The cloud demonstration uses a stateless Lambda invoked by
-an EventBridge rule every minute:
-
-    EventBridge rate(1 minute)
-        |
-        v
-    FloodGuard-Sensor-Simulator Lambda
-        |
-        v
-    POST /api/sensors/device-reading
-
-Each Lambda invocation fetches the selected station's current thresholds,
-generates one value in the SAFE/WATCH/WARNING/EMERGENCY phase for that UTC
-minute, submits exactly one measurement, and exits. The eleven-minute sequence
-is SAFE, SAFE, WATCH, WATCH, WARNING, WARNING, EMERGENCY, EMERGENCY, WARNING,
-WATCH, SAFE, then repeats. Values are derived from the station's configured
-thresholds rather than fixed meter values.
-
-The device endpoint uses the server-only `X-Sensor-Token` header and shares the
-same RDS persistence, backend classification, SQS dispatch, and SNS transition
-processing as the authenticated Field Officer endpoint. No JWT, password, AWS
-key, or token is exposed to the frontend. The environment-variable fallback is
-used for the AWS Academy deployment; configure a high-entropy
+quick manual tests. The existing cloud Lambda may separately run from its
+enabled one-minute EventBridge scheduler. It uses the protected device endpoint
+and server-only `X-Sensor-Token`; configure a high-entropy
 `SENSOR_INGESTION_TOKEN` in both Elastic Beanstalk and Lambda, never in Git.
 
 Required Lambda variables:
@@ -155,11 +157,13 @@ Required Lambda variables:
     SIMULATOR_ENABLED=false
     HTTP_TIMEOUT_SECONDS=8
 
-Keep `SIMULATOR_ENABLED=false` while developing. Set it to `true` for the
-demo; a disabled invocation sends no reading. The exact packaging, manual
-Lambda creation, EventBridge rule, enable/disable, and token instructions are
-in `deploy/sensor_simulator/README.md`. The existing deployment workflow does
-not falsely claim to create these AWS resources automatically.
+The Interactive Sensor Reader page controls only a temporary browser timing
+session. Each selected interval produces one protected backend request, which
+uses the same RDS persistence and SQS dispatch as every other sensor reading.
+It does not manage EventBridge. The existing `FloodGuard-Sensor-Simulator`
+Lambda and enabled one-minute EventBridge rule may remain available separately
+for cloud-architecture demonstration. The exact packaging and token
+instructions are in `deploy/sensor_simulator/README.md`.
 
 Sensor dashboards show the last reading time and identify telemetry older than
 five minutes as stale; staleness does not change the backend flood status.

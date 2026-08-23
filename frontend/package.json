@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/utils/simulatorControl.test.js",
+    "test": "node --test src/utils/sensorReaderSession.test.js",
     "lint": "eslint ."
   },
   "dependencies": {

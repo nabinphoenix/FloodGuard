@@ -10,18 +10,8 @@ export async function getLiveReadings() {
   return response.data;
 }
 
-export async function getSimulatorStatus() {
-  const response = await api.get("/sensors/simulator/status");
-  return response.data;
-}
-
-export async function startSimulator() {
-  const response = await api.post("/sensors/simulator/start");
-  return response.data;
-}
-
-export async function stopSimulator() {
-  const response = await api.post("/sensors/simulator/stop");
+export async function generateSimulatorReading({ station_id, pattern }) {
+  const response = await api.post("/sensors/simulator/generate-reading", { station_id, pattern });
   return response.data;
 }
 

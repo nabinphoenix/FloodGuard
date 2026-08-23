@@ -2,12 +2,10 @@ import {
   Activity,
   AlertTriangle,
   Clock,
-  Play,
   Plus,
   Radio,
   RefreshCw,
   ShieldCheck,
-  Square,
   Waves,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -15,17 +13,11 @@ import { Link } from "react-router-dom";
 
 import {
   getSensorDashboard,
-  getSimulatorStatus,
-  startSimulator,
-  stopSimulator,
 } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
 import { formatReadingAge, freshnessClass, freshnessLabel } from "../../utils/sensorMonitoring";
-import {
-  SENSOR_DASHBOARD_POLL_INTERVAL_MS,
-  simulatorButtonState,
-  simulatorScheduleLabel,
-} from "../../utils/simulatorControl";
+
+const SENSOR_DASHBOARD_POLL_INTERVAL_MS = 10_000;
 
 const summaryCards = [
   ["active_stations", "Active Stations", Radio, "bg-blue-100 text-blue-700"],
@@ -53,23 +45,15 @@ function statusLabel(status) {
 
 export default function SensorDash() {
   const [dashboard, setDashboard] = useState(null);
-  const [simulator, setSimulator] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isSimulatorChanging, setIsSimulatorChanging] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
 
   async function load(manual = false) {
     if (manual) setIsRefreshing(true);
     try {
-      const [dashboardData, simulatorData] = await Promise.all([
-        getSensorDashboard(),
-        getSimulatorStatus(),
-      ]);
-      setDashboard(dashboardData);
-      setSimulator(simulatorData);
+      setDashboard(await getSensorDashboard());
       setLastUpdated(new Date());
       setError("");
     } catch (err) {
@@ -86,31 +70,9 @@ export default function SensorDash() {
     return () => window.clearInterval(timer);
   }, []);
 
-  async function changeSimulatorState(action) {
-    setIsSimulatorChanging(true);
-    setError("");
-    setMessage("");
-    try {
-      const simulatorData = action === "start" ? await startSimulator() : await stopSimulator();
-      setSimulator(simulatorData);
-      setMessage(
-        action === "start"
-          ? "Cloud sensor simulation started successfully."
-          : "Cloud sensor simulation stopped.",
-      );
-    } catch (err) {
-      setError(err.response?.data?.detail || "Could not update the cloud sensor simulator.");
-    } finally {
-      setIsSimulatorChanging(false);
-    }
-  }
-
   const summary = dashboard?.summary;
   const stations = dashboard?.stations || [];
   const recent = dashboard?.recent_readings || [];
-  const latestTelemetry = simulator?.latest_reading || recent[0] || null;
-  const simulatorEnabled = Boolean(simulator?.enabled);
-  const simulatorControls = simulatorButtonState(simulatorEnabled, isSimulatorChanging);
 
   return (
     <AdminLayout title="Sensor Dashboard">
@@ -126,29 +88,6 @@ export default function SensorDash() {
             <button type="button" onClick={() => load(true)} disabled={isRefreshing} className="flex items-center gap-2 rounded-lg border border-ink-border bg-white px-4 py-3 font-semibold shadow-sm hover:border-brand hover:text-brand disabled:opacity-60"><RefreshCw size={17} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Refreshing..." : "Refresh"}</button>
           </div>
         </div>
-
-        <article className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sky-950 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-xl font-black">Sensor Simulation Control</h2>
-              <p className="mt-1 text-sm">Recent sensor readings are received through the FloodGuard cloud sensor pipeline.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => changeSimulatorState("start")} disabled={!simulator || simulatorControls.startDisabled} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Play size={16} /> {isSimulatorChanging && !simulatorEnabled ? "Starting..." : "Start Simulation"}</button>
-              <button type="button" onClick={() => changeSimulatorState("stop")} disabled={!simulator || simulatorControls.stopDisabled} className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"><Square size={15} /> {isSimulatorChanging && simulatorEnabled ? "Stopping..." : "Stop Simulation"}</button>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Cloud Simulator</p><p className={`mt-1 text-lg font-black ${simulator?.enabled ? "text-emerald-700" : "text-slate-700"}`}>{simulator ? (simulator.enabled ? "ACTIVE" : "STOPPED") : "LOADING"}</p></div>
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Schedule</p><p className="mt-1 font-bold">{simulatorScheduleLabel(simulator?.schedule)}</p></div>
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Latest Reading</p><p className="mt-1 font-bold">{latestTelemetry ? `${Number(latestTelemetry.water_level).toFixed(2)} m` : "--"}</p></div>
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Latest Status</p><p className="mt-1"><span className={`rounded-full px-2 py-1 text-xs font-bold ${statusClass(latestTelemetry?.status)}`}>{latestTelemetry ? statusLabel(latestTelemetry.status) : "NO DATA"}</span></p></div>
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Last Reading</p><p className="mt-1 font-bold">{formatReadingAge(latestTelemetry?.timestamp)}</p></div>
-            <div className="rounded-lg bg-white/80 p-3"><p className="text-xs font-bold uppercase text-sky-800">Freshness</p><p className="mt-1"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(latestTelemetry?.freshness)}`}>{freshnessLabel(latestTelemetry?.freshness)}</span></p></div>
-          </div>
-          {message && <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">{message}</p>}
-        </article>
 
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 

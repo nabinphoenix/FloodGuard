@@ -9,10 +9,11 @@ notifications through the existing SNS topic.
 from __future__ import annotations
 
 import logging
+import random
+import time
 from hmac import compare_digest
+from typing import Literal
 
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import func, select, text
@@ -22,7 +23,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models.sensor import SensorReading, SensorStation
-from models.user import UserRole
+from models.user import User, UserRole
 from routers.auth import require_any_role
 from services.dynamodb_service import sensor_store_health
 from services.coordinate_validation import coordinate_validation_error
@@ -41,7 +42,11 @@ from services.sqs_service import send_sensor_reading, sqs_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sensors", tags=["sensors"])
-eventbridge_client = boto3.client("events", region_name=settings.aws_region)
+
+# The browser only offers intervals of 10 seconds or more. Enforce a smaller
+# server-side floor as well, so a modified client cannot create a reading storm.
+SIMULATOR_MIN_REQUEST_INTERVAL_SECONDS = 5
+_simulator_request_times: dict[int, float] = {}
 
 
 class SensorReadingIn(BaseModel):
@@ -73,6 +78,18 @@ class DeviceSensorReadingIn(BaseModel):
     @field_validator("station_code", mode="before")
     @classmethod
     def trim_station_code(cls, value: object) -> object:
+        return value if value is None else str(value).strip()
+
+
+class SimulatorReadingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    station_id: str = Field(..., min_length=1, max_length=20)
+    pattern: Literal["rising", "falling", "mixed"]
+
+    @field_validator("station_id", mode="before")
+    @classmethod
+    def trim_station_id(cls, value: object) -> object:
         return value if value is None else str(value).strip()
 
 class ThresholdUpdate(BaseModel):
@@ -390,53 +407,71 @@ def _dashboard_payload(db: Session) -> dict:
     }
 
 
-def _latest_sensor_reading_payload(db: Session) -> dict | None:
-    reading = db.scalars(
+def _latest_station_reading(db: Session, station_id: str) -> SensorReading | None:
+    return db.scalars(
         select(SensorReading)
+        .where(SensorReading.station_id == station_id)
         .order_by(SensorReading.recorded_at.desc(), SensorReading.id.desc())
         .limit(1)
     ).first()
-    if reading is None:
-        return None
-
-    station = db.get(SensorStation, reading.station_id)
-    payload = reading_to_dict(reading, station)
-    payload["station_name"] = station.name if station else reading.station_id
-    return payload
 
 
-def _simulator_status_payload(db: Session, rule: dict) -> dict:
-    state = str(rule.get("State") or "DISABLED").upper()
-    return {
-        "enabled": state == "ENABLED",
-        "state": state,
-        "schedule": rule.get("ScheduleExpression") or "rate(1 minute)",
-        "latest_reading": _latest_sensor_reading_payload(db),
-    }
+def generate_interactive_water_level(
+    station: SensorStation,
+    pattern: Literal["rising", "falling", "mixed"],
+    previous_level: float | None,
+) -> float:
+    """Generate one bounded demonstration value from this station's thresholds."""
+    watch = effective_watch_threshold(station)
+    if watch is None or watch <= 0 or watch >= station.warning_threshold:
+        raise HTTPException(status_code=400, detail="Sensor station thresholds are not suitable for simulation.")
+
+    warning = station.warning_threshold
+    emergency = station.danger_threshold
+    watch_span = warning - watch
+    warning_span = emergency - warning
+    if pattern == "rising":
+        if previous_level is None:
+            level = watch * 0.82
+        elif previous_level < watch:
+            level = watch + watch_span * 0.18
+        elif previous_level < warning:
+            level = warning + warning_span * 0.18
+        elif previous_level < emergency:
+            level = emergency + max(0.05, warning_span * 0.08)
+        else:
+            level = previous_level + max(0.02, warning_span * 0.03)
+    elif pattern == "falling":
+        if previous_level is None:
+            level = emergency + max(0.05, warning_span * 0.08)
+        elif previous_level >= emergency:
+            level = warning + warning_span * 0.72
+        elif previous_level >= warning:
+            level = watch + watch_span * 0.72
+        elif previous_level >= watch:
+            level = watch * 0.84
+        else:
+            level = max(0.05, previous_level - max(0.02, watch * 0.06))
+    else:
+        base = previous_level if previous_level is not None else watch * 0.82
+        maximum_step = max(0.08, min(watch_span, warning_span) * 0.24)
+        level = base + random.uniform(-maximum_step, maximum_step)
+        level = max(0.05, min(level, emergency + warning_span * 0.12))
+    return round(level, 3)
 
 
-def _describe_simulator_rule() -> dict:
-    try:
-        return eventbridge_client.describe_rule(Name=settings.sensor_simulator_rule_name)
-    except (BotoCoreError, ClientError) as exc:
-        logger.error("Could not describe EventBridge simulator rule: %s", exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not read the cloud sensor simulator state.",
-        ) from exc
-
-
-def _set_simulator_rule_enabled(enabled: bool) -> None:
-    try:
-        operation = eventbridge_client.enable_rule if enabled else eventbridge_client.disable_rule
-        operation(Name=settings.sensor_simulator_rule_name)
-    except (BotoCoreError, ClientError) as exc:
-        action = "start" if enabled else "stop"
-        logger.error("Could not %s EventBridge simulator rule: %s", action, exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Could not {action} the cloud sensor simulator.",
-        ) from exc
+def _enforce_simulator_rate_limit(user_id: int) -> None:
+    now = time.monotonic()
+    previous_request = _simulator_request_times.get(user_id)
+    if previous_request is not None:
+        elapsed = now - previous_request
+        if elapsed < SIMULATOR_MIN_REQUEST_INTERVAL_SECONDS:
+            wait_seconds = max(1, round(SIMULATOR_MIN_REQUEST_INTERVAL_SECONDS - elapsed))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Please wait {wait_seconds} seconds before generating another reading.",
+            )
+    _simulator_request_times[user_id] = now
 
 
 @router.get("/dashboard", dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))])
@@ -444,30 +479,43 @@ def get_sensor_dashboard(db: Session = Depends(get_db)) -> dict:
     return _dashboard_payload(db)
 
 
-@router.get(
-    "/simulator/status",
-    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
-)
-def get_simulator_status(db: Session = Depends(get_db)) -> dict:
-    return _simulator_status_payload(db, _describe_simulator_rule())
-
-
 @router.post(
-    "/simulator/start",
-    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+    "/simulator/generate-reading",
 )
-def start_simulator(db: Session = Depends(get_db)) -> dict:
-    _set_simulator_rule_enabled(True)
-    return _simulator_status_payload(db, _describe_simulator_rule())
-
-
-@router.post(
-    "/simulator/stop",
-    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
-)
-def stop_simulator(db: Session = Depends(get_db)) -> dict:
-    _set_simulator_rule_enabled(False)
-    return _simulator_status_payload(db, _describe_simulator_rule())
+def generate_simulator_reading(
+    payload: SimulatorReadingRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_any_role(UserRole.field_officer, UserRole.admin)),
+) -> dict:
+    """Generate one interactive demonstration reading through canonical ingestion."""
+    station = _station_or_404(payload.station_id, db)
+    if not station.is_active:
+        raise HTTPException(status_code=400, detail="Sensor station is inactive.")
+    _enforce_simulator_rate_limit(current_user.id)
+    previous_reading = _latest_station_reading(db, station.id)
+    level = generate_interactive_water_level(
+        station,
+        payload.pattern,
+        previous_reading.water_level if previous_reading else None,
+    )
+    result = _process_sensor_reading(
+        db,
+        station.id,
+        level,
+        timestamp=None,
+        source="interactive-reader",
+    )
+    reading = result["reading"]
+    return {
+        "station_id": result["station"]["station_code"],
+        "station_name": result["station"]["station_name"],
+        "water_level": reading["water_level"],
+        "status": result["status"],
+        "previous_status": result["previous_status"],
+        "recorded_at": reading["timestamp"],
+        "freshness": reading["freshness"],
+        "queue": result["queue"],
+    }
 
 
 @router.post(

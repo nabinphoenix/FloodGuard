@@ -64,6 +64,7 @@ export default function Navbar() {
   if (user?.role === "authority") links.push({ label: "Authority Dashboard", to: "/authority" });
   if (user?.role === "field_officer" || user?.role === "admin") {
     links.push({ label: "Sensor Dashboard", to: "/sensors" });
+    links.push({ label: "Sensor Reader", to: "/sensors/reader" });
   }
 
   function renderLinks() {

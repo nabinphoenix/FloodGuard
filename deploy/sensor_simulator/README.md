@@ -1,22 +1,29 @@
 # AWS Automated Sensor Simulator
 
-The repository contains a dependency-free Lambda at
-`lambda/sensor_simulator/handler.py`. It is designed for this architecture:
+`FloodGuard-Sensor-Simulator` is an optional cloud-architecture demonstration
+that EventBridge invokes once per minute. It remains separate from the Field
+Officer **Interactive Sensor Reader**, which is the primary website
+demonstration tool.
 
 ```text
-EventBridge rate(1 minute)
+Optional AWS scheduler
+EventBridge rate(1 minute), enabled
         |
         v
 FloodGuard-Sensor-Simulator Lambda
         |
         v
 POST /api/sensors/device-reading
+        |
+        v
+RDS sensor_readings -> SQS FloodGuard-Sensor-Events -> Auto-Sensor-Alert -> SNS
 ```
 
-Each invocation fetches the configured station thresholds through
-`GET /api/sensors/device-stations/{station_code}`, generates exactly one
-measurement for the current phase, submits exactly one reading, and exits.
-There is no long-running loop and no DynamoDB state table.
+The Field Officer website does not enable, disable, delete, or recreate the
+EventBridge rule. FastAPI needs no EventBridge IAM permissions, so this works
+with the AWS Academy `LabRole` restrictions. Keep the existing
+`FloodGuard-Sensor-Simulator-Every-Minute` rule enabled for the optional cloud
+demonstration.
 
 ## Required server-side configuration
 
@@ -35,14 +42,37 @@ SIMULATOR_ENABLED=false
 HTTP_TIMEOUT_SECONDS=8
 ```
 
-`SIMULATOR_ENABLED` defaults to `false`. Set it to `true` only for the cloud
-demonstration. The current implementation uses the course environment's
-server-side environment-variable fallback. Do not put the token in source,
-Git, frontend variables, Lambda logs, or committed deployment files. If the
-AWS account permits it later, the token can be moved to SSM Parameter Store
-SecureString without changing the API contract.
+Set `SIMULATOR_ENABLED=true` only when the separate scheduled cloud simulator
+is needed. It is not controlled by the browser. The Lambda requires only its
+standard logging permissions; FastAPI, Elastic Beanstalk,
+`LabInstanceProfile`, and `LabRole` require no EventBridge control policy.
 
-## Package the Lambda
+## Interactive Sensor Reader
+
+The Field Officer/Admin page at `/sensors/reader` starts a temporary browser
+session. It schedules one protected FastAPI request at the chosen 10-, 30-, or
+60-second interval for 1, 3, 5, or 10 minutes:
+
+```text
+Field Officer browser timer
+        |
+        v
+POST /api/sensors/simulator/generate-reading
+        |
+        v
+Canonical sensor ingestion service
+        |
+        v
+RDS -> SQS -> FloodGuard-Auto-Sensor-Alert -> SNS on valid transitions
+```
+
+Each endpoint request creates exactly one reading. Stopping the browser session
+cancels future calls; it does not make a long-running FastAPI request or alter
+EventBridge. The endpoint is protected for `field_officer` and `admin`, and
+has a server-side five-second minimum request interval. The browser never sees
+AWS credentials or the device ingestion token.
+
+## Package the optional Lambda
 
 From the repository root:
 
@@ -53,115 +83,6 @@ python deploy/make_sensor_simulator_zip.py
 This creates the ignored local artifact
 `deploy/floodguard-sensor-simulator.zip`. The handler is
 `handler.lambda_handler`, runtime `python3.12` (or another supported Python
-3.x runtime), and the function only needs the standard Lambda CloudWatch Logs
-execution policy.
-
-## Create or update the Lambda manually
-
-The existing GitHub Actions workflow deploys Elastic Beanstalk but does not
-create Lambda or EventBridge resources. Use the AWS Console or AWS CLI with a
-real Lambda execution-role ARN and the environment values above. Never paste a
-real token into a committed file or shell history.
-
-Example CLI shape with placeholders:
-
-```text
-aws lambda create-function `
-  --function-name FloodGuard-Sensor-Simulator `
-  --runtime python3.12 `
-  --handler handler.lambda_handler `
-  --role arn:aws:iam::<account-id>:role/<lambda-execution-role> `
-  --zip-file fileb://deploy/floodguard-sensor-simulator.zip `
-  --timeout 15 `
-  --memory-size 128 `
-  --environment "Variables={FLOODGUARD_API_URL=https://<elastic-beanstalk-host>,SENSOR_STATION_CODE=STN001,SENSOR_INGESTION_TOKEN=<token>,SIMULATOR_ENABLED=false,HTTP_TIMEOUT_SECONDS=8}"
-```
-
-For an existing function, use `aws lambda update-function-code` and update its
-environment in the Lambda Console or with `update-function-configuration`.
-When using the CLI, include every environment variable because an environment
-update replaces the complete variable map.
-
-## Create the EventBridge rule and target
-
-The exact resource names are:
-
-```text
-FloodGuard-Sensor-Simulator
-FloodGuard-Sensor-Simulator-Every-Minute
-rate(1 minute)
-ENABLED
-```
-
-PowerShell/AWS CLI steps:
-
-```text
-aws events put-rule `
-  --name FloodGuard-Sensor-Simulator-Every-Minute `
-  --schedule-expression "rate(1 minute)" `
-  --state ENABLED
-
-$ruleArn = aws events describe-rule --name FloodGuard-Sensor-Simulator-Every-Minute --query Arn --output text
-$lambdaArn = aws lambda get-function --function-name FloodGuard-Sensor-Simulator --query Configuration.FunctionArn --output text
-
-aws lambda add-permission `
-  --function-name FloodGuard-Sensor-Simulator `
-  --statement-id FloodGuardEventBridgeInvoke `
-  --action lambda:InvokeFunction `
-  --principal events.amazonaws.com `
-  --source-arn $ruleArn
-
-aws events put-targets `
-  --rule FloodGuard-Sensor-Simulator-Every-Minute `
-  --targets "Id=FloodGuardSensorSimulator,Arn=$lambdaArn"
-```
-
-The Lambda resource policy permission is required for EventBridge to invoke
-the function. Test one invocation manually before enabling the demonstration:
-
-```text
-aws lambda invoke --function-name FloodGuard-Sensor-Simulator response.json
-```
-
-## Enable or disable the cloud demonstration
-
-The Field Officer dashboard controls the existing EventBridge rule through
-protected FastAPI endpoints. Attach
-`simulator-control-policy.json` to the Elastic Beanstalk application instance
-role. It grants only `events:DescribeRule`, `events:EnableRule`, and
-`events:DisableRule` on
-`FloodGuard-Sensor-Simulator-Every-Minute`; no AWS credentials are sent to the
-browser or stored in the frontend.
-
-The normal Field Officer control is the protected dashboard, which enables or
-disables the existing `FloodGuard-Sensor-Simulator-Every-Minute` EventBridge
-rule. It does not change the Lambda, readings, SQS messages, or SNS topics.
-`SIMULATOR_ENABLED` remains a server-side deployment safeguard: it must be
-`true` for scheduled invocations to submit a reading, and is never exposed to
-the browser.
-
-To stop scheduling entirely:
-
-```text
-aws events disable-rule --name FloodGuard-Sensor-Simulator-Every-Minute
-```
-
-To resume scheduling:
-
-```text
-aws events enable-rule --name FloodGuard-Sensor-Simulator-Every-Minute
-```
-
-The backend device endpoints are:
-
-```text
-GET  /api/sensors/device-stations/{station_code}
-POST /api/sensors/device-reading
-Header: X-Sensor-Token
-Body: {"station_code":"STN001","water_level":3.91}
-```
-
-The normal authenticated `POST /api/sensors/reading` route remains available
-for Field Officer/local manual testing. Both routes use the same backend
-processing service and therefore preserve threshold classification and SNS
-transition behavior.
+3.x runtime). The existing EventBridge resource policy permission allowing the
+rule to invoke the Lambda remains required; no EventBridge permission is
+required by the FloodGuard application.
