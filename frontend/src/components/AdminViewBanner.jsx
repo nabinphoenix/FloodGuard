@@ -19,16 +19,16 @@ export default function AdminViewBanner() {
   }
 
   return (
-    <div className="border-b border-blue-200 bg-blue-50 px-4 py-2.5 text-blue-950">
+    <div className="admin-view-banner border-b border-blue-200 bg-blue-50 px-4 py-2.5 text-blue-950">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-white"><Eye size={16} /></span>
-          <span><strong>Viewing as {VIEW_MODE_LABELS[viewAs] || "Citizen"}</strong><span className="ml-2 hidden text-blue-700 sm:inline">Admin privileges remain active</span></span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-200"><ShieldCheck size={12} /> Admin</span>
+          <span className="admin-view-banner__copy"><strong>Viewing as {VIEW_MODE_LABELS[viewAs] || "Citizen"}</strong><span className="admin-view-banner__note ml-2 hidden text-blue-700 sm:inline">Admin privileges remain active</span></span>
+          <span className="admin-view-banner__badge inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-200"><ShieldCheck size={12} /> Admin</span>
         </div>
         <div className="flex items-center gap-2">
           <ViewAsSwitcher value={viewAs} variant="light" />
-          <button type="button" onClick={returnToAdmin} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800">Return to Admin</button>
+          <button type="button" onClick={returnToAdmin} className="admin-view-banner__return rounded-lg bg-blue-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-800">Return to Admin</button>
         </div>
       </div>
     </div>

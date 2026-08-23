@@ -28,6 +28,26 @@ textarea {
 .admin-view-switcher--light {
   color: #1e3a8a !important;
 }
+.admin-view-banner,
+.admin-view-banner__copy,
+.admin-view-banner__copy strong {
+  color: #172554 !important;
+}
+
+.admin-view-banner__note,
+.admin-view-banner__badge {
+  color: #1d4ed8 !important;
+}
+
+.admin-view-banner__badge {
+  background-color: #ffffff !important;
+}
+
+.admin-view-banner__return,
+.admin-view-banner__return:hover,
+.admin-view-banner__return:focus {
+  color: #ffffff !important;
+}
 
 .admin-view-switcher--light select {
   color: #172554 !important;
