@@ -7,6 +7,19 @@ function formatCoordinate(value) {
   return Number(value).toFixed(6);
 }
 
+function locationErrorMessage(positionError) {
+  switch (positionError?.code) {
+    case 1:
+      return "Location permission is blocked. Allow location access for FloodGuard in your browser settings, then try again.";
+    case 2:
+      return "Your device could not determine a location. Turn on location services and check your internet connection, then try again.";
+    case 3:
+      return "Location lookup timed out. Please try again or select the point on the map.";
+    default:
+      return "Unable to determine your current location. Please try again or select the point on the map.";
+  }
+}
+
 export default function LocationPicker({
   latitude,
   longitude,
@@ -40,6 +53,11 @@ export default function LocationPicker({
   };
 
   const useCurrentLocation = () => {
+    if (window.isSecureContext === false) {
+      setError("Location access needs HTTPS. Open FloodGuard over HTTPS (or localhost while developing), then try again.");
+      return;
+    }
+
     if (!navigator.geolocation) {
       setError("Your browser does not support location services.");
       return;
@@ -47,23 +65,24 @@ export default function LocationPicker({
 
     setIsLocating(true);
     setError("");
-    navigator.geolocation.getCurrentPosition(
-      (result) => {
-        selectPosition({ latitude: result.coords.latitude, longitude: result.coords.longitude });
-        setIsLocating(false);
-      },
-      (positionError) => {
-        let message = "Unable to determine your current location.";
-        if (positionError?.code === 1) {
-          message = "Location permission was denied. Select your location manually on the map.";
-        } else if (positionError?.code === 3) {
-          message = "Unable to determine your current location.";
-        }
-        setError(message);
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 },
-    );
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (result) => {
+          selectPosition({ latitude: result.coords.latitude, longitude: result.coords.longitude });
+          setIsLocating(false);
+        },
+        (positionError) => {
+          setError(locationErrorMessage(positionError));
+          setIsLocating(false);
+        },
+        // Network-based locations work on desktops and are accurate enough to
+        // place a report marker; requiring GPS caused avoidable timeouts.
+        { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 20000 },
+      );
+    } catch {
+      setError("Location access is unavailable in this browser. Select the point on the map instead.");
+      setIsLocating(false);
+    }
   };
 
   return (
