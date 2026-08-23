@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { getPublicGeography } from "../../api/public";
 import { getLiveReadings } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
 import { formatReadingAge, freshnessClass, freshnessLabel, trendLabel } from "../../utils/sensorMonitoring";
 import { formatKathmanduDateTime, formatKathmanduTime } from "../../utils/time";
 
 export const LIVE_REFRESH_INTERVAL_MS = 10_000;
+const STATIONS_PAGE_SIZE = 6;
 
 function statusClass(status) {
   return {
@@ -36,6 +38,7 @@ export default function LiveWaterLevels() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function load(manual = false) {
     if (manual) setIsRefreshing(true);
@@ -78,10 +81,23 @@ export default function LiveWaterLevels() {
   }
 
   const visibleStations = useMemo(() => filterStations(stations, filters), [stations, filters]);
+  const totalPages = Math.max(1, Math.ceil(visibleStations.length / STATIONS_PAGE_SIZE));
+  const paginatedStations = useMemo(
+    () => visibleStations.slice((currentPage - 1) * STATIONS_PAGE_SIZE, currentPage * STATIONS_PAGE_SIZE),
+    [visibleStations, currentPage],
+  );
   const selectedStation = useMemo(
     () => stations.find((station) => String(station.id) === String(filters.station)),
     [filters.station, stations],
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <AdminLayout title="Live Water Levels">
@@ -119,8 +135,9 @@ export default function LiveWaterLevels() {
         ) : visibleStations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-blue-200 bg-white p-12 text-center shadow-sm"><Activity className="mx-auto text-blue-300" size={34} /><h2 className="mt-3 text-xl font-black text-blue-950">{stations.length ? "No stations match the selected filters." : "No sensor stations configured."}</h2><p className="mt-2 text-slate-600">{stations.length ? "Change the filters to view another active station." : "Create a monitoring station before sending telemetry."}</p></div>
         ) : (
+          <>
           <div className="grid gap-5 lg:grid-cols-2">
-            {visibleStations.map((station) => {
+            {paginatedStations.map((station) => {
               const reading = station.latest_reading;
               return (
                 <article key={station.id} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
@@ -133,6 +150,8 @@ export default function LiveWaterLevels() {
               );
             })}
           </div>
+          <AdminPagination currentPage={currentPage} totalPages={totalPages} totalItems={visibleStations.length} pageSize={STATIONS_PAGE_SIZE} onPageChange={setCurrentPage} />
+          </>
         )}
       </section>
     </AdminLayout>

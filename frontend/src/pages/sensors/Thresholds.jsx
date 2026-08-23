@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getStations, updateThresholds } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
+
+const STATIONS_PAGE_SIZE = 5;
 
 function validateThresholds(draft) {
   const watch = Number(draft.watch_threshold);
@@ -24,6 +27,7 @@ export default function Thresholds() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function loadStations() {
@@ -95,6 +99,19 @@ export default function Thresholds() {
   }
 
   const visibleStations = useMemo(() => filterStations(stations, filters), [stations, filters]);
+  const totalPages = Math.max(1, Math.ceil(visibleStations.length / STATIONS_PAGE_SIZE));
+  const paginatedStations = useMemo(
+    () => visibleStations.slice((currentPage - 1) * STATIONS_PAGE_SIZE, currentPage * STATIONS_PAGE_SIZE),
+    [visibleStations, currentPage],
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <AdminLayout title="Sensor Thresholds">
@@ -115,8 +132,9 @@ export default function Thresholds() {
         {isLoading ? (
           <LoadingSpinner message="Loading stations..." />
         ) : (
+          <>
           <div className="grid gap-5">
-            {visibleStations.map((station) => {
+            {paginatedStations.map((station) => {
               const draft = drafts[station.id] || {};
               return (
                 <article key={station.id} className="rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
@@ -153,6 +171,8 @@ export default function Thresholds() {
             })}
             {visibleStations.length === 0 && <div className="rounded-lg border border-blue-100 bg-white p-8 text-center text-blue-800">{stations.length ? "No stations match the selected geography." : "No sensor stations configured."}</div>}
           </div>
+          <AdminPagination currentPage={currentPage} totalPages={totalPages} totalItems={visibleStations.length} pageSize={STATIONS_PAGE_SIZE} onPageChange={setCurrentPage} />
+          </>
         )}
       </section>
     </AdminLayout>

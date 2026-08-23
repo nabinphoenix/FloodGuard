@@ -11,6 +11,7 @@ import {
 } from "../../api/sensors";
 import { getPublicGeography } from "../../api/public";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import Button from "../../components/Button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
@@ -32,6 +33,7 @@ const emptyForm = {
   warning_threshold: "",
   danger_threshold: "",
 };
+const STATIONS_PAGE_SIZE = 6;
 
 function formFromStation(station) {
   return {
@@ -223,6 +225,7 @@ export default function SensorStations() {
   const [stationToDelete, setStationToDelete] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function load() {
     try {
@@ -246,6 +249,15 @@ export default function SensorStations() {
         Date.parse(right.latest_reading.timestamp) - Date.parse(left.latest_reading.timestamp)
       ))[0] || null
   ), [stations]);
+  const totalPages = Math.max(1, Math.ceil(stations.length / STATIONS_PAGE_SIZE));
+  const paginatedStations = useMemo(
+    () => stations.slice((currentPage - 1) * STATIONS_PAGE_SIZE, currentPage * STATIONS_PAGE_SIZE),
+    [stations, currentPage],
+  );
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   function openCreate() {
     setForm(emptyForm);
@@ -353,8 +365,9 @@ export default function SensorStations() {
             {!showForm && <Button onClick={openCreate} className="mt-6 px-5 py-3 text-base">Add Sensor Station</Button>}
           </div>
         ) : (
+          <>
           <div className="grid gap-5 lg:grid-cols-2">
-            {stations.map((station) => (
+            {paginatedStations.map((station) => (
               <article key={station.id} className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -384,6 +397,8 @@ export default function SensorStations() {
               </article>
             ))}
           </div>
+          <AdminPagination currentPage={currentPage} totalPages={totalPages} totalItems={stations.length} pageSize={STATIONS_PAGE_SIZE} onPageChange={setCurrentPage} />
+          </>
         )}
 
         <div className="mt-8 rounded-2xl border border-blue-100 bg-blue-50 p-5 text-sm text-blue-900">

@@ -15,11 +15,13 @@ import { useSearchParams } from "react-router-dom";
 import { getPublicGeography } from "../../api/public";
 import { getStationHistory, getStations } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
+import AdminPagination from "../../components/AdminPagination";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
 import { freshnessClass, freshnessLabel } from "../../utils/sensorMonitoring";
 import { formatKathmanduDateTime } from "../../utils/time";
 
 const HISTORY_REFRESH_INTERVAL_MS = 10_000;
+const HISTORY_PAGE_SIZE = 10;
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -46,6 +48,7 @@ export default function WaterLevelChart() {
   const [selectedStationId, setSelectedStationId] = useState(() => searchParams.get("station") || "");
   const [filters, setFilters] = useState({ province: "", district: "", river_basin: "", river: "", station: "" });
   const [history, setHistory] = useState([]);
+  const [historyPage, setHistoryPage] = useState(1);
   const [error, setError] = useState("");
   const [isLoadingStations, setIsLoadingStations] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -55,6 +58,19 @@ export default function WaterLevelChart() {
     () => stations.find((station) => String(station.id) === String(selectedStationId)),
     [stations, selectedStationId],
   );
+  const historyTotalPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+  const paginatedHistory = useMemo(
+    () => [...history].reverse().slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE),
+    [history, historyPage],
+  );
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [selectedStationId]);
+
+  useEffect(() => {
+    setHistoryPage((current) => Math.min(current, historyTotalPages));
+  }, [historyTotalPages]);
 
   useEffect(() => {
     async function loadStations() {
@@ -221,11 +237,14 @@ export default function WaterLevelChart() {
               </div>
               <div className="h-[420px] w-full"><Line data={chartData} options={options} /></div>
             </div>
-            <div className="mt-6 overflow-x-auto rounded-2xl border border-blue-100 bg-white shadow-sm">
+            <div className="mt-6 rounded-2xl border border-blue-100 bg-white shadow-sm">
+              <div className="overflow-x-auto">
               <table className="min-w-[650px] w-full text-left text-sm">
                 <thead className="bg-blue-50 text-xs uppercase tracking-wide text-blue-900"><tr><th className="px-4 py-3">Timestamp</th><th className="px-4 py-3">Water level</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Freshness</th></tr></thead>
-                <tbody className="divide-y divide-blue-50">{[...history].reverse().map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{formatKathmanduDateTime(reading.timestamp)}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(reading.freshness)}`}>{freshnessLabel(reading.freshness)}</span></td></tr>)}</tbody>
+                <tbody className="divide-y divide-blue-50">{paginatedHistory.map((reading) => <tr key={reading.id + reading.timestamp}><td className="px-4 py-3 text-slate-600">{formatKathmanduDateTime(reading.timestamp)}</td><td className="px-4 py-3 font-bold text-blue-950">{Number(reading.water_level).toFixed(2)} m</td><td className="px-4 py-3 font-bold">{statusLabel(reading.status)}</td><td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(reading.freshness)}`}>{freshnessLabel(reading.freshness)}</span></td></tr>)}</tbody>
               </table>
+              </div>
+              <AdminPagination currentPage={historyPage} totalPages={historyTotalPages} totalItems={history.length} pageSize={HISTORY_PAGE_SIZE} onPageChange={setHistoryPage} />
             </div>
           </>
         )}
