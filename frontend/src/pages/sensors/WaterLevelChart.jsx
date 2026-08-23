@@ -11,6 +11,7 @@ import { Activity } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Line } from "react-chartjs-2";
 
+import { getPublicGeography } from "../../api/public";
 import { getStationHistory, getStations } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
 import SensorFilters, { filterStations } from "../../components/SensorFilters";
@@ -35,6 +36,7 @@ function statusLabel(status) {
 
 export default function WaterLevelChart() {
   const [stations, setStations] = useState([]);
+  const [geography, setGeography] = useState(null);
   const [selectedStationId, setSelectedStationId] = useState("");
   const [filters, setFilters] = useState({ province: "", district: "", river_basin: "", river: "", station: "" });
   const [history, setHistory] = useState([]);
@@ -59,6 +61,22 @@ export default function WaterLevelChart() {
       }
     }
     loadStations();
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getPublicGeography()
+      .then((data) => {
+        if (!ignore) setGeography(data);
+      })
+      .catch(() => {
+        // Keep station-derived filters available if geography cannot load.
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -153,7 +171,7 @@ export default function WaterLevelChart() {
           <p className="mt-2 text-ink-secondary">Sensor telemetry history, separate from the public Nepal flood research page.</p>
         </div>
 
-        <SensorFilters stations={stations} filters={filters} onChange={changeFilter} />
+        <SensorFilters stations={stations} filters={filters} onChange={changeFilter} geography={geography} />
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
 
         {isLoadingStations ? (
