@@ -1,5 +1,6 @@
 import io
 import logging
+import mimetypes
 import os
 import urllib.parse
 from datetime import datetime, timezone
@@ -91,6 +92,24 @@ def _is_intended_source_key(source_key: str) -> bool:
     return source_key.startswith(INPUT_PREFIX) and source_key.startswith(REQUIRED_INPUT_PREFIX)
 
 
+def source_content_type(response: dict, source_key: str) -> str:
+    """Use the original object's media type for original-byte fallbacks."""
+    return (
+        response.get("ContentType")
+        or mimetypes.guess_type(source_key)[0]
+        or "application/octet-stream"
+    )
+
+
+def put_output(output_key: str, data: bytes, content_type: str) -> None:
+    s3_client.put_object(
+        Bucket=OUTPUT_BUCKET,
+        Key=output_key,
+        Body=data,
+        ContentType=content_type,
+    )
+
+
 def lambda_handler(event, context):
     images_optimized = 0
     original_bytes_total = 0
@@ -121,54 +140,48 @@ def lambda_handler(event, context):
             response = s3_client.get_object(Bucket=source_bucket, Key=source_key)
             original_data = response["Body"].read()
             original_size = len(original_data)
+            original_content_type = source_content_type(response, source_key)
 
-            candidate_data, content_type = optimize_image(original_data)
-            candidate_size = len(candidate_data)
+            try:
+                candidate_data, candidate_content_type = optimize_image(original_data)
+                candidate_size = len(candidate_data)
+            except Exception:
+                put_output(output_key, original_data, original_content_type)
+                images_optimized += 1
+                original_bytes_total += original_size
+                optimized_bytes_total += original_size
+                logger.exception(
+                    "Image optimization failed; original kept | original_size=%d | "
+                    "candidate_optimized_size=unavailable | final_size=%d | result=original_kept",
+                    original_size,
+                    original_size,
+                )
+                continue
 
             if candidate_size < original_size:
                 output_data = candidate_data
-                selected = "optimized"
-                saved_bytes = original_size - candidate_size
-                reduction_percent = (saved_bytes / original_size * 100) if original_size else 0
-                reason = ""
+                output_content_type = candidate_content_type
+                result = "optimized"
             else:
                 output_data = original_data
-                selected = "original"
-                saved_bytes = 0
-                reduction_percent = 0
-                reason = "optimized candidate was not smaller"
+                output_content_type = original_content_type
+                result = "original_kept"
 
-            s3_client.put_object(
-                Bucket=OUTPUT_BUCKET,
-                Key=output_key,
-                Body=output_data,
-                ContentType=content_type,
-            )
+            final_size = len(output_data)
+            put_output(output_key, output_data, output_content_type)
 
             images_optimized += 1
+            logger.info(
+                "Image optimization completed | original_size=%d | "
+                "candidate_optimized_size=%d | final_size=%d | result=%s",
+                original_size,
+                candidate_size,
+                final_size,
+                result,
+            )
             original_bytes_total += original_size
-            optimized_bytes_total += len(output_data)
-            if reason:
-                logger.info(
-                    "Image optimization completed | Original bytes: %d | Candidate bytes: %d | "
-                    "Selected: %s | Saved bytes: %d | Reduction percent: %.2f | Reason: %s",
-                    original_size,
-                    candidate_size,
-                    selected,
-                    saved_bytes,
-                    reduction_percent,
-                    reason,
-                )
-            else:
-                logger.info(
-                    "Image optimization completed | Original bytes: %d | Candidate bytes: %d | "
-                    "Selected: %s | Saved bytes: %d | Reduction percent: %.2f",
-                    original_size,
-                    candidate_size,
-                    selected,
-                    saved_bytes,
-                    reduction_percent,
-                )
+            optimized_bytes_total += final_size
+
 
         except UnsupportedImageFormat as exc:
             logger.warning("Image optimization skipped: unsupported image format %s", exc)

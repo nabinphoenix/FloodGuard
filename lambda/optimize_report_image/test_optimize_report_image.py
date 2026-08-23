@@ -58,8 +58,8 @@ def test_smaller_candidate_is_written(mock_cw, mock_s3, caplog):
     assert put_kwargs["Key"] == "optimized/incident-reports/test.jpg"
     assert put_kwargs["Body"] == candidate
     assert put_kwargs["ContentType"] == "image/jpeg"
-    assert "Selected: optimized" in caplog.text
-    assert "Saved bytes: 15" in caplog.text
+    assert "result=optimized" in caplog.text
+    assert "candidate_optimized_size=5" in caplog.text
     mock_cw.put_metric_data.assert_called_once()
 
 
@@ -76,8 +76,8 @@ def test_larger_candidate_falls_back_to_original(mock_cw, mock_s3, caplog):
 
     assert result["images_optimized"] == 1
     assert mock_s3.put_object.call_args.kwargs["Body"] == original
-    assert "Selected: original" in caplog.text
-    assert "Reason: optimized candidate was not smaller" in caplog.text
+    assert "result=original_kept" in caplog.text
+    assert "candidate_optimized_size=19" in caplog.text
 
 
 @patch("optimize_report_image.handler.s3_client")
@@ -91,9 +91,23 @@ def test_equal_candidate_falls_back_to_original(mock_cw, mock_s3, caplog):
             handler.lambda_handler(image_event(), None)
 
     assert mock_s3.put_object.call_args.kwargs["Body"] == original
-    assert "Selected: original" in caplog.text
-    assert "Reason: optimized candidate was not smaller" in caplog.text
+    assert "result=original_kept" in caplog.text
+    assert "candidate_optimized_size=9" in caplog.text
 
+
+@patch("optimize_report_image.handler.s3_client")
+@patch("optimize_report_image.handler.cloudwatch_client")
+def test_larger_candidate_preserves_original_content_type(mock_cw, mock_s3):
+    original = b"original"
+    configure_object(mock_s3, original, "image/png")
+
+    with patch.object(handler, "optimize_image", return_value=(b"optimized-is-larger", "image/webp")):
+        handler.lambda_handler(image_event(key="original/incident-reports/test.png"), None)
+
+    put_kwargs = mock_s3.put_object.call_args.kwargs
+    assert put_kwargs["Body"] == original
+    assert put_kwargs["ContentType"] == "image/png"
+    assert len(put_kwargs["Body"]) <= len(original)
 
 @patch("optimize_report_image.handler.s3_client")
 @patch("optimize_report_image.handler.cloudwatch_client")
@@ -161,9 +175,11 @@ def test_unsupported_format_is_handled_safely(mock_cw, mock_s3):
 
     result = handler.lambda_handler(image_event(key="original/incident-reports/test.gif"), None)
 
-    assert result["images_optimized"] == 0
-    mock_s3.put_object.assert_not_called()
-    mock_cw.put_metric_data.assert_not_called()
+    assert result["images_optimized"] == 1
+    put_kwargs = mock_s3.put_object.call_args.kwargs
+    assert put_kwargs["Body"] == image_bytes
+    assert put_kwargs["ContentType"] == "image/gif"
+    mock_cw.put_metric_data.assert_called_once()
 
 
 @patch("optimize_report_image.handler.s3_client")
@@ -174,9 +190,11 @@ def test_malformed_image_is_handled_safely(mock_cw, mock_s3, caplog):
     with caplog.at_level(logging.WARNING):
         result = handler.lambda_handler(image_event(key="original/incident-reports/corrupt.jpg"), None)
 
-    assert result["images_optimized"] == 0
-    mock_s3.put_object.assert_not_called()
-    assert "not a valid image" in caplog.text
+    assert result["images_optimized"] == 1
+    put_kwargs = mock_s3.put_object.call_args.kwargs
+    assert put_kwargs["Body"] == b"not-an-image"
+    assert put_kwargs["ContentType"] == "image/jpeg"
+    assert "original kept" in caplog.text
 
 
 @patch("optimize_report_image.handler.s3_client")
