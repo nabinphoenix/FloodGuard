@@ -65,33 +65,27 @@ def test_zone_seed_is_idempotent_and_preserves_existing_zones(db):
     assert db.get(AlertZone, existing.id).is_active is False
 
 
-def test_public_zone_filtering_uses_province_and_district(client, db):
+def test_public_zone_filtering_supports_province_level_report_zones(client, db):
     test_client, _ = client
     seed_flood_zones(db)
 
-    expected = {
-        ("Bagmati", "Chitwan"): {
-            "Narayani River Flood Zone",
-            "Rapti River Chitwan Zone",
-        },
-        ("Koshi", "Jhapa"): {
-            "Kankai River Flood Zone",
-            "Mechi River Flood Zone",
-        },
-        ("Lumbini", "Rupandehi"): {"Tinau River Flood Zone"},
-        ("Sudurpashchim", "Kailali"): {"Kailali Flood Monitoring Zone"},
-    }
-
-    for (province, district), expected_names in expected.items():
+    for province in EXPECTED_PROVINCES:
         response = test_client.get(
             "/api/public/zones",
-            params={"province": province, "district": district},
+            params={"province": province},
         )
         assert response.status_code == 200
         zones = response.json()
+        expected_names = {seed["name"] for seed in ZONE_SEEDS if seed["province"] == province}
         assert {zone["name"] for zone in zones} == expected_names
-        assert {zone["district"] for zone in zones} == {district}
         assert {zone["province"] for zone in zones} == {province}
+
+    district_response = test_client.get(
+        "/api/public/zones",
+        params={"province": "Koshi", "district": "Jhapa"},
+    )
+    assert district_response.status_code == 200
+    assert {zone["district"] for zone in district_response.json()} == {"Jhapa"}
 
     mismatch = test_client.get(
         "/api/public/zones",

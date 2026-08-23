@@ -59,8 +59,8 @@ def test_report_submission_requires_canonical_location_and_valid_zone(client, db
     monkeypatch.setattr(reports_router, "upload_photo", lambda *args: "incident-reports/test.jpg")
     monkeypatch.setattr(reports_router, "get_presigned_url", lambda key: "https://example.test/photo")
     zone = AlertZone(
-        district="Chitwan",
-        name="Narayani River Flood Zone",
+        district="Kathmandu",
+        name="Bagmati Province Flood Zone",
         alert_level=AlertLevel.safe,
         latitude=27.67,
         longitude=84.43,
@@ -86,7 +86,7 @@ def test_report_submission_requires_canonical_location_and_valid_zone(client, db
     assert valid.json()["province"] == "Bagmati"
     assert valid.json()["district"] == "Chitwan"
     assert valid.json()["zone_id"] == zone.id
-    assert valid.json()["zone_name"] == "Narayani River Flood Zone"
+    assert valid.json()["zone_name"] == "Bagmati Province Flood Zone"
 
     missing_photo = test_client.post(
         "/api/reports/submit",
@@ -125,14 +125,14 @@ def test_report_submission_requires_canonical_location_and_valid_zone(client, db
             "district": "Kaski",
             "zone_id": str(zone.id),
             "severity": "3",
-            "description": "The selected zone belongs to another district.",
+            "description": "The selected zone belongs to another province.",
             "latitude": "28.2",
             "longitude": "83.98",
         },
         files=fake_photo(),
     )
     assert wrong_zone.status_code == 422
-    assert "does not belong to this district" in wrong_zone.json()["detail"]
+    assert "does not belong to this province" in wrong_zone.json()["detail"]
 
 
 @pytest.mark.parametrize(

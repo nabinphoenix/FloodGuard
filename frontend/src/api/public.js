@@ -20,8 +20,8 @@ export async function getPublicGeography() {
   return response.data;
 }
 
-export async function getReportZones(province, district) {
-  const response = await api.get("/public/zones", { params: { province, district } });
+export async function getReportZones(province) {
+  const response = await api.get("/public/zones", { params: { province } });
   return response.data;
 }
 

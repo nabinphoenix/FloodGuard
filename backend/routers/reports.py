@@ -91,8 +91,8 @@ async def submit_report(
         if not zone.is_active:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected FloodGuard zone is inactive.")
         zone_province = province_for_district(zone.district)
-        if zone_province is None or zone_province.casefold() != canonical_province.casefold() or zone.district.casefold() != canonical_district.casefold():
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected zone does not belong to this district.")
+        if zone_province is None or zone_province.casefold() != canonical_province.casefold():
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Selected zone does not belong to this province.")
     image_key = None
     if not photo.filename:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Photo is required.")

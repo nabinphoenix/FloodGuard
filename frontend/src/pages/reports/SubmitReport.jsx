@@ -77,7 +77,7 @@ export default function SubmitReport() {
     setZoneError("");
     setFormData((current) => ({ ...current, zone_id: "" }));
 
-    if (!formData.province || !formData.district) {
+    if (!formData.province) {
       setIsZonesLoading(false);
       return () => {
         ignore = true;
@@ -85,7 +85,7 @@ export default function SubmitReport() {
     }
 
     setIsZonesLoading(true);
-    getReportZones(formData.province, formData.district)
+    getReportZones(formData.province)
       .then((nextZones) => {
         if (!ignore) setZones(Array.isArray(nextZones) ? nextZones : []);
       })
@@ -99,7 +99,7 @@ export default function SubmitReport() {
     return () => {
       ignore = true;
     };
-  }, [formData.province, formData.district]);
+  }, [formData.province]);
 
   useEffect(() => {
     return () => {
@@ -122,10 +122,8 @@ export default function SubmitReport() {
   }
 
   function updateDistrict(value) {
-    setFormData((current) => ({ ...current, district: value, zone_id: "" }));
-    setZones([]);
-    setZoneError("");
-    setFieldErrors((current) => ({ ...current, district: "", zone_id: "" }));
+    setFormData((current) => ({ ...current, district: value }));
+    setFieldErrors((current) => ({ ...current, district: "" }));
     setError("");
   }
 
@@ -260,20 +258,20 @@ export default function SubmitReport() {
                 <select
                   value={formData.zone_id}
                   onChange={(event) => updateField("zone_id", event.target.value)}
-                  disabled={!formData.district || isZonesLoading}
+                  disabled={!formData.province || isZonesLoading}
                   required
                   className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
                 >
                   <option value="">
-                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No FloodGuard zones configured for this district."}
+                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No FloodGuard zones configured for this province."}
                   </option>
                   {zones.map((zone) => (
-                    <option key={zone.id} value={zone.id}>{zone.name || zone.district}</option>
+                    <option key={zone.id} value={zone.id}>{zone.name || zone.district} ({zone.district})</option>
                   ))}
                 </select>
                 {fieldErrors.zone_id && <p className="mt-1 text-xs text-red-600">{fieldErrors.zone_id}</p>}
                 {zoneError && <p className="mt-1 text-xs text-red-600">{zoneError}</p>}
-                {!zoneError && formData.district && !isZonesLoading && !zones.length && (
+                {!zoneError && formData.province && !isZonesLoading && !zones.length && (
                   <p className="mt-1 text-xs text-red-600">A configured FloodGuard zone is required before submitting.</p>
                 )}
               </label>
