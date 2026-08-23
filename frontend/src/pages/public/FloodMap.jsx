@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Layers3, MapPin, Radio, RefreshCw, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import Button from "../../components/Button";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
 import { getPublicMapOverview } from "../../api/publicMap";
 import { isWithinNepalOperationalBounds, normalizeStatus, operationalCoordinatePair, statusLabel } from "../../components/map/mapUtils";
@@ -149,12 +150,10 @@ export default function FloodMap() {
             <h1 className="text-3xl font-black tracking-tight text-ink sm:text-4xl">FloodGuard map</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-secondary">Explore active flood zones, public sensor readings, community reports and alerts across Nepal.</p>
           </div>
-          <button type="button" onClick={() => loadMap(true)} disabled={refreshing} className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-brand-gradientEnd disabled:opacity-60">
-            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />{refreshing ? "Refreshing?" : "Refresh map"}
-          </button>
+          <Button onClick={() => loadMap(true)} isLoading={refreshing} loadingLabel="Refreshing..." className="rounded-xl px-4 py-3"><RefreshCw size={16} />Refresh map</Button>
         </div>
 
-        {error ? <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div> : null}
+        {error ? <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert"><span>{error}</span><Button variant="secondary" onClick={() => loadMap(true)} className="min-h-9 px-3 py-1.5">Try again</Button></div> : null}
 
         <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
@@ -217,7 +216,7 @@ export default function FloodMap() {
               focusPosition={focusPosition}
               onSelect={setSelected}
               selectedAlertId={selectedAlertId}
-              className="h-[620px] lg:h-[680px]"
+              className="h-[420px] sm:h-[520px] lg:h-[680px]"
             />
             {!loading && !mapData.sensors.length && !mapData.zones.length && !mapData.alerts.length && !mapData.reports.length ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm text-slate-500">No public map data is available yet.</div>

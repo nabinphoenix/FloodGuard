@@ -1,6 +1,6 @@
 const statusConfig = {
   pending: {
-    label: "Pending",
+    label: "Pending Review",
     className: "bg-brand/10 text-brand",
   },
   verified: {
@@ -17,7 +17,7 @@ const statusConfig = {
   },
   rejected: {
     label: "Rejected",
-    className: "bg-slate-100 text-slate-700",
+    className: "bg-red-100 text-red-800",
   },
   healthy: {
     label: "Healthy",

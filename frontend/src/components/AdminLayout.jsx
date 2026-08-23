@@ -13,7 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -65,6 +65,19 @@ export default function AdminLayout({ children, title }) {
   const location = useLocation();
   const { user, isLoading, signOut, viewAs } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    function closeOnEscape(event) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   if (isLoading) {
     return <LoadingSpinner message="Loading account..." />;
@@ -160,7 +173,7 @@ export default function AdminLayout({ children, title }) {
         </div>
       </aside>
 
-      <main className="flex h-screen flex-1 flex-col overflow-hidden">
+      <main className="flex min-h-screen flex-1 flex-col overflow-hidden md:h-screen">
         <div className="flex flex-shrink-0 items-center justify-between bg-gradient-to-r from-brand to-brand-gradientEnd p-4 text-white shadow-md md:hidden">
           <div className="flex items-center gap-3">
             <button
@@ -177,35 +190,41 @@ export default function AdminLayout({ children, title }) {
               <span>FloodGuard</span>
             </Link>
           </div>
-          <span className="text-sm font-semibold text-white/80">{panelTitle}</span>
+          <span className="max-w-[42vw] truncate text-sm font-semibold text-white/80">{panelTitle}</span>
         </div>
 
         {menuOpen && (
-          <div className="border-b border-blue-100 bg-gradient-to-b from-brand to-brand-gradientEnd p-4 text-white md:hidden">
-            <nav className="space-y-2" aria-label="Mobile dashboard navigation">
-              {renderLinks()}
-            </nav>
-            <div className="mt-3 border-t border-white/20 pt-3">
-              {user.role === "admin" && (
-                <div className="mb-4">
-                  <ViewAsSwitcher value={activeView} />
-                </div>
-              )}
-              <p className="truncate text-sm font-semibold">{user.name}</p>
-              <p className="truncate text-xs text-white/70">{user.email}</p>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
-            </div>
+          <div className="fixed inset-0 z-50 bg-slate-950/45 md:hidden" onClick={() => setMenuOpen(false)}>
+            <aside className="flex h-[100dvh] w-[min(20rem,86vw)] flex-col overflow-y-auto bg-gradient-to-b from-brand to-brand-gradientEnd p-4 text-white shadow-2xl" aria-label="Dashboard navigation" onClick={(event) => event.stopPropagation()}>
+              <div className="mb-5 flex items-center justify-between">
+                <span className="font-bold">{panelTitle}</span>
+                <button type="button" onClick={() => setMenuOpen(false)} className="rounded-lg p-2 hover:bg-white/20" aria-label="Close navigation menu"><X size={22} /></button>
+              </div>
+              <nav className="space-y-2" aria-label="Mobile dashboard navigation">
+                {renderLinks()}
+              </nav>
+              <div className="mt-auto border-t border-white/20 pt-4">
+                {user.role === "admin" && (
+                  <div className="mb-4">
+                    <ViewAsSwitcher value={activeView} />
+                  </div>
+                )}
+                <p className="truncate text-sm font-semibold">{user.name}</p>
+                <p className="truncate text-xs text-white/70">{user.email}</p>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold hover:bg-white/10"
+                >
+                  <LogOut size={18} />
+                  Logout
+                </button>
+              </div>
+            </aside>
           </div>
         )}
 
-        <div className="flex-1 overflow-auto p-6 md:p-8">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
           <div className="mx-auto max-w-7xl">{children}</div>
         </div>
       </main>

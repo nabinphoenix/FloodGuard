@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Button from "../../components/Button";
+import FeedbackMessage from "../../components/FeedbackMessage";
 import PasswordInput from "../../components/PasswordInput";
 
 import { useAuth } from "../../context/AuthContext";
@@ -15,6 +17,7 @@ export default function Login() {
   function handleChange(event) {
     const { name, value } = event.target;
     setFormData((current) => ({ ...current, [name]: value }));
+    setError("");
   }
 
   async function handleSubmit(event) {
@@ -41,7 +44,7 @@ export default function Login() {
           <p className="mt-2 text-sm text-blue-700">Sign in to access your FloodGuard account</p>
         </div>
 
-        {error && <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+        <FeedbackMessage message={error} onDismiss={() => setError("")} />
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div>
@@ -58,9 +61,7 @@ export default function Login() {
             <Link to="/forgot-password" className="text-sm font-semibold text-blue-700 hover:text-blue-900">Forgot password?</Link>
           </div>
 
-          <button type="submit" disabled={isSubmitting} className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
-            {isSubmitting ? "Signing in..." : "Sign in"}
-          </button>
+          <Button type="submit" isLoading={isSubmitting} loadingLabel="Signing in..." className="w-full rounded-md bg-blue-700 px-4 py-3 text-base hover:bg-blue-800">Sign in</Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-600">

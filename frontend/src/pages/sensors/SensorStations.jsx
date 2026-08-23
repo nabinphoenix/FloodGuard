@@ -11,6 +11,9 @@ import {
 } from "../../api/sensors";
 import { getPublicGeography } from "../../api/public";
 import AdminLayout from "../../components/AdminLayout";
+import Button from "../../components/Button";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import FeedbackMessage from "../../components/FeedbackMessage";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { backendError } from "../../utils/validation";
@@ -216,6 +219,8 @@ export default function SensorStations() {
   const [showForm, setShowForm] = useState(searchParams.get("create") === "1");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [workingStationId, setWorkingStationId] = useState(null);
+  const [stationToDelete, setStationToDelete] = useState(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -292,23 +297,33 @@ export default function SensorStations() {
   }
 
   async function toggleStation(station) {
+    if (workingStationId) return;
+    setWorkingStationId(station.id);
     try {
       await updateStationStatus(station.id, !station.is_active);
       setMessage(station.is_active ? "Sensor station deactivated." : "Sensor station activated.");
       await load();
     } catch (err) {
       setError(backendError(err, "Could not update station status."));
+    } finally {
+      setWorkingStationId(null);
     }
   }
 
-  async function removeStation(station) {
-    if (!window.confirm("Delete this station? Stations with readings must be deactivated instead.")) return;
+  async function confirmDeleteStation() {
+    const station = stationToDelete;
+    if (!station) return;
+    setWorkingStationId(station.id);
     try {
       await deleteStation(station.id);
       setMessage("Sensor station deleted.");
       await load();
     } catch (err) {
       setError(backendError(err, "Could not delete sensor station."));
+    }
+    finally {
+      setWorkingStationId(null);
+      setStationToDelete(null);
     }
   }
 
@@ -320,10 +335,12 @@ export default function SensorStations() {
             <h1 className="text-3xl font-black tracking-tight text-ink-primary">Sensor Stations</h1>
             <p className="mt-2 text-ink-secondary">Create and maintain the monitoring stations used by Field Officer operations.</p>
           </div>
-          <button type="button" onClick={openCreate} className="flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 font-bold text-white shadow-sm hover:bg-brand-gradientEnd"><Plus size={18} /> Add Sensor Station</button>
+          <Button onClick={openCreate} className="px-5 py-3 text-base"><Plus size={18} /> Add Sensor Station</Button>
         </div>
 
-        {message && <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">{message}</div>}
+        {!showForm ? <FeedbackMessage message={error} onDismiss={() => setError("")} /> : null}
+        <FeedbackMessage message={message} type="success" onDismiss={() => setMessage("")} />
+        {error && !showForm && !isLoading ? <Button variant="secondary" onClick={load} className="mb-6">Try again</Button> : null}
 
         {showForm && <div className="mb-8"><StationForm form={form} setForm={setForm} geography={geography} isGeographyLoading={!geography} editing={editing} isSaving={isSaving} error={error} onSubmit={handleSubmit} onCancel={closeForm} /></div>}
 
@@ -333,7 +350,7 @@ export default function SensorStations() {
           <div className="rounded-2xl border border-dashed border-blue-200 bg-white p-12 text-center shadow-sm">
             <h2 className="text-xl font-black text-blue-950">No sensor stations configured.</h2>
             <p className="mx-auto mt-3 max-w-lg text-slate-600">Create your first monitoring station to start collecting water-level telemetry.</p>
-            {!showForm && <button type="button" onClick={openCreate} className="mt-6 rounded-lg bg-brand px-5 py-3 font-bold text-white">Add Sensor Station</button>}
+            {!showForm && <Button onClick={openCreate} className="mt-6 px-5 py-3 text-base">Add Sensor Station</Button>}
           </div>
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
@@ -359,9 +376,9 @@ export default function SensorStations() {
                   <div className="rounded-lg bg-slate-50 p-3 text-sm"><p className="text-xs font-bold uppercase text-slate-500">Monitoring state</p><div className="mt-1 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-1 text-xs font-bold ${statusClass(station.status)}`}>{statusLabel(station.status)}</span><span className={`rounded-full px-2 py-1 text-xs font-bold ${freshnessClass(station.freshness)}`}>{freshnessLabel(station.freshness)}</span></div><p className="mt-2 text-xs text-slate-500">Trend: {trendLabel(station.trend)}</p></div>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => openEdit(station)} className="flex items-center gap-1.5 rounded-lg border border-ink-border px-3 py-2 text-sm font-semibold hover:border-brand hover:text-brand"><Edit3 size={15} /> Edit</button>
-                  <button type="button" onClick={() => toggleStation(station)} className="flex items-center gap-1.5 rounded-lg border border-ink-border px-3 py-2 text-sm font-semibold hover:border-brand hover:text-brand"><Power size={15} /> {station.is_active ? "Deactivate" : "Activate"}</button>
-                  <button type="button" onClick={() => removeStation(station)} className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"><Trash2 size={15} /> Delete</button>
+                  <Button variant="secondary" onClick={() => openEdit(station)} className="min-h-9 px-3 py-1.5"><Edit3 size={15} /> Edit</Button>
+                  <Button variant="secondary" onClick={() => toggleStation(station)} isLoading={workingStationId === station.id} loadingLabel={station.is_active ? "Deactivating..." : "Activating..."} className="min-h-9 min-w-[8rem] px-3 py-1.5"><Power size={15} /> {station.is_active ? "Deactivate" : "Activate"}</Button>
+                  <Button variant="danger" onClick={() => setStationToDelete(station)} disabled={Boolean(workingStationId)} className="min-h-9 px-3 py-1.5"><Trash2 size={15} /> Delete</Button>
                   <Link to={`/sensors/history?station=${encodeURIComponent(station.id)}`} className="ml-auto flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100"><Check size={15} /> View live history</Link>
                 </div>
               </article>
@@ -382,6 +399,17 @@ export default function SensorStations() {
             <p className="mt-3 text-xs font-semibold">Telemetry: Waiting for the first sensor reading.</p>
           )}
         </div>
+        <ConfirmDialog
+          open={Boolean(stationToDelete)}
+          title="Delete sensor station?"
+          description={stationToDelete ? `Delete ${stationToDelete.name}? Stations with saved readings should be deactivated instead.` : ""}
+          confirmLabel="Delete Station"
+          confirmingLabel="Deleting..."
+          onCancel={() => setStationToDelete(null)}
+          onConfirm={confirmDeleteStation}
+          isConfirming={workingStationId === stationToDelete?.id}
+          danger
+        />
       </section>
     </AdminLayout>
   );

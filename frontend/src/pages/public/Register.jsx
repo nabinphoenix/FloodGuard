@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { register } from "../../api/auth";
 import { getPublicGeography } from "../../api/public";
+import Button from "../../components/Button";
+import FeedbackMessage from "../../components/FeedbackMessage";
 import PasswordInput from "../../components/PasswordInput";
 import { backendError, validatePhone } from "../../utils/validation";
 
@@ -51,6 +53,7 @@ export default function Register() {
       ...current,
       [name]: "",
     }));
+    setError("");
   }
 
   function validateForm() {
@@ -133,11 +136,7 @@ export default function Register() {
           </p>
         </div>
 
-        {error && (
-          <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        <FeedbackMessage message={error} onDismiss={() => setError("")} />
 
         <form
           className="grid gap-5 md:grid-cols-2"
@@ -271,15 +270,7 @@ export default function Register() {
           </div>
 
           <div className="md:col-span-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-            >
-              {isSubmitting
-                ? "Creating account..."
-                : "Create account"}
-            </button>
+            <Button type="submit" isLoading={isSubmitting} loadingLabel="Creating account..." className="w-full rounded-md bg-blue-700 px-4 py-3 text-base hover:bg-blue-800">Create account</Button>
           </div>
         </form>
 

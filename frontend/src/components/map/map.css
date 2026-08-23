@@ -32,4 +32,12 @@
 
 .leaflet-popup-content {
   margin: 12px 14px;
+  max-width: min(280px, calc(100vw - 88px));
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 639px) {
+  .floodguard-map .leaflet-control {
+    max-width: calc(100vw - 48px);
+  }
 }

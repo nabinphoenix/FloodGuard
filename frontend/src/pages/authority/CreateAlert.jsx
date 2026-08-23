@@ -4,6 +4,7 @@ import { CheckCircle, AlertTriangle, ChevronDown, Mail } from "lucide-react";
 
 import { broadcastAlert, getAuthorityZones } from "../../api/authority";
 import AdminLayout from "../../components/AdminLayout";
+import Button from "../../components/Button";
 import CharacterCounter from "../../components/CharacterCounter";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
@@ -26,7 +27,9 @@ export default function CreateAlert() {
   const [messageId, setMessageId] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isZonesLoading, setIsZonesLoading] = useState(true);
   const [confirmation, setConfirmation] = useState(null);
+  const [confirmationError, setConfirmationError] = useState("");
 
   useEffect(() => {
     async function loadZones() {
@@ -38,6 +41,8 @@ export default function CreateAlert() {
         }
       } catch (err) {
         setError(err.response?.data?.detail || "Could not load alert zones.");
+      } finally {
+        setIsZonesLoading(false);
       }
     }
 
@@ -58,6 +63,7 @@ export default function CreateAlert() {
     event.preventDefault();
     setError("");
     setMessageId("");
+    setConfirmationError("");
     if (!formData.zone_id || formData.message.trim().length < 5 || formData.message.length > 2000) {
       setError("Select a zone and enter a message between 5 and 2000 characters.");
       return;
@@ -73,13 +79,14 @@ export default function CreateAlert() {
     if (!confirmation) return;
     setIsSubmitting(true);
     setError("");
+    setConfirmationError("");
     try {
       const result = await broadcastAlert(confirmation);
-      setMessageId(result.sns_message_id);
+      setMessageId(result.sns_message_id || "sent");
       setFormData((current) => ({ ...current, message: "" }));
       setConfirmation(null);
     } catch (err) {
-      setError(backendError(err, "Could not broadcast alert."));
+      setConfirmationError(backendError(err, "Could not broadcast alert."));
     } finally {
       setIsSubmitting(false);
     }
@@ -92,8 +99,8 @@ export default function CreateAlert() {
         <p className="mt-2 text-ink-secondary">Send an SNS flood alert and update the zone severity level immediately.</p>
       </div>
 
-      <FeedbackMessage message={error} />
-      <FeedbackMessage message={messageId ? "Alert broadcast successfully. SNS Message ID: " + messageId : ""} type="success" />
+      <FeedbackMessage message={error} onDismiss={() => setError("")} />
+      <FeedbackMessage message={messageId ? "Alert broadcast successfully." : ""} type="success" onDismiss={() => setMessageId("")} />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
         <form onSubmit={handleSubmit} className="rounded-xl border border-ink-border bg-surface-card p-8 shadow-sm">
@@ -104,8 +111,10 @@ export default function CreateAlert() {
               value={formData.zone_id}
               onChange={(event) => updateField("zone_id", event.target.value)}
               required
+              disabled={isZonesLoading || zones.length === 0}
               className="w-full rounded-lg border border-ink-border bg-white px-4 py-3.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 appearance-none font-medium text-ink-primary shadow-sm"
             >
+              <option value="">{isZonesLoading ? "Loading zones..." : zones.length ? "Select affected zone" : "No zones available"}</option>
               {zones.map((zone) => (
                 <option key={zone.id} value={zone.id}>{zone.name} — {zone.district}</option>
               ))}
@@ -161,13 +170,7 @@ export default function CreateAlert() {
             <CharacterCounter value={formData.message} maxLength={2000} minLength={5} />
           </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting || !formData.zone_id || formData.message.trim().length < 5}
-            className="mt-8 w-full rounded-xl bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-4 text-base font-bold text-white shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 transition-all"
-          >
-            {isSubmitting ? "Broadcasting Alert..." : "Broadcast Alert to Community"}
-          </button>
+          <Button type="submit" disabled={isSubmitting || !formData.zone_id || formData.message.trim().length < 5} className="mt-8 w-full rounded-xl px-4 py-4 text-base shadow-md hover:shadow-lg">Broadcast Alert to Community</Button>
         </form>
 
         <aside className="h-fit rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm sticky top-6">
@@ -220,15 +223,22 @@ export default function CreateAlert() {
         title="Broadcast this flood alert?"
         description="This will notify subscribed users through Amazon SNS and update the monitored zone status."
         confirmLabel="Broadcast Alert"
-        onCancel={() => setConfirmation(null)}
+        confirmingLabel="Broadcasting alert..."
+        onCancel={() => {
+          setConfirmation(null);
+          setConfirmationError("");
+        }}
         onConfirm={confirmBroadcast}
         isConfirming={isSubmitting}
       >
         {confirmation && (
-          <div className="space-y-2 rounded-lg bg-surface-bg p-3 text-sm text-ink-secondary">
+          <div className="space-y-3">
+            <FeedbackMessage message={confirmationError} />
+            <div className="space-y-2 rounded-lg bg-surface-bg p-3 text-sm text-ink-secondary">
             <p><span className="font-semibold text-ink-primary">Zone:</span> {selectedZone?.name || "Selected zone"}</p>
             <p><span className="font-semibold text-ink-primary">Severity:</span> {confirmation.alert_level.toUpperCase()}</p>
             <p><span className="font-semibold text-ink-primary">Message:</span> {confirmation.message}</p>
+            </div>
           </div>
         )}
       </ConfirmDialog>

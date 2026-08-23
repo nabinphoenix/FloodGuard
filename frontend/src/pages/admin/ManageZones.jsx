@@ -5,6 +5,7 @@ import { createZone, deleteZone, getZone, getZones, updateZone } from "../../api
 import AlertBadge from "../../components/AlertBadge";
 import AdminLayout from "../../components/AdminLayout";
 import AdminPagination from "../../components/AdminPagination";
+import Button from "../../components/Button";
 import LocationPicker from "../../components/map/LocationPicker";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -87,6 +88,12 @@ export default function ManageZones() {
     setFieldErrors((current) => ({ ...current, [name]: "" }));
     setError("");
     setMessage("");
+  }
+
+  function updateLocation({ latitude, longitude }) {
+    setFormData((current) => ({ ...current, latitude, longitude }));
+    setFieldErrors((current) => ({ ...current, latitude: "", longitude: "" }));
+    setError("");
   }
 
   function closeModal() {
@@ -191,19 +198,20 @@ export default function ManageZones() {
         <p className="mt-2 text-ink-secondary">Create, edit, activate, and deactivate FloodGuard operational zones.</p>
       </div>
 
-      <FeedbackMessage message={error} />
-      <FeedbackMessage message={message} type="success" />
+      <FeedbackMessage message={error} onDismiss={() => setError("")} />
+      <FeedbackMessage message={message} type="success" onDismiss={() => setMessage("")} />
+      {error && !isLoading ? <Button variant="secondary" onClick={loadZones} className="mb-6">Try again</Button> : null}
 
       <div className="grid gap-8 lg:grid-cols-[400px_1fr]">
         <aside>
-          <form onSubmit={handleCreate} className="sticky top-6 rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm">
+          <form onSubmit={handleCreate} className="rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm lg:sticky lg:top-6">
             <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-ink-primary"><PlusCircle className="text-brand" size={20} />Add New Zone</h2>
             <div className="space-y-5">
               <label className="block text-sm font-bold text-ink-primary">Zone Name<input value={formData.name} onChange={(event) => updateField("name", event.target.value)} required minLength="2" className="mt-1.5 w-full rounded-lg border border-ink-border px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" placeholder="e.g. Narayani River Flood Zone" />{fieldErrors.name && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.name}</span>}</label>
               <label className="block text-sm font-bold text-ink-primary">District Name<input value={formData.district} onChange={(event) => updateField("district", event.target.value)} required minLength="2" className="mt-1.5 w-full rounded-lg border border-ink-border px-4 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" placeholder="e.g. Chitwan" />{fieldErrors.district && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.district}</span>}</label>
               <label className="block text-sm font-bold capitalize text-ink-primary">Initial Alert Level<select value={formData.alert_level} onChange={(event) => updateField("alert_level", event.target.value)} className="mt-1.5 w-full rounded-lg border border-ink-border bg-white px-4 py-2.5 capitalize outline-none focus:border-brand focus:ring-2 focus:ring-brand/20">{levels.map((level) => <option key={level} value={level}>{level}</option>)}</select></label>
               <label className="flex items-center gap-3 text-sm font-bold text-ink-primary"><input type="checkbox" checked={formData.is_active} onChange={(event) => updateField("is_active", event.target.checked)} className="h-4 w-4 rounded border-ink-border text-brand focus:ring-brand" />Active and visible to citizens and authorities</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-bold text-ink-primary">Latitude
                   <input type="number" step="any" min="-90" max="90" value={formData.latitude} onChange={(event) => updateField("latitude", event.target.value)} required className="mt-1.5 w-full rounded-lg border border-ink-border px-3 py-2.5 font-mono text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
                   <span className="mt-1 block text-xs font-normal text-ink-secondary">Valid range: -90 to 90</span>
@@ -220,10 +228,10 @@ export default function ManageZones() {
               <LocationPicker
                 latitude={formData.latitude}
                 longitude={formData.longitude}
-                onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
+                onChange={updateLocation}
                 label="Zone location"
               />
-            </div>            <button type="submit" disabled={isSubmitting} className="mt-8 w-full rounded-lg bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-3 font-bold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Creating Zone..." : "Add Monitored Zone"}</button>
+            </div><Button type="submit" isLoading={isSubmitting} loadingLabel="Creating zone..." className="mt-8 w-full rounded-lg px-4 py-3 text-base shadow-md hover:shadow-lg">Add Monitored Zone</Button>
           </form>
         </aside>
 
@@ -238,7 +246,7 @@ export default function ManageZones() {
         </div>
       </div>
 
-      {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><h2 className="text-xl font-bold text-ink-primary">{modal === "view" ? "Zone details" : "Edit zone"}</h2><p className="mt-1 text-sm text-ink-secondary">{selectedZone?.name} · {selectedZone?.district}</p></div><button type="button" onClick={closeModal} className="rounded-lg p-2 text-ink-secondary hover:bg-slate-100"><X size={20} /></button></div>{modal === "view" && selectedZone && <div className="grid gap-4 sm:grid-cols-2"><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Zone name</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.name}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">District</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.district}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Visibility</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.is_active ? "Active" : "Inactive"}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Alert level</p><div className="mt-2"><AlertBadge level={selectedZone.alert_level} /></div></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Coordinates</p><p className="mt-1 font-mono text-sm text-ink-primary">{selectedZone.latitude}, {selectedZone.longitude}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Last updated</p><p className="mt-1 text-sm text-ink-primary">{selectedZone.updated_at ? formatKathmanduDateTime(selectedZone.updated_at) : "Never"}</p></div></div>}{modal === "edit" && <form onSubmit={handleEdit} className="space-y-4"><label className="block text-sm font-semibold text-ink-primary">Zone name<input required minLength="2" value={formData.name} onChange={(event) => updateField("name", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />{fieldErrors.name && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.name}</span>}</label><label className="block text-sm font-semibold text-ink-primary">District<input required minLength="2" value={formData.district} onChange={(event) => updateField("district", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />{fieldErrors.district && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.district}</span>}</label><label className="block text-sm font-semibold capitalize text-ink-primary">Alert level<select value={formData.alert_level} onChange={(event) => updateField("alert_level", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border bg-white px-4 py-3 capitalize outline-none focus:border-brand focus:ring-2 focus:ring-brand/20">{levels.map((level) => <option key={level} value={level}>{level}</option>)}</select></label><label className="flex items-center gap-3 text-sm font-semibold text-ink-primary"><input type="checkbox" checked={formData.is_active} onChange={(event) => updateField("is_active", event.target.checked)} className="h-4 w-4 rounded border-ink-border text-brand focus:ring-brand" />Active and visible to citizens and authorities</label><div className="grid grid-cols-2 gap-4">
+      {modal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true"><div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-6 flex items-start justify-between"><div><h2 className="text-xl font-bold text-ink-primary">{modal === "view" ? "Zone details" : "Edit zone"}</h2><p className="mt-1 text-sm text-ink-secondary">{selectedZone?.name} · {selectedZone?.district}</p></div><button type="button" onClick={closeModal} className="rounded-lg p-2 text-ink-secondary hover:bg-slate-100" aria-label="Close zone dialog"><X size={20} /></button></div>{modal === "view" && selectedZone && <div className="grid gap-4 sm:grid-cols-2"><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Zone name</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.name}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">District</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.district}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Visibility</p><p className="mt-1 font-semibold text-ink-primary">{selectedZone.is_active ? "Active" : "Inactive"}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Alert level</p><div className="mt-2"><AlertBadge level={selectedZone.alert_level} /></div></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Coordinates</p><p className="mt-1 font-mono text-sm text-ink-primary">{selectedZone.latitude}, {selectedZone.longitude}</p></div><div className="rounded-xl border border-ink-border bg-surface-bg p-4"><p className="text-xs font-semibold uppercase text-ink-secondary">Last updated</p><p className="mt-1 text-sm text-ink-primary">{selectedZone.updated_at ? formatKathmanduDateTime(selectedZone.updated_at) : "Never"}</p></div></div>}{modal === "edit" && <form onSubmit={handleEdit} className="space-y-4"><label className="block text-sm font-semibold text-ink-primary">Zone name<input required minLength="2" value={formData.name} onChange={(event) => updateField("name", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />{fieldErrors.name && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.name}</span>}</label><label className="block text-sm font-semibold text-ink-primary">District<input required minLength="2" value={formData.district} onChange={(event) => updateField("district", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />{fieldErrors.district && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.district}</span>}</label><label className="block text-sm font-semibold capitalize text-ink-primary">Alert level<select value={formData.alert_level} onChange={(event) => updateField("alert_level", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border bg-white px-4 py-3 capitalize outline-none focus:border-brand focus:ring-2 focus:ring-brand/20">{levels.map((level) => <option key={level} value={level}>{level}</option>)}</select></label><label className="flex items-center gap-3 text-sm font-semibold text-ink-primary"><input type="checkbox" checked={formData.is_active} onChange={(event) => updateField("is_active", event.target.checked)} className="h-4 w-4 rounded border-ink-border text-brand focus:ring-brand" />Active and visible to citizens and authorities</label><div className="grid gap-4 sm:grid-cols-2">
   <label className="text-sm font-semibold text-ink-primary">Latitude
     <input required type="number" step="any" min="-90" max="90" value={formData.latitude} onChange={(event) => updateField("latitude", event.target.value)} className="mt-2 w-full rounded-lg border border-ink-border px-4 py-3 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
     <span className="mt-1 block text-xs font-normal text-ink-secondary">Valid range: -90 to 90</span>
@@ -249,7 +257,7 @@ export default function ManageZones() {
     <span className="mt-1 block text-xs font-normal text-ink-secondary">Valid range: -180 to 180</span>
     {fieldErrors.longitude && <span className="mt-1 block text-xs font-normal text-red-600">{fieldErrors.longitude}</span>}
   </label>
-</div><div className="mt-5"><LocationPicker latitude={formData.latitude} longitude={formData.longitude} onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))} label="Zone location" /></div><button disabled={isSubmitting} className="w-full rounded-lg bg-brand px-4 py-3 font-bold text-white disabled:opacity-60">{isSubmitting ? "Saving..." : "Save changes"}</button></form>}</div></div>}
+</div><div className="mt-5"><LocationPicker latitude={formData.latitude} longitude={formData.longitude} onChange={updateLocation} label="Zone location" /></div><Button type="submit" isLoading={isSubmitting} loadingLabel="Saving changes..." className="w-full">Save changes</Button></form>}</div></div>}
       <ConfirmDialog
         open={Boolean(confirmation)}
         title="Delete monitored zone?"

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Star } from "lucide-react";
 
 import { getPublicGeography, getReportZones } from "../../api/public";
 import { getMyReports, submitReport, updateReport } from "../../api/reports";
 import CharacterCounter from "../../components/CharacterCounter";
+import Button from "../../components/Button";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import LocationPicker from "../../components/map/LocationPicker";
@@ -173,15 +174,21 @@ export default function SubmitReport() {
     setError("");
   }
 
+  function updateLocation({ latitude, longitude }) {
+    setFormData((current) => ({ ...current, latitude, longitude }));
+    setFieldErrors((current) => ({ ...current, latitude: "", longitude: "" }));
+    setError("");
+  }
+
   function handlePhotoChange(event) {
     const file = event.target.files?.[0] || null;
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
 
     if (file && !file.type.startsWith("image/")) {
-      setError("Please select a valid image file.");
       updateField("photo", null);
       setPreviewUrl("");
+      setError("Please select a valid image file.");
       return;
     }
 
@@ -262,12 +269,10 @@ export default function SubmitReport() {
         </div>
 
         <FeedbackMessage message={error} />
-        <FeedbackMessage
-          message={confirmation ? (isEditMode ? "Report updated successfully. It is pending review again." : "Report submitted successfully. Your report ID is #" + confirmation.id + ".") : ""}
-          type="success"
-        />
+        <FeedbackMessage message={confirmation ? (isEditMode ? "Report updated successfully. It is pending review again." : "Report submitted successfully. Your report ID is #" + confirmation.id + ".") : ""} type="success" />
+        {confirmation ? <div className="-mt-3 mb-6 flex flex-wrap gap-3"><Link to="/reports/my" className="text-sm font-semibold text-brand hover:underline">View my reports</Link>{!isEditMode ? <a href="#report-form" className="text-sm font-semibold text-brand hover:underline">Submit another report</a> : null}</div> : null}
 
-        <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
+        <form id="report-form" onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
           <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/60 p-5">
             <div className="mb-5">
               <h2 className="text-lg font-bold text-blue-950">Report location</h2>
@@ -314,12 +319,12 @@ export default function SubmitReport() {
                 <select
                   value={formData.zone_id}
                   onChange={(event) => updateField("zone_id", event.target.value)}
-                  disabled={!formData.province || isZonesLoading}
+                  disabled={!formData.district || isZonesLoading}
                   required
                   className="mt-2 w-full rounded-md border border-blue-200 bg-white px-4 py-3 text-blue-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100"
                 >
                   <option value="">
-                    {isZonesLoading ? "Loading zones..." : zones.length ? "Select zone" : "No FloodGuard zones configured for this province."}
+                    {isZonesLoading ? "Loading zones..." : !formData.district ? "Select district first" : zones.length ? "Select zone" : "No FloodGuard zones configured for this province."}
                   </option>
                   {zones.map((zone) => (
                     <option key={zone.id} value={zone.id}>{zone.name || zone.district} ({zone.district})</option>
@@ -382,7 +387,7 @@ export default function SubmitReport() {
               latitude={formData.latitude}
               longitude={formData.longitude}
               zones={selectedZone ? [selectedZone] : []}
-              onChange={({ latitude, longitude }) => setFormData((current) => ({ ...current, latitude, longitude }))}
+              onChange={updateLocation}
               label="Location *"
             />
           </div>
@@ -456,13 +461,9 @@ export default function SubmitReport() {
           )}
 
           <div className="md:col-span-2">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="w-full rounded-md bg-blue-700 px-4 py-3 font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300"
-            >
-              {isSubmitting ? (isEditMode ? "Updating report..." : "Submitting report...") : (isEditMode ? "Update report" : "Submit report")}
-            </button>
+            <Button type="submit" disabled={!canSubmit} isLoading={isSubmitting} loadingLabel={isEditMode ? "Updating report..." : "Submitting report..."} className="w-full rounded-md bg-blue-700 px-4 py-3 text-base hover:bg-blue-800">
+              {isEditMode ? "Update report" : "Submit report"}
+            </Button>
           </div>
         </form>
       </section>

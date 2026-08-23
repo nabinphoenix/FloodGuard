@@ -8,6 +8,7 @@ import AdminLayout from "../../components/AdminLayout";
 import FloodGuardMap from "../../components/map/FloodGuardMap";
 import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import CharacterCounter from "../../components/CharacterCounter";
+import Button from "../../components/Button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError } from "../../utils/validation";
@@ -28,10 +29,11 @@ export default function ManageReports() {
   const [statusFilter, setStatusFilter] = useState("pending");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
   const [rejectingReport, setRejectingReport] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
 
   async function loadReports() {
@@ -53,12 +55,17 @@ export default function ManageReports() {
   }, [statusFilter]);
 
   async function handleApprove(reportId) {
+    const report = reports.find((item) => item.id === reportId);
+    if (!report || report.status !== "pending" || processingId) return;
+
     setProcessingId(reportId);
     setError("");
+    setMessage("");
 
     try {
       const updated = await approveReport(reportId);
       setReports((current) => current.map((report) => (report.id === reportId ? updated : report)));
+      setMessage("Report approved successfully.");
     } catch (err) {
       setError(err.response?.data?.detail || "Could not approve report.");
     } finally {
@@ -70,6 +77,7 @@ export default function ManageReports() {
     setError("");
     setMessage("");
     setRejectionReason("");
+    setRejectionError("");
     setRejectingReport(report);
   }
 
@@ -77,13 +85,14 @@ export default function ManageReports() {
     if (!rejectingReport) return;
     const reason = rejectionReason.trim();
     if (reason.length < 3 || reason.length > 1000) {
-      setError("Rejection reason must be between 3 and 1000 characters.");
+      setRejectionError("Rejection reason must be between 3 and 1000 characters.");
       return;
     }
 
     setProcessingId(rejectingReport.id);
     setError("");
     setMessage("");
+    setRejectionError("");
     try {
       const updated = await rejectReport(rejectingReport.id, reason);
       setReports((current) => current.map((report) => (report.id === rejectingReport.id ? updated : report)));
@@ -106,7 +115,7 @@ export default function ManageReports() {
         </div>
         
         {/* Filter Tabs */}
-        <div className="flex bg-gray-100 p-1 rounded-xl shadow-inner self-start md:self-auto">
+        <div className="flex max-w-full overflow-x-auto rounded-xl bg-gray-100 p-1 shadow-inner self-start md:self-auto" aria-label="Report status filter">
           {statuses.map((status) => (
             <button
               key={status}
@@ -123,8 +132,9 @@ export default function ManageReports() {
         </div>
       </div>
 
-      <FeedbackMessage message={error} />
+      <FeedbackMessage message={error} onDismiss={() => setError("")} />
       <FeedbackMessage message={message} type="success" />
+      {error && !isLoading ? <Button variant="secondary" onClick={loadReports} className="mb-6">Try again</Button> : null}
 
       {selectedReport ? (
         <section className="mb-6 rounded-xl border border-brand/20 bg-white p-5 shadow-sm">
@@ -153,7 +163,7 @@ export default function ManageReports() {
       ) : null}
       <section className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-ink-border text-sm">
+          <table className="min-w-[960px] w-full divide-y divide-ink-border text-sm">
             <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
               <tr>
                 <th className="px-6 py-4">ID</th>
@@ -167,7 +177,10 @@ export default function ManageReports() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-border bg-white">
-              {reports.map((report) => (
+              {reports.map((report) => {
+                const isPending = report.status === "pending";
+                const isProcessing = processingId === report.id;
+                return (
                 <tr key={report.id} className="align-middle hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 font-semibold text-ink-primary whitespace-nowrap">#{report.id}</td>
                   <td className="px-6 py-4">
@@ -211,29 +224,33 @@ export default function ManageReports() {
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{report.submitted_by}</td>
                   <td className="px-6 py-4 text-ink-secondary whitespace-nowrap">{formatDate(report.created_at)}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex justify-end gap-3">                      <button type="button" onClick={() => setSelectedReport(report)} disabled={!reportHasNepalLocation(report)} className="rounded-lg border border-brand/30 px-3 py-2 text-sm font-semibold text-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:opacity-40">Map</button>
-                      <button
-                        type="button"
+                    <div className="flex justify-end gap-2">                      <Button variant="outline" onClick={() => setSelectedReport(report)} disabled={!reportHasNepalLocation(report)} className="min-h-9 px-3 py-1.5">View map</Button>
+                      {isPending ? <Button
                         onClick={() => handleApprove(report.id)}
-                        disabled={processingId === report.id || report.status === "approved"}
-                        className="flex items-center gap-1.5 rounded-lg bg-flood-safe px-4 py-2 text-sm font-semibold text-white hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50 transition-colors shadow-sm"
+                        isLoading={isProcessing}
+                        loadingLabel="Approving..."
+                        variant="success"
+                        className="min-h-9 min-w-[7.5rem] px-3 py-1.5"
                       >
                         <CheckCircle size={16} />
                         Approve
-                      </button>
-                      <button
+                      </Button> : null}
+                      {isPending ? <Button
                         type="button"
                         onClick={() => requestReject(report)}
-                        disabled={processingId === report.id || report.status === "rejected"}
-                        className="flex items-center gap-1.5 rounded-lg bg-flood-emergency px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 transition-colors shadow-sm"
+                        disabled={isProcessing}
+                        variant="danger"
+                        className="min-h-9 px-3 py-1.5"
                       >
                         <XCircle size={16} />
                         Reject
-                      </button>
+                      </Button> : null}
+                      {!isPending ? <span className="text-xs font-semibold text-ink-secondary">No further action</span> : null}
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
               {reports.length === 0 && (
                 <tr>
                   <td colSpan="8" className="px-6 py-16 text-center text-ink-secondary">
@@ -258,7 +275,11 @@ export default function ManageReports() {
         title="Reject report?"
         description={rejectingReport ? "Provide a reason before rejecting report #" + rejectingReport.id + "." : ""}
         confirmLabel="Reject Report"
-        onCancel={() => setRejectingReport(null)}
+        confirmingLabel="Rejecting..."
+        onCancel={() => {
+          setRejectingReport(null);
+          setRejectionError("");
+        }}
         onConfirm={confirmReject}
         isConfirming={processingId === rejectingReport?.id}
         danger
@@ -267,13 +288,17 @@ export default function ManageReports() {
           Rejection reason
           <textarea
             value={rejectionReason}
-            onChange={(event) => setRejectionReason(event.target.value)}
+            onChange={(event) => {
+              setRejectionReason(event.target.value);
+              setRejectionError("");
+            }}
             maxLength={1000}
             rows={4}
             className="mt-2 w-full rounded-lg border border-ink-border px-3 py-2.5 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             placeholder="Explain why this report is being rejected."
           />
           <CharacterCounter value={rejectionReason} maxLength={1000} minLength={3} />
+          {rejectionError ? <p className="mt-2 text-xs font-medium text-red-700" role="alert">{rejectionError}</p> : null}
         </label>
       </ConfirmDialog>
     </AdminLayout>

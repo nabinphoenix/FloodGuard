@@ -13,6 +13,8 @@ import { Line } from "react-chartjs-2";
 
 import { generateSimulatorReading, getStationHistory, getStations } from "../../api/sensors";
 import AdminLayout from "../../components/AdminLayout";
+import Button from "../../components/Button";
+import FeedbackMessage from "../../components/FeedbackMessage";
 import { formatReadingAge, freshnessClass, freshnessLabel } from "../../utils/sensorMonitoring";
 import {
   READER_DURATION_OPTIONS,
@@ -243,8 +245,9 @@ export default function SensorReader() {
           <p className="mt-2 text-ink-secondary">Generate one controlled reading at a time through FloodGuard’s protected backend and sensor event pipeline.</p>
         </div>
 
-        {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-        {message && <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{message}</div>}
+        <FeedbackMessage message={error} onDismiss={() => setError("")} />
+        <FeedbackMessage message={message} type="success" onDismiss={() => setMessage("")} />
+        {isLoading ? <div className="mb-6 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-800" role="status">Loading active sensor stations...</div> : null}
 
         <article className="rounded-2xl border border-sky-200 bg-sky-50 p-5 shadow-sm">
           <div className="grid gap-4 lg:grid-cols-4">
@@ -271,8 +274,8 @@ export default function SensorReader() {
             </label>
           </div>
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <button type="button" onClick={startReader} disabled={controls.startDisabled} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"><Play size={16} /> {isSending && !isRunning ? "Starting..." : "Start Reading"}</button>
-            <button type="button" onClick={stopReader} disabled={controls.stopDisabled} className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"><Square size={15} /> Stop</button>
+            <Button variant="success" onClick={startReader} disabled={controls.startDisabled} isLoading={isSending && !isRunning} loadingLabel="Starting..."><Play size={16} /> Start Reading</Button>
+            <Button variant="danger" onClick={stopReader} disabled={controls.stopDisabled}><Square size={15} /> Stop</Button>
             <span className={`rounded-full px-3 py-1.5 text-xs font-black ${isRunning ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>Simulation: {isRunning ? "RUNNING" : "STOPPED"}</span>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

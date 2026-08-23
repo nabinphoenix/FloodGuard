@@ -22,6 +22,7 @@ import {
 } from "../../api/admin";
 import AdminLayout from "../../components/AdminLayout";
 import AdminPagination from "../../components/AdminPagination";
+import Button from "../../components/Button";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import { backendError, validatePhone } from "../../utils/validation";
@@ -63,6 +64,8 @@ export default function ManageUsers() {
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmation, setConfirmation] = useState(null);
+  const [roleChange, setRoleChange] = useState(null);
+  const [roleChangeError, setRoleChangeError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   async function loadUsers() {
@@ -194,15 +197,23 @@ export default function ManageUsers() {
       setIsSaving(false);
     }
   }
-  async function handleRoleChange(userId, role) {
-    setWorkingId(userId);
+  function requestRoleChange(user, role) {
+    if (role === user.role) return;
+    setRoleChange({ user, role });
+    setRoleChangeError("");
+  }
+
+  async function confirmRoleChange() {
+    if (!roleChange) return;
+    setWorkingId(roleChange.user.id);
     setError("");
     setMessage("");
     try {
-      replaceUser(await updateUserRole(userId, role));
+      replaceUser(await updateUserRole(roleChange.user.id, roleChange.role));
       setMessage("User role updated successfully.");
+      setRoleChange(null);
     } catch (err) {
-      setError(backendError(err, "Could not update user role."));
+      setRoleChangeError(backendError(err, "Could not update user role."));
       await loadUsers();
     } finally {
       setWorkingId(null);
@@ -254,9 +265,9 @@ export default function ManageUsers() {
           <h1 className="text-3xl font-bold tracking-tight text-ink-primary">Manage System Users</h1>
           <p className="mt-2 text-ink-secondary">Create accounts, manage roles, and protect historical records.</p>
         </div>
-        <button type="button" onClick={openCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-gradientEnd px-4 py-3 font-bold text-white shadow-md transition hover:shadow-lg">
+        <Button onClick={openCreate} className="rounded-xl px-4 py-3 text-base shadow-md hover:shadow-lg">
           <Plus size={18} /> Add User
-        </button>
+        </Button>
       </div>
 
       <div className="mb-8 flex flex-col gap-4 md:flex-row">
@@ -278,7 +289,7 @@ export default function ManageUsers() {
 
       <div className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-ink-border text-sm">
+          <table className="min-w-[920px] w-full divide-y divide-ink-border text-sm">
             <thead className="bg-surface-bg text-left text-xs font-semibold uppercase tracking-wider text-ink-secondary">
               <tr><th className="px-6 py-4">User Details</th><th className="px-6 py-4">Location</th><th className="px-6 py-4">Email Alerts</th><th className="px-6 py-4">Joined</th><th className="px-6 py-4">Role</th><th className="px-6 py-4 text-right">Actions</th></tr>
             </thead>
@@ -293,8 +304,8 @@ export default function ManageUsers() {
                   <td className="px-6 py-4"><div className="flex items-center gap-1.5 font-medium text-ink-primary"><MapPin size={16} className="text-brand opacity-70" />{user.district || <span className="italic text-ink-secondary">Not set</span>}</div></td>
                   <td className="px-6 py-4"><span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${user.email_alert_status === "confirmed" ? "bg-green-100 text-green-800" : user.email_alert_status === "pending" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-600"}`}>{user.email_alert_status === "confirmed" ? "Confirmed" : user.email_alert_status === "pending" ? "Pending" : "Disabled"}</span></td>
                   <td className="px-6 py-4 font-medium text-ink-secondary">{formatDate(user.created_at)}</td>
-                  <td className="px-6 py-4"><select value={user.role} disabled={workingId === user.id} onChange={(event) => handleRoleChange(user.id, event.target.value)} className="rounded-lg border border-ink-border bg-white px-3 py-1.5 text-sm font-semibold capitalize shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50">{roles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></td>
-                  <td className="px-6 py-4"><div className="flex justify-end gap-1"><button type="button" title="View user" onClick={() => openView(user)} className="rounded-lg p-2 text-brand hover:bg-brand/10"><Eye size={17} /></button><button type="button" title="Edit user" onClick={() => openEdit(user)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Pencil size={17} /></button><button type="button" title="Reset password" onClick={() => openReset(user)} className="rounded-lg p-2 text-amber-700 hover:bg-amber-50"><KeyRound size={17} /></button><button type="button" title="Delete user" disabled={workingId === user.id} onClick={() => requestDelete(user)} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={17} /></button></div></td>
+                  <td className="px-6 py-4"><select value={user.role} disabled={workingId === user.id} onChange={(event) => requestRoleChange(user, event.target.value)} aria-label={`Change role for ${user.name}`} className="rounded-lg border border-ink-border bg-white px-3 py-1.5 text-sm font-semibold capitalize shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-50">{roles.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></td>
+                  <td className="px-6 py-4"><div className="flex justify-end gap-1"><button type="button" title="View user" aria-label={`View ${user.name}`} onClick={() => openView(user)} className="rounded-lg p-2 text-brand hover:bg-brand/10"><Eye size={17} /></button><button type="button" title="Edit user" aria-label={`Edit ${user.name}`} onClick={() => openEdit(user)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"><Pencil size={17} /></button><button type="button" title="Reset password" aria-label={`Reset password for ${user.name}`} onClick={() => openReset(user)} className="rounded-lg p-2 text-amber-700 hover:bg-amber-50"><KeyRound size={17} /></button><button type="button" title="Delete user" aria-label={`Delete ${user.name}`} disabled={workingId === user.id} onClick={() => requestDelete(user)} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={17} /></button></div></td>
                 </tr>
               ))}
             </tbody>
@@ -321,6 +332,18 @@ export default function ManageUsers() {
         </div>
       )}
       <ConfirmDialog open={Boolean(confirmation)} title="Delete user?" description={confirmation ? `Are you sure you want to delete ${confirmation.name}? This action cannot be undone.` : ""} confirmLabel="Delete User" onCancel={() => setConfirmation(null)} onConfirm={confirmDelete} isConfirming={workingId === confirmation?.id} danger />
+      <ConfirmDialog
+        open={Boolean(roleChange)}
+        title="Change user role?"
+        description={roleChange ? `Change ${roleChange.user.name}'s role from ${roleLabel(roleChange.user.role)} to ${roleLabel(roleChange.role)}?` : ""}
+        confirmLabel="Change Role"
+        confirmingLabel="Changing role..."
+        onCancel={() => { setRoleChange(null); setRoleChangeError(""); }}
+        onConfirm={confirmRoleChange}
+        isConfirming={workingId === roleChange?.user.id}
+      >
+        <FeedbackMessage message={roleChangeError} />
+      </ConfirmDialog>
     </AdminLayout>
   );
 }

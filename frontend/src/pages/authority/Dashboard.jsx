@@ -96,7 +96,7 @@ export default function Dashboard() {
               <h3 className="text-lg font-bold text-ink-primary">Recent Alerts</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-ink-border text-sm">
+              <table className="min-w-[720px] w-full divide-y divide-ink-border text-sm">
                 <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
                   <tr>
                     <th className="px-6 py-4">District</th>
