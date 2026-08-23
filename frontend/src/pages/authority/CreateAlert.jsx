@@ -102,8 +102,8 @@ export default function CreateAlert() {
       <FeedbackMessage message={error} onDismiss={() => setError("")} />
       <FeedbackMessage message={messageId ? "Alert broadcast successfully." : ""} type="success" onDismiss={() => setMessageId("")} />
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_400px]">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-ink-border bg-surface-card p-8 shadow-sm">
+      <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
+        <form onSubmit={handleSubmit} className="min-w-0 rounded-xl border border-ink-border bg-surface-card p-8 shadow-sm">
           <label htmlFor="zone" className="block text-sm font-bold text-ink-primary">Select Affected Zone</label>
           <div className="mt-2 relative">
             <select
@@ -173,7 +173,7 @@ export default function CreateAlert() {
           <Button type="submit" disabled={isSubmitting || !formData.zone_id || formData.message.trim().length < 5} className="mt-8 w-full rounded-xl px-4 py-4 text-base shadow-md hover:shadow-lg">Broadcast Alert to Community</Button>
         </form>
 
-        <aside className="h-fit rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm sticky top-6">
+        <aside className="h-fit min-w-0 rounded-xl border border-ink-border bg-surface-card p-6 shadow-sm sticky top-6">
           <h2 className="font-bold text-ink-primary flex items-center gap-2">
             <Mail size={20} className="text-brand" aria-hidden="true" />
             SNS Email Preview

@@ -55,7 +55,7 @@ export default function Dashboard() {
           <h2 className="text-3xl font-bold text-ink-primary tracking-tight">Dashboard Overview</h2>
           <p className="mt-2 text-ink-secondary">Monitor reports, users, and active flood alerts.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link
             to="/authority/reports"
             className="rounded-lg border-2 border-brand px-6 py-2.5 text-sm font-semibold text-brand hover:bg-brand/5 transition-colors"
@@ -86,16 +86,16 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
+          <div className="grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-2">
             <StatCard label="Pending Approval" value={dashboard?.pending_reports ?? 0} icon={Activity} colorClass="from-orange-400 to-orange-500" />
             <StatCard label="Active Alerts" value={dashboard?.active_alerts ?? 0} icon={AlertTriangle} colorClass="from-red-500 to-red-600" />
           </div>
 
-          <section className="mt-10 rounded-xl border border-ink-border bg-surface-card shadow-sm overflow-hidden">
+          <section className="mt-10 min-w-0 rounded-xl border border-ink-border bg-surface-card shadow-sm overflow-hidden">
             <div className="border-b border-ink-border px-6 py-5 bg-gray-50/50">
               <h3 className="text-lg font-bold text-ink-primary">Recent Alerts</h3>
             </div>
-            <div className="overflow-x-auto">
+            <div className="min-w-0 overflow-x-auto">
               <table className="min-w-[720px] w-full divide-y divide-ink-border text-sm">
                 <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
                   <tr>

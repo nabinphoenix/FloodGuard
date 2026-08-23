@@ -161,8 +161,8 @@ export default function ManageReports() {
           )}
         </section>
       ) : null}
-      <section className="overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
-        <div className="overflow-x-auto">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-ink-border bg-surface-card shadow-sm">
+        <div className="min-w-0 overflow-x-auto">
           <table className="min-w-[960px] w-full divide-y divide-ink-border text-sm">
             <thead className="bg-surface-bg text-left text-xs uppercase tracking-wider text-ink-secondary font-semibold">
               <tr>
