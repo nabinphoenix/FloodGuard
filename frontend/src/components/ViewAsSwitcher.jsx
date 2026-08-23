@@ -20,7 +20,7 @@ export default function ViewAsSwitcher({ value, variant = "dark" }) {
   }
 
   return (
-    <label className={isLightVariant ? "block text-xs font-bold uppercase tracking-[0.14em] text-blue-800" : "block text-xs font-bold uppercase tracking-[0.14em] text-white/70"}>
+    <label className={isLightVariant ? "admin-view-switcher--light block text-xs font-bold uppercase tracking-[0.14em] text-blue-800" : "block text-xs font-bold uppercase tracking-[0.14em] text-white/70"}>
       <span className="mb-2 flex items-center gap-2"><Eye size={14} /> View as</span>
       <select
         value={selectedView}

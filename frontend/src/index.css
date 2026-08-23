@@ -25,6 +25,20 @@ textarea {
   font: inherit;
 }
 
+.admin-view-switcher--light {
+  color: #1e3a8a !important;
+}
+
+.admin-view-switcher--light select {
+  color: #172554 !important;
+  background-color: #ffffff !important;
+}
+
+.admin-view-switcher--light option {
+  color: #172554 !important;
+  background-color: #ffffff !important;
+}
+
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
