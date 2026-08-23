@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     database_url: str = Field(..., alias="DATABASE_URL")
     secret_key: str = Field(..., alias="SECRET_KEY")
     sensor_ingestion_token: str = Field("", alias="SENSOR_INGESTION_TOKEN")
+    sensor_simulator_rule_name: str = Field(
+        "FloodGuard-Sensor-Simulator-Every-Minute",
+        alias="SENSOR_SIMULATOR_RULE_NAME",
+    )
     aws_region: str = Field(..., alias="AWS_REGION")
 
     s3_bucket_name: str = Field(..., alias="S3_BUCKET_NAME")

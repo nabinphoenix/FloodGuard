@@ -86,25 +86,19 @@ remain `Official FloodGuard Early Warning Alert`.
 
 4. Set thresholds, for example Watch 2.50 m, Warning 3.50 m, Emergency
    4.50 m.
-5. Run the real API simulator from the repository root:
-
-       $env:FLOODGUARD_EMAIL = "field-officer@example.com"
-       python scripts/simulate_water_level.py --api-url http://localhost:8000 --station STN001 --interval 5 --count 11
-
-   The password is prompted securely. For a local-only demonstration it may
-   also be supplied through `FLOODGUARD_PASSWORD`; do not commit it.
+5. Open Field Officer -> Dashboard -> Sensor Simulation Control, then select
+   **Start Simulation**. The protected backend enables the existing
+   `FloodGuard-Sensor-Simulator-Every-Minute` EventBridge rule; no AWS
+   credential is sent to the browser.
 6. Watch `/sensors`, `/sensors/live`, `/sensors/history`,
    `/sensors/thresholds`, and `/sensors/health`.
-7. The default `--scenario cycle` sends SAFE, WATCH, WARNING and EMERGENCY
-   values derived from the station's actual thresholds. Use a fixed state when
-   needed:
 
-       python scripts/simulate_water_level.py --api-url http://localhost:8000 --station STN001 --state warning --count 5
+## Local developer simulator option
 
-The simulator logs in through `/api/auth/login`, retrieves the selected
-station's thresholds through the API, and submits real
-`POST /api/sensors/reading` requests. It never prints a JWT or credentials,
-and it exits cleanly with Ctrl+C.
+For local developer/testing only, `scripts/simulate_water_level.py` can still
+authenticate through `/api/auth/login`, read a station's thresholds, and submit
+real `POST /api/sensors/reading` requests. It is not part of the Field Officer
+website workflow.
 
 ## Sensor alerts and AWS services
 

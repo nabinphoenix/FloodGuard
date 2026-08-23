@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ControlFloodGuardSensorSimulatorSchedule",
+      "Effect": "Allow",
+      "Action": [
+        "events:DescribeRule",
+        "events:EnableRule",
+        "events:DisableRule"
+      ],
+      "Resource": "arn:aws:events:us-east-1:048566646797:rule/FloodGuard-Sensor-Simulator-Every-Minute"
+    }
+  ]
+}

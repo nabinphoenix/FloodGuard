@@ -125,9 +125,20 @@ aws lambda invoke --function-name FloodGuard-Sensor-Simulator response.json
 
 ## Enable or disable the cloud demonstration
 
-Preferred application-level control: update the Lambda environment variable
-`SIMULATOR_ENABLED` to `true` or `false`, keeping the EventBridge rule in
-place. A disabled invocation logs `Simulator disabled` and sends no request.
+The Field Officer dashboard controls the existing EventBridge rule through
+protected FastAPI endpoints. Attach
+`simulator-control-policy.json` to the Elastic Beanstalk application instance
+role. It grants only `events:DescribeRule`, `events:EnableRule`, and
+`events:DisableRule` on
+`FloodGuard-Sensor-Simulator-Every-Minute`; no AWS credentials are sent to the
+browser or stored in the frontend.
+
+The normal Field Officer control is the protected dashboard, which enables or
+disables the existing `FloodGuard-Sensor-Simulator-Every-Minute` EventBridge
+rule. It does not change the Lambda, readings, SQS messages, or SNS topics.
+`SIMULATOR_ENABLED` remains a server-side deployment safeguard: it must be
+`true` for scheduled invocations to submit a reading, and is never exposed to
+the browser.
 
 To stop scheduling entirely:
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from hmac import compare_digest
 
+import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -40,6 +41,7 @@ from services.sqs_service import send_sensor_reading, sqs_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sensors", tags=["sensors"])
+eventbridge_client = boto3.client("events", region_name=settings.aws_region)
 
 
 class SensorReadingIn(BaseModel):
@@ -388,9 +390,84 @@ def _dashboard_payload(db: Session) -> dict:
     }
 
 
+def _latest_sensor_reading_payload(db: Session) -> dict | None:
+    reading = db.scalars(
+        select(SensorReading)
+        .order_by(SensorReading.recorded_at.desc(), SensorReading.id.desc())
+        .limit(1)
+    ).first()
+    if reading is None:
+        return None
+
+    station = db.get(SensorStation, reading.station_id)
+    payload = reading_to_dict(reading, station)
+    payload["station_name"] = station.name if station else reading.station_id
+    return payload
+
+
+def _simulator_status_payload(db: Session, rule: dict) -> dict:
+    state = str(rule.get("State") or "DISABLED").upper()
+    return {
+        "enabled": state == "ENABLED",
+        "state": state,
+        "schedule": rule.get("ScheduleExpression") or "rate(1 minute)",
+        "latest_reading": _latest_sensor_reading_payload(db),
+    }
+
+
+def _describe_simulator_rule() -> dict:
+    try:
+        return eventbridge_client.describe_rule(Name=settings.sensor_simulator_rule_name)
+    except (BotoCoreError, ClientError) as exc:
+        logger.error("Could not describe EventBridge simulator rule: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not read the cloud sensor simulator state.",
+        ) from exc
+
+
+def _set_simulator_rule_enabled(enabled: bool) -> None:
+    try:
+        operation = eventbridge_client.enable_rule if enabled else eventbridge_client.disable_rule
+        operation(Name=settings.sensor_simulator_rule_name)
+    except (BotoCoreError, ClientError) as exc:
+        action = "start" if enabled else "stop"
+        logger.error("Could not %s EventBridge simulator rule: %s", action, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not {action} the cloud sensor simulator.",
+        ) from exc
+
+
 @router.get("/dashboard", dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))])
 def get_sensor_dashboard(db: Session = Depends(get_db)) -> dict:
     return _dashboard_payload(db)
+
+
+@router.get(
+    "/simulator/status",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
+def get_simulator_status(db: Session = Depends(get_db)) -> dict:
+    return _simulator_status_payload(db, _describe_simulator_rule())
+
+
+@router.post(
+    "/simulator/start",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
+def start_simulator(db: Session = Depends(get_db)) -> dict:
+    _set_simulator_rule_enabled(True)
+    return _simulator_status_payload(db, _describe_simulator_rule())
+
+
+@router.post(
+    "/simulator/stop",
+    dependencies=[Depends(require_any_role(UserRole.field_officer, UserRole.admin))],
+)
+def stop_simulator(db: Session = Depends(get_db)) -> dict:
+    _set_simulator_rule_enabled(False)
+    return _simulator_status_payload(db, _describe_simulator_rule())
 
 
 @router.post(
