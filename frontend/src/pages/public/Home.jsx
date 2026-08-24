@@ -110,7 +110,7 @@ export default function Home() {
         </div>
       </section>
 
-      <HomeShowcase stats={stats} zones={zones} />
+      <HomeShowcase stats={stats} historySummary={historySummary} zones={zones} />
 
       {error && (
         <div className="mx-auto max-w-7xl px-6 mb-10">

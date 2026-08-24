@@ -1,19 +1,20 @@
 import {
-  Activity,
   ArrowRight,
   BarChart3,
   BellRing,
   CheckCircle2,
+  FileWarning,
+  Landmark,
   Map,
   MapPin,
+  MapPinned,
   ShieldCheck,
   Sparkles,
-  TrendingUp,
   UserPlus,
   Waves,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const capabilityCards = [
@@ -219,16 +220,47 @@ function PreviewAlerts({ zones }) {
   );
 }
 
-export default function HomeShowcase({ stats, zones = [] }) {
-  const [activeTab, setActiveTab] = useState("map");
-  const monitoringPointCount = stats?.total_zones ? `${Math.max(stats.total_zones * 10, stats.total_zones)}+` : "140+";
+function formatMetricValue(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? new Intl.NumberFormat("en-NP").format(numericValue) : "—";
+}
 
-  const impactMetrics = useMemo(() => [
-    { value: "12,450+", label: "Households supported", icon: ShieldCheck, iconClass: "bg-blue-100 text-brand", cardClass: "from-white to-blue-50" },
-    { value: monitoringPointCount, label: "Monitoring points", icon: Activity, iconClass: "bg-cyan-100 text-cyan-700", cardClass: "from-white to-cyan-50" },
-    { value: "< 15s", label: "Alert dispatch", icon: Zap, iconClass: "bg-amber-100 text-amber-600", cardClass: "from-white to-amber-50" },
-    { value: "99.9%", label: "System uptime", icon: TrendingUp, iconClass: "bg-emerald-100 text-emerald-600", cardClass: "from-white to-emerald-50" },
-  ], [monitoringPointCount]);
+export default function HomeShowcase({ stats, historySummary, zones = [] }) {
+  const [activeTab, setActiveTab] = useState("map");
+  const impactMetrics = [
+    {
+      value: formatMetricValue(stats?.total_reports),
+      label: "Reports submitted",
+      detail: "Community incident reports",
+      icon: FileWarning,
+      iconClass: "bg-blue-100 text-blue-700",
+      cardClass: "from-white to-blue-50",
+    },
+    {
+      value: formatMetricValue(stats?.active_alerts),
+      label: "Active alerts",
+      detail: "Current public warnings",
+      icon: BellRing,
+      iconClass: "bg-rose-100 text-rose-700",
+      cardClass: "from-white to-rose-50",
+    },
+    {
+      value: formatMetricValue(stats?.total_zones),
+      label: "Active alert zones",
+      detail: "Areas under live monitoring",
+      icon: MapPinned,
+      iconClass: "bg-cyan-100 text-cyan-700",
+      cardClass: "from-white to-cyan-50",
+    },
+    {
+      value: formatMetricValue(historySummary?.flood_incidents),
+      label: "Historical incidents",
+      detail: "Nepal flood history, 2011–2023",
+      icon: Landmark,
+      iconClass: "bg-violet-100 text-violet-700",
+      cardClass: "from-white to-violet-50",
+    },
+  ];
 
   return (
     <>
@@ -238,10 +270,11 @@ export default function HomeShowcase({ stats, zones = [] }) {
             const Icon = metric.icon;
             return (
               <article key={metric.label} className={`flex items-center gap-4 rounded-2xl border border-white/70 bg-gradient-to-br p-5 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-6 ${metric.cardClass}`}>
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm ${metric.iconClass}`}><Icon size={24} /></div>
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/5 ${metric.iconClass}`}><Icon size={22} strokeWidth={2.25} aria-hidden="true" /></div>
                 <div>
                   <p className="text-xl font-extrabold tracking-tight text-ink-primary sm:text-2xl">{metric.value}</p>
                   <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ink-secondary sm:text-xs">{metric.label}</p>
+                  <p className="mt-1 text-[10px] font-medium text-slate-500 sm:text-xs">{metric.detail}</p>
                 </div>
               </article>
             );
