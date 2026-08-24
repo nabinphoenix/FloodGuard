@@ -32,10 +32,10 @@ export default function PublicDashboard() {
             <div>
               <div className="mb-3 flex items-center gap-2 text-blue-100">
                 <ShieldCheck size={20} />
-                <span className="text-sm font-semibold">Public User Dashboard</span>
+                <span className="text-sm font-semibold">FloodGuard</span>
               </div>
-              <h1 className="text-3xl font-bold md:text-4xl">Welcome{user?.name ? `, ${user.name}` : ""}</h1>
-              <p className="mt-2 max-w-2xl text-blue-100">Monitor flood information, submit incident reports, and manage alerts for your area.</p>
+              <h1 className="text-3xl font-black tracking-tight md:text-4xl">Public User Dashboard</h1>
+              <p className="mt-2 max-w-2xl text-blue-100">Welcome{user?.name ? `, ${user.name}` : ""}. Monitor flood information, submit incident reports, and manage alerts for your area.</p>
             </div>
             {user?.district && (
               <div className="flex items-center gap-3 rounded-xl bg-white/10 px-5 py-4 backdrop-blur-sm">

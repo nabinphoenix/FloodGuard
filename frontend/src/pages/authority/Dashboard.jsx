@@ -49,10 +49,10 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <AdminLayout title="Dashboard">
+    <AdminLayout title="Authority Dashboard">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-ink-primary tracking-tight">Dashboard Overview</h2>
+          <h1 className="text-3xl font-black tracking-tight text-ink-primary">Authority Dashboard</h1>
           <p className="mt-2 text-ink-secondary">Monitor reports, users, and active flood alerts.</p>
         </div>
         <div className="flex flex-wrap gap-3">
