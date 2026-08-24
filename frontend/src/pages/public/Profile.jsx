@@ -18,17 +18,12 @@ import {
 } from "../../utils/notificationStatus";
 import { backendError, validatePhone } from "../../utils/validation";
 
-const DEFAULT_NOTIFICATION_STATUS = {
-  flood_alerts: { enabled: false, status: "disabled", label: "Disabled" },
-  password_recovery: { enabled: false, status: "disabled", label: "Disabled" },
-};
-
 function NotificationSubscriptionCard({ title, description, subscription, section, busyAction, onAction }) {
   const presentation = getNotificationPresentation(subscription?.status);
   const isBusy = (action) => busyAction === `${section}:${action}`;
 
   return (
-    <div className="rounded-md border border-blue-100 bg-blue-50 p-4 md:col-span-2">
+    <div className="rounded-md border border-blue-100 bg-blue-50 p-4">
       <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
       <p className="mt-2 text-xs leading-5 text-slate-600">{description}</p>
       <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-700">
@@ -60,7 +55,9 @@ function NotificationSubscriptionCard({ title, description, subscription, sectio
 export default function Profile() {
   const { user, setAuthenticatedUser } = useAuth();
   const [formData, setFormData] = useState({ name: "", phone: "", district: "" });
-  const [notificationStatus, setNotificationStatus] = useState(DEFAULT_NOTIFICATION_STATUS);
+  const [notificationStatus, setNotificationStatus] = useState(null);
+  const [isLoadingNotificationStatus, setIsLoadingNotificationStatus] = useState(true);
+  const [notificationError, setNotificationError] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [message, setMessage] = useState("");
@@ -80,20 +77,24 @@ export default function Profile() {
     } : current));
   }, [setAuthenticatedUser]);
 
-  const refreshNotificationStatus = useCallback(async ({ showFeedback = false } = {}) => {
+  const refreshNotificationStatus = useCallback(async ({ showFeedback = false, showLoading = false } = {}) => {
+    if (showLoading) setIsLoadingNotificationStatus(true);
+    setNotificationError("");
     try {
       const result = await getNotificationStatus();
       applyNotificationStatus(result);
       if (showFeedback) setMessage(result.message || "Subscription status updated.");
       return result;
     } catch (err) {
-      if (showFeedback) setError(backendError(err, "Could not check subscription status."));
+      setNotificationError(backendError(err, "Could not check subscription status."));
       return null;
+    } finally {
+      if (showLoading) setIsLoadingNotificationStatus(false);
     }
   }, [applyNotificationStatus]);
 
   useEffect(() => {
-    if (user) refreshNotificationStatus();
+    if (user?.id) refreshNotificationStatus({ showLoading: true });
   }, [refreshNotificationStatus, user?.id]);
 
   useEffect(() => {
@@ -122,10 +123,11 @@ export default function Profile() {
   async function handleSubscriptionAction(section, action) {
     setError("");
     setMessage("");
+    setNotificationError("");
     setBusySubscription(`${section}:${action}`);
     try {
       if (action === "check") {
-        await refreshNotificationStatus({ showFeedback: true });
+        await refreshNotificationStatus({ showFeedback: true, showLoading: true });
         return;
       }
 
@@ -136,7 +138,7 @@ export default function Profile() {
       applyNotificationStatus(result);
       setMessage(result.message || "Subscription settings updated.");
     } catch (err) {
-      setError(backendError(err, "Could not update subscription settings."));
+      setNotificationError(backendError(err, "Could not update subscription settings."));
     } finally {
       setBusySubscription("");
     }
@@ -200,28 +202,58 @@ export default function Profile() {
             <input id="district" value={formData.district} onChange={(event) => updateField("district", event.target.value)} className="mt-2 w-full rounded-md border border-blue-200 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200" />
           </div>
 
-          <NotificationSubscriptionCard
-            title="Receive email alerts"
-            description="Flood alerts are delivered through the shared FloodGuard-Alerts SNS topic. Enabling sends a confirmation email to your account address."
-            subscription={notificationStatus.flood_alerts}
-            section="flood_alerts"
-            busyAction={busySubscription}
-            onAction={handleSubscriptionAction}
-          />
-
-          <NotificationSubscriptionCard
-            title="Password Recovery Email"
-            description="This is separate from flood alerts and uses your private SNS password-recovery subscription for reset links only."
-            subscription={notificationStatus.password_recovery}
-            section="password_recovery"
-            busyAction={busySubscription}
-            onAction={handleSubscriptionAction}
-          />
-
-          <button type="submit" disabled={isSubmitting} className="rounded-md bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300 md:col-span-2">
-            {isSubmitting ? "Saving..." : "Save profile"}
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-blue-100 pt-5 md:col-span-2">
+            <p className="text-xs leading-5 text-slate-600">This saves your name, phone, and district only.</p>
+            <button type="submit" disabled={isSubmitting} className="rounded-md bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-blue-300">
+              {isSubmitting ? "Saving profile details..." : "Save profile details"}
+            </button>
+          </div>
         </form>
+
+        <section className="mt-8 border-t border-blue-100 pt-8" aria-labelledby="notification-subscriptions-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="notification-subscriptions-title" className="text-lg font-bold text-blue-950">Email notification subscriptions</h2>
+              <p className="mt-1 text-sm text-slate-600">Manage flood alerts and password recovery independently. These controls update immediately; they are not saved by the profile-details button.</p>
+            </div>
+            {!isLoadingNotificationStatus && (
+              <button type="button" onClick={() => refreshNotificationStatus({ showLoading: true })} className="rounded-md border border-blue-300 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                Refresh status
+              </button>
+            )}
+          </div>
+
+          {notificationError && (
+            <div role="alert" className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <p>{notificationError}</p>
+              <button type="button" onClick={() => refreshNotificationStatus({ showLoading: true })} className="mt-2 text-xs font-semibold underline">Try again</button>
+            </div>
+          )}
+
+          {isLoadingNotificationStatus ? (
+            <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-4 text-sm text-slate-600" role="status">Checking the current SNS subscription status…</div>
+          ) : notificationStatus && (
+            <div className="mt-4 grid gap-4">
+              <NotificationSubscriptionCard
+                title="Receive email alerts"
+                description="Flood alerts are delivered through the shared FloodGuard-Alerts SNS topic. Enabling sends a confirmation email to your account address."
+                subscription={notificationStatus.flood_alerts}
+                section="flood_alerts"
+                busyAction={busySubscription}
+                onAction={handleSubscriptionAction}
+              />
+
+              <NotificationSubscriptionCard
+                title="Password Recovery Email"
+                description="This is separate from flood alerts and uses your private SNS password-recovery subscription for reset links only."
+                subscription={notificationStatus.password_recovery}
+                section="password_recovery"
+                busyAction={busySubscription}
+                onAction={handleSubscriptionAction}
+              />
+            </div>
+          )}
+        </section>
       </section>
     </main>
   );
