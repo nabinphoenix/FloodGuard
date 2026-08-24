@@ -19,7 +19,11 @@ export async function getAuthorityReports({ status = "", district = "", page = 1
       limit,
     },
   });
-  return response.data;
+  const total = Number(response.headers["x-total-count"]);
+  return {
+    items: response.data,
+    total: Number.isFinite(total) ? total : response.data.length,
+  };
 }
 
 export async function approveReport(reportId) {

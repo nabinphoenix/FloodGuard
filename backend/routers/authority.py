@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
@@ -107,18 +107,28 @@ def get_dashboard(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/reports")
 def get_reports(
+    response: Response,
     status_filter: ReportStatus | None = Query(default=None, alias="status"),
     district: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    query = select(IncidentReport).options(joinedload(IncidentReport.user))
+    filters = []
 
     if status_filter:
-        query = query.where(IncidentReport.status == status_filter)
+        filters.append(IncidentReport.status == status_filter)
     if district:
-        query = query.where(IncidentReport.district == district)
+        filters.append(IncidentReport.district == district)
+
+    total_query = select(func.count(IncidentReport.id))
+    if filters:
+        total_query = total_query.where(*filters)
+    response.headers["X-Total-Count"] = str(db.scalar(total_query) or 0)
+
+    query = select(IncidentReport).options(joinedload(IncidentReport.user))
+    if filters:
+        query = query.where(*filters)
 
     reports = db.scalars(
         query.order_by(IncidentReport.created_at.desc())
