@@ -22,7 +22,7 @@ import { isWithinNepalOperationalBounds } from "../../components/map/mapUtils";
 import { formatKathmanduDate } from "../../utils/time";
 import { backendError } from "../../utils/validation";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 3;
 const statuses = ["pending", "approved", "rejected"];
 
 const statusContent = {
