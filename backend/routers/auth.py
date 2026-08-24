@@ -97,7 +97,12 @@ def create_access_token(user: User) -> str:
 
 
 def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.scalar(select(User).where(User.email == email.strip().lower()))
+    return db.scalar(
+        select(User).where(
+            User.email == email.strip().lower(),
+            User.deleted_at.is_(None),
+        )
+    )
 
 
 def get_current_user(
@@ -127,7 +132,7 @@ def get_current_user(
         raise credentials_exception from exc
 
     user = db.get(User, token_data.user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise credentials_exception
 
     token_password_version = payload.get("pwd")
@@ -293,7 +298,7 @@ def reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_RESET_MESSAGE)
 
     user = db.get(User, record.user_id)
-    if user is None:
+    if user is None or user.deleted_at is not None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=INVALID_RESET_MESSAGE)
 
     changed_at = datetime.now(timezone.utc).replace(microsecond=0)

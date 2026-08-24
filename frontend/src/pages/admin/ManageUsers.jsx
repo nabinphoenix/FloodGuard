@@ -250,7 +250,7 @@ export default function ManageUsers() {
     try {
       await deleteUser(user.id);
       setUsers((current) => current.filter((item) => item.id !== user.id));
-      setMessage("User deleted successfully.");
+      setMessage("User removed. Submitted reports were preserved.");
     } catch (err) {
       setError(backendError(err, "Could not delete the user."));
     } finally {
@@ -331,7 +331,7 @@ export default function ManageUsers() {
           </div>
         </div>
       )}
-      <ConfirmDialog open={Boolean(confirmation)} title="Delete user?" description={confirmation ? `Are you sure you want to delete ${confirmation.name}? This action cannot be undone.` : ""} confirmLabel="Delete User" onCancel={() => setConfirmation(null)} onConfirm={confirmDelete} isConfirming={workingId === confirmation?.id} danger />
+      <ConfirmDialog open={Boolean(confirmation)} title="Remove user?" description={confirmation ? `Remove ${confirmation.name} from active accounts? They will lose access, but their submitted reports will be preserved.` : ""} confirmLabel="Remove User" onCancel={() => setConfirmation(null)} onConfirm={confirmDelete} isConfirming={workingId === confirmation?.id} danger />
       <ConfirmDialog
         open={Boolean(roleChange)}
         title="Change user role?"

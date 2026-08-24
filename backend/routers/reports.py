@@ -34,7 +34,8 @@ def get_optional_current_user(
         user_id = payload.get("sub")
         if user_id is None:
             return None
-        return db.get(User, int(user_id))
+        user = db.get(User, int(user_id))
+        return user if user is not None and user.deleted_at is None else None
     except (JWTError, ValueError):
         return None
 

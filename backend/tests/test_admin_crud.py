@@ -8,6 +8,7 @@ from models.report import IncidentReport, ReportStatus
 from models.user import User, UserRole
 from routers import admin as admin_router
 from routers import authority as authority_router
+from routers import auth as auth_router
 from routers.auth import hash_password
 from schemas.alert import AlertZoneUpdate
 from services import sns_service
@@ -32,7 +33,7 @@ def make_user(db, name, email, role=UserRole.public):
     return user
 
 
-def test_user_crud_and_safe_delete(db, monkeypatch):
+def test_user_crud_and_soft_delete(db, monkeypatch):
     admin = make_user(db, "Admin", "admin@example.com", UserRole.admin)
     subscribe_mock = MagicMock()
     monkeypatch.setattr(sns_service, "subscribe_email", subscribe_mock)
@@ -77,7 +78,12 @@ def test_user_crud_and_safe_delete(db, monkeypatch):
     assert reset.password_hash != "ResetPassword123!"
 
     admin_router.delete_user(created.id, admin, db)
-    assert db.get(User, created.id) is None
+    db.refresh(created)
+    assert created.deleted_at is not None
+    assert created.id not in [user.id for user in admin_router.get_users(db)]
+    with pytest.raises(HTTPException) as exc:
+        admin_router.get_user(created.id, db)
+    assert exc.value.status_code == 404
 
 
 def test_admin_cannot_edit_email_alert_preference(db):
@@ -122,24 +128,35 @@ def test_admin_email_change_resets_sns_state_without_resubscribing(db, monkeypat
     subscribe_mock.assert_not_called()
 
 
-def test_user_with_historical_report_cannot_be_deleted(db):
+def test_soft_deleted_user_keeps_historical_reports_and_loses_access(db):
     admin = make_user(db, "Admin", "admin@example.com", UserRole.admin)
     reporter = make_user(db, "Reporter", "reporter@example.com")
-    db.add(
-        IncidentReport(
-            user_id=reporter.id,
-            district="Kathmandu",
-            severity=3,
-            description="Water is rising near the road.",
-            status=ReportStatus.approved,
-        )
+    report = IncidentReport(
+        user_id=reporter.id,
+        district="Kathmandu",
+        severity=3,
+        description="Water is rising near the road.",
+        status=ReportStatus.approved,
     )
+    db.add(report)
     db.commit()
 
-    with pytest.raises(HTTPException) as exc:
-        admin_router.delete_user(reporter.id, admin, db)
-    assert exc.value.status_code == 409
-    assert db.get(User, reporter.id) is not None
+    active_token = auth_router.create_access_token(reporter)
+    admin_router.delete_user(reporter.id, admin, db)
+
+    db.refresh(reporter)
+    assert reporter.deleted_at is not None
+    assert db.get(IncidentReport, report.id).user_id == reporter.id
+    assert reporter.id not in [user.id for user in admin_router.get_users(db)]
+    with pytest.raises(HTTPException) as current_user_exc:
+        auth_router.get_current_user(active_token, db)
+    assert current_user_exc.value.status_code == 401
+    with pytest.raises(HTTPException) as login_exc:
+        auth_router.login(
+            auth_router.LoginRequest(email=reporter.email, password="Password123!"),
+            db,
+        )
+    assert login_exc.value.status_code == 401
 
 
 def test_self_delete_and_final_admin_protection(db):

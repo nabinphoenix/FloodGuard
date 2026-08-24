@@ -69,10 +69,21 @@ def _unsubscribe_if_needed(subscription_arn: str | None) -> None:
         unsubscribe(subscription_arn)
 
 
+def _get_active_user(db: Session, user_id: int) -> User | None:
+    return db.scalar(
+        select(User).where(
+            User.id == user_id,
+            User.deleted_at.is_(None),
+        )
+    )
+
+
 @router.get("/dashboard")
 def get_dashboard(db: Session = Depends(get_db)) -> dict:
     total_reports = db.scalar(select(func.count(IncidentReport.id))) or 0
-    total_users = db.scalar(select(func.count(User.id))) or 0
+    total_users = db.scalar(
+        select(func.count(User.id)).where(User.deleted_at.is_(None))
+    ) or 0
     total_zones = db.scalar(select(func.count(AlertZone.id))) or 0
 
     return {
@@ -228,13 +239,17 @@ def delete_zone(zone_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
 
 @router.get("/users", response_model=list[UserOut])
 def get_users(db: Session = Depends(get_db)) -> list[UserOut]:
-    users = db.scalars(select(User).order_by(User.created_at.desc())).all()
+    users = db.scalars(
+        select(User)
+        .where(User.deleted_at.is_(None))
+        .order_by(User.created_at.desc())
+    ).all()
     return [user_to_out(user) for user in users]
 
 
 @router.get("/users/{user_id}", response_model=UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db)) -> User:
-    user = db.get(User, user_id)
+    user = _get_active_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     return user
@@ -273,7 +288,7 @@ def create_user(user_in: AdminUserCreate, db: Session = Depends(get_db)) -> User
 
 @router.put("/users/{user_id}", response_model=UserOut)
 def update_user(user_id: int, user_in: AdminUserUpdate, db: Session = Depends(get_db)) -> User:
-    user = db.get(User, user_id)
+    user = _get_active_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
@@ -333,7 +348,7 @@ def update_user_role(
     current_admin: User = Depends(require_role(UserRole.admin)),
     db: Session = Depends(get_db),
 ) -> User:
-    user = db.get(User, user_id)
+    user = _get_active_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     if user.id == current_admin.id and payload.role != UserRole.admin:
@@ -342,7 +357,12 @@ def update_user_role(
             detail="You cannot remove your own administrator role.",
         )
     if user.role == UserRole.admin and payload.role != UserRole.admin:
-        admin_count = db.scalar(select(func.count(User.id)).where(User.role == UserRole.admin)) or 0
+        admin_count = db.scalar(
+            select(func.count(User.id)).where(
+                User.role == UserRole.admin,
+                User.deleted_at.is_(None),
+            )
+        ) or 0
         if admin_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -357,7 +377,7 @@ def update_user_role(
 
 @router.post("/users/{user_id}/reset-password", response_model=UserOut)
 def reset_user_password(user_id: int, payload: AdminUserPasswordReset, db: Session = Depends(get_db)) -> User:
-    user = db.get(User, user_id)
+    user = _get_active_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     user.password_hash = hash_password(payload.password)
@@ -373,7 +393,7 @@ def delete_user(
     current_admin: User = Depends(require_role(UserRole.admin)),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    user = db.get(User, user_id)
+    user = _get_active_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
     if user.id == current_admin.id:
@@ -382,26 +402,32 @@ def delete_user(
             detail="You cannot delete your own administrator account.",
         )
     if user.role == UserRole.admin:
-        admin_count = db.scalar(select(func.count(User.id)).where(User.role == UserRole.admin)) or 0
+        admin_count = db.scalar(
+            select(func.count(User.id)).where(
+                User.role == UserRole.admin,
+                User.deleted_at.is_(None),
+            )
+        ) or 0
         if admin_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="The final administrator cannot be deleted.",
             )
-    report_count = db.scalar(
-        select(func.count(IncidentReport.id)).where(IncidentReport.user_id == user.id)
-    ) or 0
-    if report_count:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This user cannot be deleted because their historical reports must be preserved.",
-        )
-
     _unsubscribe_if_needed(user.sns_subscription_arn)
     try:
         unsubscribe_password_reset_subscription(user.password_recovery_subscription_arn)
     except EmailDeliveryError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The user's password recovery subscription could not be disabled.") from exc
-    db.delete(user)
+    deleted_at = datetime.now(timezone.utc).replace(microsecond=0)
+    user.email_alerts = False
+    user.sns_subscription_arn = None
+    user.password_recovery_enabled = False
+    user.password_recovery_topic_arn = None
+    user.password_recovery_subscription_arn = None
+    user.password_changed_at = deleted_at
+    user.deleted_at = deleted_at
+    for reset_token in user.reset_tokens:
+        if reset_token.used_at is None:
+            reset_token.used_at = deleted_at
     db.commit()
-    return {"message": "User deleted successfully."}
+    return {"message": "User deleted successfully. Their submitted reports have been preserved."}

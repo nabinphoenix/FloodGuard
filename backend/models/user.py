@@ -53,6 +53,11 @@ class User(Base):
         nullable=True,
         index=True,
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
 
 
     reports: Mapped[list[IncidentReport]] = relationship(
